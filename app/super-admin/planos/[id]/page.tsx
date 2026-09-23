@@ -1,6 +1,6 @@
 "use client";
 
-import { API_URL } from "@/lib/api";
+import { apiFetch } from "@/lib/api";
 
 import {
   ArrowLeft,
@@ -122,20 +122,12 @@ export default function EditPlanPage() {
         setLoading(true);
         setError("");
 
-        const response = await fetch(
-          `${API_URL}/plans/${id}`,
+        const response = await apiFetch(
+          `/plans/${id}`,
           {
             cache: "no-store",
           }
         );
-
-        if (!response.ok) {
-          throw new Error(
-            response.status === 404
-              ? "Plano não encontrado."
-              : "Não foi possível carregar o plano."
-          );
-        }
 
         const plan: Plan = await response.json();
 
@@ -292,9 +284,7 @@ export default function EditPlanPage() {
 
         trialEnabled,
 
-        trialDays: trialEnabled
-          ? Number(trialDays) || 0
-          : 0,
+        trialDays: trialEnabled ? Number(trialDays) : undefined,
 
         badge: badge.trim() || null,
 
@@ -325,8 +315,8 @@ export default function EditPlanPage() {
         })),
       };
 
-      const response = await fetch(
-        `${API_URL}/plans/${id}`,
+      await apiFetch(
+        `/plans/${id}`,
         {
           method: "PATCH",
           headers: {
@@ -335,19 +325,6 @@ export default function EditPlanPage() {
           body: JSON.stringify(payload),
         }
       );
-
-      if (!response.ok) {
-        const responseData = await response
-          .json()
-          .catch(() => null);
-
-        throw new Error(
-          Array.isArray(responseData?.message)
-            ? responseData.message.join(", ")
-            : responseData?.message ||
-                "Não foi possível salvar o plano."
-        );
-      }
 
       setSuccess("Plano atualizado com sucesso.");
 
@@ -650,7 +627,8 @@ export default function EditPlanPage() {
                   <div className="number-suffix-input">
                     <input
                       type="number"
-                      min="0"
+                      min="1"
+                      max="365"
                       value={trialDays}
                       onChange={(event) =>
                         setTrialDays(

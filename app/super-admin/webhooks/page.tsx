@@ -1,6 +1,6 @@
 "use client";
 
-import { API_URL } from "@/lib/api";
+import { apiFetch, API_URL } from "@/lib/api";
 
 import {
   AlertCircle,
@@ -29,7 +29,8 @@ type WebhookEvent = {
   externalEventId: string;
   eventType: string | null;
   status: string;
-  errorMessage: string | null;
+  errorMessage: "PROCESSING_FAILED" | null;
+  companyId: string | null;
   receivedAt: string;
   processedAt: string | null;
   createdAt: string;
@@ -158,11 +159,11 @@ export default function WebhooksPage() {
 
         const [eventsResponse, summaryResponse] =
           await Promise.all([
-            fetch(`${API_URL}/webhooks`, {
+            apiFetch(`/webhooks`, {
               cache: "no-store",
             }),
-            fetch(
-              `${API_URL}/webhooks/summary`,
+            apiFetch(
+              `/webhooks/summary`,
               {
                 cache: "no-store",
               }
@@ -361,6 +362,7 @@ export default function WebhooksPage() {
             </div>
           </section>
 
+          <section className="new-company-section"><h2>URLs para os gateways</h2>{["mercado-pago", "stripe", "pagbank"].map(gateway => <p key={gateway} style={{ overflowWrap: "anywhere" }}><code>{API_URL}/webhooks/{gateway}</code></p>)}<p>Recepção externa indisponível enquanto os adapters estiverem pendentes.</p></section>
           <section className="companies-panel">
             <div className="companies-panel-header">
               <div>
@@ -460,6 +462,7 @@ export default function WebhooksPage() {
                         <th>Gateway</th>
                         <th>Evento</th>
                         <th>ID externo</th>
+                        <th>Empresa</th>
                         <th>Status</th>
                         <th>Recebido</th>
                         <th>Processado</th>
@@ -491,6 +494,7 @@ export default function WebhooksPage() {
                             </span>
                           </td>
 
+                          <td>{event.companyId || "—"}</td>
                           <td>
                             <span
                               className={`company-status ${statusClass(

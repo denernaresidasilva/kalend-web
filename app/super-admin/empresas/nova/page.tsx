@@ -1,6 +1,6 @@
 "use client";
 
-import { API_URL } from "@/lib/api";
+import { apiFetch } from "@/lib/api";
 
 import {
   ArrowLeft,
@@ -104,19 +104,13 @@ export default function NewCompanyPage() {
         setLoadingPlans(true);
         setPlansError("");
 
-        const response = await fetch(
-          `${API_URL}/plans/public`,
+        const response = await apiFetch(
+          `/plans/public`,
           {
             cache: "no-store",
             signal: controller.signal,
           },
         );
-
-        if (!response.ok) {
-          throw new Error(
-            `Não foi possível carregar os planos (HTTP ${response.status}).`,
-          );
-        }
 
         const data: Plan[] = await response.json();
 
@@ -203,9 +197,9 @@ export default function NewCompanyPage() {
       return;
     }
 
-    if (ownerPassword.length < 8) {
+    if (ownerPassword.length < 8 || new TextEncoder().encode(ownerPassword).length > 72) {
       setError(
-        "A senha precisa ter pelo menos 8 caracteres.",
+        "A senha precisa ter ao menos 8 caracteres e no máximo 72 bytes.",
       );
       return;
     }
@@ -213,8 +207,8 @@ export default function NewCompanyPage() {
     try {
       setSubmitting(true);
 
-      const response = await fetch(
-        `${API_URL}/companies/manual`,
+      await apiFetch(
+        `/companies/manual`,
         {
           method: "POST",
 
@@ -239,19 +233,7 @@ export default function NewCompanyPage() {
         },
       );
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        const message = Array.isArray(data.message)
-          ? data.message.join(", ")
-          : data.message;
-
-        throw new Error(
-          message ||
-            "Não foi possível cadastrar a empresa.",
-        );
-      }
-
+      setOwnerPassword("");
       setSuccess(
         "Empresa cadastrada com sucesso.",
       );

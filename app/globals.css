@@ -3976,3 +3976,19 @@ button {
     width: 100%;
   }
 }
+
+.auth-state { min-height: 75vh; display: flex; flex-direction: column; gap: 18px; align-items: center; justify-content: center; padding: 24px; text-align: center; }
+.session-bar { position: sticky; top: 0; z-index: 60; display: flex; flex-wrap: wrap; gap: 16px; align-items: center; justify-content: flex-end; padding: 10px 20px; background: #171b39; color: white; }
+.session-bar button, .auth-state button { padding: 8px 16px; border-radius: 8px; background: #7657d5; color: white; }
+.companies-table-wrap { overflow-x: auto; max-width: 100%; }
+.gateway-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 20px; }
+.gateway-grid form { display: flex; flex-direction: column; gap: 16px; }
+.gateway-grid label { display: flex; flex-direction: column; gap: 6px; }
+.gateway-grid input, .gateway-grid select { width: 100%; border: 1px solid #dedee6; border-radius: 8px; padding: 10px; }
+.gateway-grid code, .webhook-details dd { overflow-wrap: anywhere; }
+.webhook-details { display: grid; gap: 12px; }
+.webhook-details dt { font-weight: 700; }
+button:disabled { opacity: .55; cursor: not-allowed; }
+.admin-sidebar, .companies-sidebar { padding-top: 76px; }
+.session-navigation { position: relative; }
+.session-navigation nav { position: absolute; right: 0; top: 30px; display: grid; gap: 14px; padding: 20px; min-width: 180px; border-radius: 12px; background: #171b39; box-shadow: 0 6px 20px #0003; }

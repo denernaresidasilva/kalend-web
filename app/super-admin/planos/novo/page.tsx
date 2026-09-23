@@ -1,6 +1,6 @@
 "use client";
 
-import { API_URL } from "@/lib/api";
+import { apiFetch } from "@/lib/api";
 
 import {
   ArrowLeft,
@@ -14,7 +14,6 @@ import {
   Save,
   Sparkles,
   Trash2,
-  Users,
   X,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -222,9 +221,7 @@ export default function NewPlanPage() {
 
         trialEnabled,
 
-        trialDays: trialEnabled
-          ? Number(trialDays) || 0
-          : 0,
+        trialDays: trialEnabled ? Number(trialDays) : undefined,
 
         badge: badge.trim() || undefined,
         isFeatured,
@@ -254,8 +251,8 @@ export default function NewPlanPage() {
           })),
       };
 
-      const response = await fetch(
-        `${API_URL}/plans`,
+      await apiFetch(
+        `/plans`,
         {
           method: "POST",
           headers: {
@@ -264,23 +261,6 @@ export default function NewPlanPage() {
           body: JSON.stringify(payload),
         }
       );
-
-      if (!response.ok) {
-        const responseData = await response
-          .json()
-          .catch(() => null);
-
-        if (response.status === 409) {
-          throw new Error(
-            "Já existe um plano com esse código."
-          );
-        }
-
-        throw new Error(
-          responseData?.message ||
-            "Não foi possível criar o plano."
-        );
-      }
 
       router.push("/super-admin/planos");
       router.refresh();
@@ -539,7 +519,8 @@ export default function NewPlanPage() {
                   <div className="number-suffix-input">
                     <input
                       type="number"
-                      min="0"
+                      min="1"
+                      max="365"
                       value={trialDays}
                       onChange={(event) =>
                         setTrialDays(event.target.value)

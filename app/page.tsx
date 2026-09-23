@@ -10,19 +10,36 @@ import {
 } from "lucide-react";
 import { FormEvent, useState } from "react";
 
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/components/auth-provider";
+import { api, ApiError, jsonBody, sessionStarted } from "@/lib/api";
+
 export default function LoginPage() {
+  const router = useRouter();
+  const { reload } = useAuth();
+  const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    setLoading(true);
+    if (loading) return;
+    const form = event.currentTarget;
+    const data = new FormData(form);
+    setLoading(true); setError("");
+    try {
+      await api("/auth/login", { method: "POST", ...jsonBody({ email: data.get("email"), password: data.get("password") }) });
+      form.reset();
+      sessionStarted();
+      const me = await reload();
+      if (me?.systemRole === "SUPER_ADMIN") router.replace("/super-admin");
+      else if (me) router.replace("/super-admin");
+      else setError("Não foi possível verificar a sessão. Tente entrar novamente.");
+    } catch (err) {
+      setError(err instanceof ApiError && err.status === 401 ? "E-mail ou senha inválidos." : err instanceof Error ? err.message : "Não foi possível entrar.");
+    } finally { (form.elements.namedItem("password") as HTMLInputElement).value = ""; setLoading(false); }
 
-    // Na próxima etapa conectaremos ao NestJS.
-    setTimeout(() => {
-      setLoading(false);
-    }, 700);
   }
 
   return (
@@ -72,11 +89,12 @@ export default function LoginPage() {
             <h2>Entre na sua conta</h2>
 
             <p>
-              Acesse seu painel para continuar.
+              Acesse o Super Admin para continuar.
             </p>
           </div>
 
           <form onSubmit={handleSubmit}>
+            {error && <p className="new-company-message error" role="alert">{error}</p>}
             <label htmlFor="email">E-mail</label>
 
             <div className="input-wrapper">
@@ -95,9 +113,7 @@ export default function LoginPage() {
             <div className="password-label">
               <label htmlFor="password">Senha</label>
 
-              <button type="button" className="forgot-button">
-                Esqueci minha senha
-              </button>
+
             </div>
 
             <div className="input-wrapper">
@@ -133,21 +149,7 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <div className="login-divider">
-            <span />
-            <p>NOVO NO KALEND?</p>
-            <span />
-          </div>
 
-          <button type="button" className="create-account">
-            Criar minha conta
-          </button>
-
-          <p className="terms">
-            Ao continuar, você concorda com nossos{" "}
-            <button type="button">Termos de Uso</button> e{" "}
-            <button type="button">Política de Privacidade</button>.
-          </p>
         </div>
 
         <div className="mobile-footer">

@@ -1,6 +1,6 @@
 "use client";
 
-import { API_URL } from "@/lib/api";
+import { apiFetch } from "@/lib/api";
 
 import {
   Building2,
@@ -21,7 +21,7 @@ import { useRouter } from "next/navigation";
 type Subscription = {
   id: string;
   status: string;
-  trialStartedAt: string | null;
+  trialStartsAt: string | null;
   trialEndsAt: string | null;
   currentPeriodStart: string | null;
   currentPeriodEnd: string | null;
@@ -114,7 +114,6 @@ function statusLabel(status: string) {
     PAST_DUE: "Pagamento pendente",
     CANCELED: "Cancelada",
     EXPIRED: "Expirada",
-    INCOMPLETE: "Incompleta",
   };
 
   return labels[status] ?? status;
@@ -125,8 +124,7 @@ function statusClass(status: string) {
   if (status === "TRIALING") return "trial";
 
   if (
-    status === "PAST_DUE" ||
-    status === "INCOMPLETE"
+    status === "PAST_DUE"
   ) {
     return "warning";
   }
@@ -158,18 +156,12 @@ export default function SubscriptionsPage() {
         setLoading(true);
         setError("");
 
-        const response = await fetch(
-          `${API_URL}/subscriptions`,
+        const response = await apiFetch(
+          `/subscriptions`,
           {
             cache: "no-store",
           }
         );
-
-        if (!response.ok) {
-          throw new Error(
-            "Não foi possível carregar as assinaturas."
-          );
-        }
 
         const data: Subscription[] =
           await response.json();
@@ -222,17 +214,8 @@ export default function SubscriptionsPage() {
 
   const attentionCount = subscriptions.filter(
     (item) =>
-      item.status === "PAST_DUE" ||
-      item.status === "INCOMPLETE"
+      item.status === "PAST_DUE"
   ).length;
-
-  const estimatedMrr = subscriptions
-    .filter((item) => item.status === "ACTIVE")
-    .reduce(
-      (total, item) =>
-        total + item.plan.monthlyPriceCents,
-      0
-    );
 
   return (
     <main className="subscriptions-admin-page">
@@ -331,9 +314,9 @@ export default function SubscriptionsPage() {
               </div>
 
               <div>
-                <span>MRR estimado</span>
+                <span>Total de assinaturas</span>
                 <strong className="subscription-money">
-                  {formatMoney(estimatedMrr)}
+                  {subscriptions.length}
                 </strong>
               </div>
             </article>

@@ -1,6 +1,6 @@
 "use client";
 
-import { API_URL } from "@/lib/api";
+import { apiFetch } from "@/lib/api";
 
 import {
   Bell,
@@ -115,22 +115,18 @@ export default function PlansPage() {
         setLoading(true);
         setError("");
 
-        const response = await fetch(
-          `${API_URL}/plans/public`,
+        const response = await apiFetch(
+          `/plans`,
           {
             cache: "no-store",
           }
         );
 
-        if (!response.ok) {
-          throw new Error("Não foi possível carregar os planos.");
-        }
-
         const data = await response.json();
         setPlans(data);
-      } catch {
+      } catch (err) {
         setError(
-          "Não foi possível carregar os planos. Tente novamente."
+          err instanceof Error ? err.message : "Não foi possível carregar os planos."
         );
       } finally {
         setLoading(false);

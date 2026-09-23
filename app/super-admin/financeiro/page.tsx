@@ -1,6 +1,6 @@
 "use client";
 
-import { API_URL } from "@/lib/api";
+import { apiFetch } from "@/lib/api";
 
 import {
   AlertCircle,
@@ -58,6 +58,8 @@ type FinanceSummary = {
   approvedCount: number;
   pendingCount: number;
   failedCount: number;
+  canceledCount: number;
+  refundedCount: number;
 };
 
 const menuItems = [
@@ -161,6 +163,8 @@ export default function FinanceiroPage() {
     approvedCount: 0,
     pendingCount: 0,
     failedCount: 0,
+    canceledCount: 0,
+    refundedCount: 0,
   });
 
   const [loading, setLoading] = useState(true);
@@ -175,11 +179,11 @@ export default function FinanceiroPage() {
 
         const [paymentsResponse, summaryResponse] =
           await Promise.all([
-            fetch(`${API_URL}/finance`, {
+            apiFetch(`/finance`, {
               cache: "no-store",
             }),
-            fetch(
-              `${API_URL}/finance/summary`,
+            apiFetch(
+              `/finance/summary`,
               {
                 cache: "no-store",
               }
@@ -393,13 +397,15 @@ export default function FinanceiroPage() {
               <AlertCircle size={18} />
 
               <span>
-                Falhas / cancelados
+                Pagamentos com falha
               </span>
 
               <strong>
                 {summary.failedCount}
               </strong>
             </div>
+            <div><span>Cancelados</span><strong>{summary.canceledCount}</strong></div>
+            <div><span>Estornados</span><strong>{summary.refundedCount}</strong></div>
           </section>
 
           <section className="companies-panel">

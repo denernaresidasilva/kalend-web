@@ -1,6 +1,6 @@
 "use client";
 
-import { API_URL } from "@/lib/api";
+import { apiFetch } from "@/lib/api";
 
 import {
   Building2,
@@ -145,11 +145,11 @@ export default function UsuariosPage() {
 
         const [usersResponse, summaryResponse] =
           await Promise.all([
-            fetch(`${API_URL}/users`, {
+            apiFetch(`/users`, {
               cache: "no-store",
             }),
-            fetch(
-              `${API_URL}/users/summary`,
+            apiFetch(
+              `/users/summary`,
               {
                 cache: "no-store",
               },

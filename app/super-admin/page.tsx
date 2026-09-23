@@ -4,19 +4,18 @@ import {
   Bell,
   Building2,
   CalendarDays,
-  ChevronRight,
   CircleDollarSign,
   CreditCard,
   LayoutDashboard,
   Menu,
   Settings,
-  TrendingUp,
   Users,
   WalletCards,
   Webhook,
   X,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import DashboardSummary from "@/components/dashboard-summary";
 import { useState } from "react";
 
 const menuItems = [
@@ -184,224 +183,8 @@ export default function SuperAdminPage() {
             </div>
           </div>
 
-          <section className="metric-grid">
-            <article className="metric-card">
-              <div className="metric-card-top">
-                <div className="metric-icon purple">
-                  <Building2 size={21} />
-                </div>
-
-                <span className="metric-growth">
-                  <TrendingUp size={14} />
-                  0%
-                </span>
-              </div>
-
-              <span className="metric-label">
-                Empresas ativas
-              </span>
-
-              <strong>0</strong>
-
-              <small>
-                Estabelecimentos na plataforma
-              </small>
-            </article>
-
-            <article className="metric-card">
-              <div className="metric-card-top">
-                <div className="metric-icon blue">
-                  <Users size={21} />
-                </div>
-
-                <span className="metric-growth">
-                  <TrendingUp size={14} />
-                  0%
-                </span>
-              </div>
-
-              <span className="metric-label">
-                Usuários
-              </span>
-
-              <strong>0</strong>
-
-              <small>
-                Usuários cadastrados
-              </small>
-            </article>
-
-            <article className="metric-card">
-              <div className="metric-card-top">
-                <div className="metric-icon green">
-                  <WalletCards size={21} />
-                </div>
-
-                <span className="metric-growth">
-                  <TrendingUp size={14} />
-                  0%
-                </span>
-              </div>
-
-              <span className="metric-label">
-                Receita mensal
-              </span>
-
-              <strong>R$ 0,00</strong>
-
-              <small>
-                Receita recorrente mensal
-              </small>
-            </article>
-
-            <article className="metric-card">
-              <div className="metric-card-top">
-                <div className="metric-icon orange">
-                  <CreditCard size={21} />
-                </div>
-
-                <span className="metric-growth">
-                  <TrendingUp size={14} />
-                  0%
-                </span>
-              </div>
-
-              <span className="metric-label">
-                Assinaturas ativas
-              </span>
-
-              <strong>0</strong>
-
-              <small>
-                Empresas com assinatura ativa
-              </small>
-            </article>
-          </section>
-
-          <section className="dashboard-panels">
-            <article className="dashboard-panel revenue-panel">
-              <div className="panel-heading">
-                <div>
-                  <h2>Receita da plataforma</h2>
-                  <p>Evolução dos últimos meses</p>
-                </div>
-
-                <button>
-                  Últimos 6 meses
-                </button>
-              </div>
-
-              <div className="empty-chart">
-                <div className="chart-bars">
-                  <span />
-                  <span />
-                  <span />
-                  <span />
-                  <span />
-                  <span />
-                </div>
-
-                <p>
-                  Os dados financeiros aparecerão aqui.
-                </p>
-              </div>
-            </article>
-
-            <article className="dashboard-panel">
-              <div className="panel-heading">
-                <div>
-                  <h2>Empresas recentes</h2>
-                  <p>Últimos cadastros</p>
-                </div>
-
-                <button
-                  className="see-all"
-                  onClick={() =>
-                    navigate("/super-admin/empresas")
-                  }
-                >
-                  Ver todas
-                  <ChevronRight size={16} />
-                </button>
-              </div>
-
-              <div className="empty-state">
-                <div className="empty-state-icon">
-                  <Building2 size={25} />
-                </div>
-
-                <strong>
-                  Nenhuma empresa ainda
-                </strong>
-
-                <p>
-                  As novas empresas cadastradas aparecerão aqui.
-                </p>
-              </div>
-            </article>
-          </section>
-
-          <section className="dashboard-panel activity-panel">
-            <div className="panel-heading">
-              <div>
-                <h2>Atividade recente</h2>
-
-                <p>
-                  Últimos eventos importantes da plataforma
-                </p>
-              </div>
-            </div>
-
-            <div className="empty-activity">
-              <div className="activity-dot" />
-
-              <div>
-                <strong>
-                  Kalend está pronto
-                </strong>
-
-                <p>
-                  As atividades da plataforma serão exibidas aqui.
-                </p>
-              </div>
-            </div>
-          </section>
+          <DashboardSummary />
         </div>
-
-        <nav className="admin-mobile-nav">
-          <button
-            className="active"
-            onClick={() => navigate("/super-admin")}
-          >
-            <LayoutDashboard size={21} />
-            <span>Início</span>
-          </button>
-
-          <button
-            onClick={() =>
-              navigate("/super-admin/empresas")
-            }
-          >
-            <Building2 size={21} />
-            <span>Empresas</span>
-          </button>
-
-          <button
-            onClick={() =>
-              navigate("/super-admin/planos")
-            }
-          >
-            <CreditCard size={21} />
-            <span>Planos</span>
-          </button>
-
-          <button
-            onClick={() => setMenuOpen(true)}
-          >
-            <Menu size={21} />
-            <span>Menu</span>
-          </button>
-        </nav>
       </section>
     </main>
   );

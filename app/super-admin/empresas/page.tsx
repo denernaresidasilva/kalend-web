@@ -1,6 +1,6 @@
 "use client";
 
-import { API_URL } from "@/lib/api";
+import { apiFetch } from "@/lib/api";
 
 import {
   Building2,
@@ -118,7 +118,6 @@ function subscriptionStatusLabel(status: string) {
     PAST_DUE: "Pagamento pendente",
     CANCELED: "Cancelada",
     EXPIRED: "Expirada",
-    INCOMPLETE: "Incompleta",
   };
 
   return labels[status] ?? status;
@@ -167,18 +166,12 @@ export default function CompaniesPage() {
         setLoading(true);
         setError("");
 
-        const response = await fetch(
-          `${API_URL}/companies`,
+        const response = await apiFetch(
+          `/companies`,
           {
             cache: "no-store",
           }
         );
-
-        if (!response.ok) {
-          throw new Error(
-            "Não foi possível carregar as empresas."
-          );
-        }
 
         const data: Company[] = await response.json();
 
@@ -229,7 +222,7 @@ export default function CompaniesPage() {
       company.subscription?.status === "TRIALING"
   ).length;
 
-  const payingCompanies = companies.filter(
+  const activeSubscriptions = companies.filter(
     (company) =>
       company.subscription?.status === "ACTIVE"
   ).length;
@@ -350,7 +343,7 @@ export default function CompaniesPage() {
 
               <div>
                 <span>Assinaturas ativas</span>
-                <strong>{payingCompanies}</strong>
+                <strong>{activeSubscriptions}</strong>
               </div>
             </article>
           </section>
