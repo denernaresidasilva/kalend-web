@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 type Company = {
   id: string;
@@ -281,17 +282,27 @@ export default function CompaniesPage() {
 
       <section className="companies-main">
         <header className="companies-topbar">
-          <div>
-            <span className="dashboard-eyebrow">
-              GESTÃO DA PLATAFORMA
-            </span>
+          <div className="companies-topbar-actions">
+            <div>
+              <span className="dashboard-eyebrow">
+                GESTÃO DA PLATAFORMA
+              </span>
 
-            <h1>Empresas</h1>
+              <h1>Empresas</h1>
 
-            <p>
-              Acompanhe estabelecimentos, planos,
-              assinaturas e responsáveis.
-            </p>
+              <p>
+                Acompanhe estabelecimentos, planos,
+                assinaturas e responsáveis.
+              </p>
+            </div>
+
+            <Link
+              href="/super-admin/empresas/nova"
+              className="companies-new-button"
+            >
+              <Plus size={18} aria-hidden="true" />
+              Nova empresa
+            </Link>
           </div>
         </header>
 
