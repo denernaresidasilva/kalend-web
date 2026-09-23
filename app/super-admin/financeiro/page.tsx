@@ -1,5 +1,7 @@
 "use client";
 
+import { API_URL } from "@/lib/api";
+
 import {
   AlertCircle,
   Building2,
@@ -173,11 +175,11 @@ export default function FinanceiroPage() {
 
         const [paymentsResponse, summaryResponse] =
           await Promise.all([
-            fetch("https://api.kalend.tech/finance", {
+            fetch(`${API_URL}/finance`, {
               cache: "no-store",
             }),
             fetch(
-              "https://api.kalend.tech/finance/summary",
+              `${API_URL}/finance/summary`,
               {
                 cache: "no-store",
               }

@@ -1,5 +1,7 @@
 "use client";
 
+import { API_URL } from "@/lib/api";
+
 import {
   Bell,
   Building2,
@@ -114,7 +116,7 @@ export default function PlansPage() {
         setError("");
 
         const response = await fetch(
-          "https://api.kalend.tech/plans/public",
+          `${API_URL}/plans/public`,
           {
             cache: "no-store",
           }

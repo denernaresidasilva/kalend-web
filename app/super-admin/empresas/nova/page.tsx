@@ -1,5 +1,7 @@
 "use client";
 
+import { API_URL } from "@/lib/api";
+
 import {
   ArrowLeft,
   Building2,
@@ -29,8 +31,20 @@ type Plan = {
   isActive: boolean;
 };
 
-function formatMoney(value: number | null) {
-  if (value === null) return "Não disponível";
+function hasYearlyPrice(plan: Plan | undefined) {
+  return typeof plan?.yearlyPriceCents === "number"
+    && Number.isFinite(plan.yearlyPriceCents)
+    && plan.yearlyPriceCents > 0;
+}
+
+function hasTrial(plan: Plan | undefined) {
+  return plan?.trialEnabled === true
+    && Number.isInteger(plan.trialDays)
+    && plan.trialDays > 0;
+}
+
+function formatMoney(value: number | null | undefined) {
+  if (typeof value !== "number" || !Number.isFinite(value)) return "Não disponível";
 
   return new Intl.NumberFormat("pt-BR", {
     style: "currency",
@@ -41,6 +55,8 @@ function formatMoney(value: number | null) {
 export default function NewCompanyPage() {
   const router = useRouter();
 
+  const [plansError, setPlansError] = useState("");
+  const [plansAttempt, setPlansAttempt] = useState(0);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loadingPlans, setLoadingPlans] =
     useState(true);
@@ -78,27 +94,35 @@ export default function NewCompanyPage() {
     useState<"MONTHLY" | "YEARLY">("MONTHLY");
 
   const [startWithTrial, setStartWithTrial] =
-    useState(true);
+    useState(false);
 
   useEffect(() => {
+    const controller = new AbortController();
+
     async function loadPlans() {
       try {
         setLoadingPlans(true);
+        setPlansError("");
 
         const response = await fetch(
-          "https://api.kalend.tech/plans",
+          `${API_URL}/plans/public`,
           {
             cache: "no-store",
+            signal: controller.signal,
           },
         );
 
         if (!response.ok) {
           throw new Error(
-            "Não foi possível carregar os planos.",
+            `Não foi possível carregar os planos (HTTP ${response.status}).`,
           );
         }
 
         const data: Plan[] = await response.json();
+
+        if (!Array.isArray(data)) {
+          throw new Error("Resposta inválida ao carregar os planos.");
+        }
 
         const activePlans = data.filter(
           (plan) => plan.isActive,
@@ -108,24 +132,36 @@ export default function NewCompanyPage() {
 
         if (activePlans.length > 0) {
           setPlanId(activePlans[0].id);
+          setStartWithTrial(hasTrial(activePlans[0]));
+          setBillingInterval("MONTHLY");
         }
       } catch (err) {
-        setError(
-          err instanceof Error
-            ? err.message
-            : "Não foi possível carregar os planos.",
+        if (controller.signal.aborted) return;
+        setPlansError(
+          err instanceof TypeError
+            ? "Não foi possível conectar à API. Verifique a conexão, a URL da API e a permissão CORS para este domínio."
+            : err instanceof Error
+              ? err.message
+              : "Não foi possível carregar os planos.",
         );
       } finally {
-        setLoadingPlans(false);
+        if (!controller.signal.aborted) setLoadingPlans(false);
       }
     }
 
     loadPlans();
-  }, []);
+    return () => controller.abort();
+  }, [plansAttempt]);
 
   const selectedPlan = plans.find(
     (plan) => plan.id === planId,
   );
+
+  function selectPlan(plan: Plan) {
+    setPlanId(plan.id);
+    if (!hasTrial(plan)) setStartWithTrial(false);
+    if (!hasYearlyPrice(plan)) setBillingInterval("MONTHLY");
+  }
 
   function handleCompanyName(value: string) {
     setCompanyName(value);
@@ -152,8 +188,18 @@ export default function NewCompanyPage() {
     setError("");
     setSuccess("");
 
-    if (!planId) {
+    if (!selectedPlan) {
       setError("Selecione um plano.");
+      return;
+    }
+
+    if (startWithTrial && !hasTrial(selectedPlan)) {
+      setError("Este plano não oferece teste grátis.");
+      return;
+    }
+
+    if (billingInterval === "YEARLY" && !hasYearlyPrice(selectedPlan)) {
+      setError("Este plano não possui preço anual disponível.");
       return;
     }
 
@@ -168,7 +214,7 @@ export default function NewCompanyPage() {
       setSubmitting(true);
 
       const response = await fetch(
-        "https://api.kalend.tech/companies/manual",
+        `${API_URL}/companies/manual`,
         {
           method: "POST",
 
@@ -443,6 +489,13 @@ export default function NewCompanyPage() {
                 />
                 Carregando planos...
               </div>
+            ) : plansError ? (
+              <div className="new-company-alert" role="alert">
+                <p>{plansError}</p>
+                <button type="button" onClick={() => setPlansAttempt((value) => value + 1)}>
+                  Tentar novamente
+                </button>
+              </div>
             ) : plans.length === 0 ? (
               <div className="new-company-alert">
                 Nenhum plano ativo disponível.
@@ -459,8 +512,9 @@ export default function NewCompanyPage() {
                           ? "new-company-plan selected"
                           : "new-company-plan"
                       }
+                      aria-pressed={planId === plan.id}
                       onClick={() =>
-                        setPlanId(plan.id)
+                        selectPlan(plan)
                       }
                     >
                       <span className="new-company-plan-check">
@@ -478,12 +532,16 @@ export default function NewCompanyPage() {
                         /mês
                       </small>
 
-                      {plan.trialEnabled && (
-                        <em>
-                          {plan.trialDays} dias de
-                          teste
-                        </em>
-                      )}
+                      <small>
+                        {hasYearlyPrice(plan)
+                          ? `${formatMoney(plan.yearlyPriceCents)}/ano`
+                          : "Anual indisponível"}
+                      </small>
+                      <em>
+                        {hasTrial(plan)
+                          ? `${plan.trialDays} dias de teste grátis`
+                          : "Sem teste grátis"}
+                      </em>
                     </button>
                   ))}
                 </div>
@@ -506,17 +564,14 @@ export default function NewCompanyPage() {
                         Mensal
                       </option>
 
-                      {selectedPlan
-                        ?.yearlyPriceCents !== null && (
-                        <option value="YEARLY">
-                          Anual
-                        </option>
-                      )}
+                      <option value="YEARLY" disabled={!hasYearlyPrice(selectedPlan)}>
+                        Anual
+                      </option>
                     </select>
                   </label>
 
                   <div className="new-company-start">
-                    <span>Como deseja iniciar?</span>
+                    <span>Como a empresa começará?</span>
 
                     <button
                       type="button"
@@ -525,8 +580,9 @@ export default function NewCompanyPage() {
                           ? "selected"
                           : ""
                       }
+                      aria-pressed={startWithTrial}
                       disabled={
-                        !selectedPlan?.trialEnabled
+                        !hasTrial(selectedPlan)
                       }
                       onClick={() =>
                         setStartWithTrial(true)
@@ -538,9 +594,9 @@ export default function NewCompanyPage() {
                         <strong>Teste grátis</strong>
 
                         <small>
-                          {selectedPlan?.trialDays ??
-                            0}{" "}
-                          dias
+                          {hasTrial(selectedPlan)
+                            ? `${selectedPlan?.trialDays} dias`
+                            : "Indisponível neste plano"}
                         </small>
                       </span>
                     </button>
@@ -552,6 +608,7 @@ export default function NewCompanyPage() {
                           ? "selected"
                           : ""
                       }
+                      aria-pressed={!startWithTrial}
                       onClick={() =>
                         setStartWithTrial(false)
                       }
@@ -560,7 +617,7 @@ export default function NewCompanyPage() {
 
                       <span>
                         <strong>
-                          Ativação manual
+                          Ativar imediatamente
                         </strong>
 
                         <small>
@@ -592,7 +649,7 @@ export default function NewCompanyPage() {
                     <small>
                       {startWithTrial
                         ? `Começará com ${selectedPlan.trialDays} dias de teste grátis`
-                        : "Assinatura será ativada manualmente pelo Super Admin"}
+                        : "Assinatura será ativada imediatamente pelo fluxo manual"}
                     </small>
                   </div>
                 )}

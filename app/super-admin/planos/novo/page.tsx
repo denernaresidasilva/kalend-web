@@ -1,5 +1,7 @@
 "use client";
 
+import { API_URL } from "@/lib/api";
+
 import {
   ArrowLeft,
   Building2,
@@ -253,7 +255,7 @@ export default function NewPlanPage() {
       };
 
       const response = await fetch(
-        "https://api.kalend.tech/plans",
+        `${API_URL}/plans`,
         {
           method: "POST",
           headers: {

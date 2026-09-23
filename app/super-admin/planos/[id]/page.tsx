@@ -1,5 +1,7 @@
 "use client";
 
+import { API_URL } from "@/lib/api";
+
 import {
   ArrowLeft,
   Building2,
@@ -121,7 +123,7 @@ export default function EditPlanPage() {
         setError("");
 
         const response = await fetch(
-          `https://api.kalend.tech/plans/${id}`,
+          `${API_URL}/plans/${id}`,
           {
             cache: "no-store",
           }
@@ -324,7 +326,7 @@ export default function EditPlanPage() {
       };
 
       const response = await fetch(
-        `https://api.kalend.tech/plans/${id}`,
+        `${API_URL}/plans/${id}`,
         {
           method: "PATCH",
           headers: {

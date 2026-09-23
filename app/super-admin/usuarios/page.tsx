@@ -1,5 +1,7 @@
 "use client";
 
+import { API_URL } from "@/lib/api";
+
 import {
   Building2,
   CheckCircle2,
@@ -143,11 +145,11 @@ export default function UsuariosPage() {
 
         const [usersResponse, summaryResponse] =
           await Promise.all([
-            fetch("https://api.kalend.tech/users", {
+            fetch(`${API_URL}/users`, {
               cache: "no-store",
             }),
             fetch(
-              "https://api.kalend.tech/users/summary",
+              `${API_URL}/users/summary`,
               {
                 cache: "no-store",
               },

@@ -1,5 +1,7 @@
 "use client";
 
+import { API_URL } from "@/lib/api";
+
 import {
   AlertCircle,
   Building2,
@@ -156,11 +158,11 @@ export default function WebhooksPage() {
 
         const [eventsResponse, summaryResponse] =
           await Promise.all([
-            fetch("https://api.kalend.tech/webhooks", {
+            fetch(`${API_URL}/webhooks`, {
               cache: "no-store",
             }),
             fetch(
-              "https://api.kalend.tech/webhooks/summary",
+              `${API_URL}/webhooks/summary`,
               {
                 cache: "no-store",
               }

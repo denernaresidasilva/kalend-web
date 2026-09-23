@@ -1,5 +1,7 @@
 "use client";
 
+import { API_URL } from "@/lib/api";
+
 import {
   Building2,
   ChevronRight,
@@ -166,7 +168,7 @@ export default function CompaniesPage() {
         setError("");
 
         const response = await fetch(
-          "https://api.kalend.tech/companies",
+          `${API_URL}/companies`,
           {
             cache: "no-store",
           }

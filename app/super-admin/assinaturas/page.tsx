@@ -1,5 +1,7 @@
 "use client";
 
+import { API_URL } from "@/lib/api";
+
 import {
   Building2,
   CalendarDays,
@@ -157,7 +159,7 @@ export default function SubscriptionsPage() {
         setError("");
 
         const response = await fetch(
-          "https://api.kalend.tech/subscriptions",
+          `${API_URL}/subscriptions`,
           {
             cache: "no-store",
           }
