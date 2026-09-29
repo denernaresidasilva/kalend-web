@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  Bell,
   Building2,
   CalendarDays,
   CircleDollarSign,
@@ -15,6 +14,8 @@ import {
   X,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/components/auth-provider";
+import { DashboardOperations } from "@/components/dashboard-operations";
 import DashboardSummary from "@/components/dashboard-summary";
 import { useState } from "react";
 
@@ -58,6 +59,9 @@ const menuItems = [
 
 export default function SuperAdminPage() {
   const router = useRouter();
+  const { profile } = useAuth();
+  const adminName = profile?.user.name ?? "";
+  const adminInitials = adminName.trim().split(/\s+/).slice(0, 2).map(name => name[0]).join("").toUpperCase();
   const [menuOpen, setMenuOpen] = useState(false);
 
   const navigate = (path: string) => {
@@ -116,10 +120,10 @@ export default function SuperAdminPage() {
           </button>
 
           <div className="admin-profile">
-            <div className="admin-avatar">DN</div>
+            <div className="admin-avatar">{adminInitials}</div>
 
             <div>
-              <strong>Administrador</strong>
+              <strong>{adminName}</strong>
               <span>Super Admin</span>
             </div>
           </div>
@@ -150,19 +154,11 @@ export default function SuperAdminPage() {
           </div>
 
           <div className="admin-top-actions">
-            <button
-              className="notification-button"
-              aria-label="Notificações"
-            >
-              <Bell size={20} />
-              <span />
-            </button>
-
             <div className="top-profile">
-              <div className="admin-avatar small">DN</div>
+              <div className="admin-avatar small">{adminInitials}</div>
 
               <div>
-                <strong>Administrador</strong>
+                <strong>{adminName}</strong>
                 <span>Super Admin</span>
               </div>
             </div>
@@ -183,7 +179,7 @@ export default function SuperAdminPage() {
             </div>
           </div>
 
-          <DashboardSummary />
+          <DashboardSummary /><DashboardOperations />
         </div>
       </section>
     </main>

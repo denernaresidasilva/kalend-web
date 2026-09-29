@@ -1,12 +1,14 @@
 # Integração do Super Admin
 
+> Registro histórico da integração inicial. A revisão da Fase 1 em [COMMERCIAL-FRONTEND.md](COMMERCIAL-FRONTEND.md) substitui descrições de três gateways, adapters ausentes, contratos comerciais e resultados de validação abaixo.
+
 Contrato consultado diretamente: `../kalend-api/docs/FRONTEND-API.md` e `AUTHENTICATION.md`.
 
 ## Autenticação
 
 Login em `/`. `AuthProvider` consulta `/auth/me`, disponibiliza perfil, systemRole, memberships, loading e erro. O layout `/super-admin` monta as páginas somente após confirmar `SUPER_ADMIN`. Usuários comuns recebem acesso não autorizado; ausência de sessão redireciona para `/`. O backend permanece a autoridade.
 
-`lib/api.ts` centraliza todas as chamadas, força `credentials: include` e `cache: no-store`, preserva `NEXT_PUBLIC_API_URL` e o fallback `https://api.kalend.tech`. Para DEV, configurar `NEXT_PUBLIC_API_URL=https://api-dev.kalend.tech` no build. Não há tokens em JavaScript, storage, Authorization ou cookies criados pelo cliente.
+`lib/api.ts` centraliza todas as chamadas, força `credentials: include` e `cache: no-store`, preserva `NEXT_PUBLIC_API_URL`, agora obrigatória e sem fallback de produção. Para DEV, configurar `NEXT_PUBLIC_API_URL=https://api-dev.kalend.tech` no build. Não há tokens em JavaScript, storage, Authorization ou cookies criados pelo cliente.
 
 401 permite uma renovação e uma repetição da chamada. Uma Promise compartilha a renovação na aba; Web Locks serializa entre abas; BroadcastChannel informa renovação, login e encerramento sem transmitir tokens ou perfil. Dentro do lock, `/auth/me` verifica se outra aba já renovou. Login/logout usam o mesmo lock. Falha encerra o estado local; segundo 401 não inicia outro refresh. Login/refresh/logout não renovam recursivamente. Sem Web Locks, exige novo login em vez de arriscar replay. Não há retries automáticos de rede, 429 ou 503.
 

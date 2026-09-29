@@ -41,10 +41,10 @@ As páginas do Super Admin usam a URL centralizada em `lib/api.ts`.
 Configure no ambiente de build ou em `.env.local`:
 
 ```dotenv
-NEXT_PUBLIC_API_URL=https://api.kalend.tech
+NEXT_PUBLIC_API_URL=https://api-dev.kalend.tech
 ```
 
-Sem configuração, o padrão continua sendo a API HTTPS de produção.
+Sem configuração, o cliente recusa chamadas à API e informa a variável ausente. Não existe fallback de produção.
 A variável é pública e incorporada ao JavaScript durante o build: não coloque
 segredos nela e refaça o build/deploy após alterá-la.
 
@@ -60,5 +60,7 @@ substitui essa permissão.
 Diagnóstico em 23/09/2026: GET /plans e GET /plans/public retornaram HTTP 200
 com três planos ativos, mas sem Access-Control-Allow-Origin para a origem dev.
 OPTIONS /companies/manual retornou 204 também sem esse cabeçalho.
-Para a origem https://kalend.tech, GET /plans retornou o cabeçalho correspondente.
+Para a origem do frontend de produção, GET /plans retornou o cabeçalho correspondente.
 Esse bloqueio faz o navegador rejeitar fetch mesmo com uma resposta HTTP 200.
+
+A integração comercial da Fase 1 e suas limitações estão documentadas em [COMMERCIAL-FRONTEND.md](docs/COMMERCIAL-FRONTEND.md). Use Node 22 para instalação e validação.

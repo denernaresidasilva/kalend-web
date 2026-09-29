@@ -15,19 +15,18 @@ export default function DashboardSummary() {
     finally { setLoading(false); }
   }, []);
   useEffect(() => { const refresh = () => { void load(); }; const timer = setTimeout(refresh, 0); window.addEventListener("focus", refresh); return () => { clearTimeout(timer); window.removeEventListener("focus", refresh); }; }, [load]);
-  return <>
-    <button className="new-company-submit" onClick={() => void load()} disabled={loading}>Atualizar</button>
-    {loading ? <div className="companies-state" role="status">Carregando métricas…</div> : error ? <p role="alert" className="new-company-message error">{error}</p> : data && <>
-      <p>Atualizado em {new Date(data.generatedAt).toLocaleString("pt-BR")}. Receita mensal por pagamento aprovado no mês UTC.</p>
+  const groups: Array<{ name: string; items: Array<[string, string | number]> }> = data ? [
+    { name: "Empresas", items: [["Total", data.companies.total], ["Ativas", data.companies.active], ["Em trial", data.companies.trial], ["Novas no mês UTC", data.companies.new], ["Suspensas", data.companies.suspended], ["Canceladas", data.companies.canceled], ["Inativas", data.companies.inactive], ["Usuários", data.users.total]] },
+    { name: "Assinaturas", items: [["Total", data.subscriptions.total], ["Ativas", data.subscriptions.active], ["Em trial", data.subscriptions.trialing], ["Em atraso", data.subscriptions.pastDue], ["Canceladas", data.subscriptions.canceled], ["Expiradas", data.subscriptions.expired]] },
+    { name: "Financeiro", items: [["Receita após estornos", money(data.payments.revenueCents)], ["Receita do mês UTC após estornos", money(data.payments.monthlyRevenueCents)], ["Pagamentos", data.payments.total], ["Aprovados", data.payments.approved], ["Pendentes", data.payments.pending], ["Falhos", data.payments.failed], ["Cancelados", data.payments.canceled], ["Estornos totais", data.payments.refunded]] },
+  ] : [];
+  return <><button className="new-company-submit" onClick={() => void load()} disabled={loading}>{error ? "Tentar novamente" : "Atualizar métricas"}</button>
+    {loading ? <div className="commercial-skeleton" role="status">Carregando métricas…</div> : error ? <p role="alert" className="new-company-message error">{error}</p> : data && <>
+      <p>Atualizado em {new Date(data.generatedAt).toLocaleString("pt-BR")}. Período mensal: {new Date(data.period.from).toLocaleDateString("pt-BR", { timeZone: "UTC" })} a {new Date(data.period.to).toLocaleDateString("pt-BR", { timeZone: "UTC" })} (UTC).</p>
       {data.companies.total === 0 && <p>Nenhuma empresa cadastrada. <Link href="/super-admin/empresas/nova">Nova empresa</Link></p>}
-      <section className="metric-grid">{[
-        ["Empresas", data.companies.total], ["Empresas ativas", data.companies.active], ["Empresas em trial", data.companies.trial], ["Novas empresas no mês UTC", data.companies.new],
-        ["Empresas suspensas", data.companies.suspended], ["Empresas canceladas", data.companies.canceled], ["Empresas inativas", data.companies.inactive], ["Usuários", data.users.total],
-        ["Assinaturas", data.subscriptions.total], ["Assinaturas ativas", data.subscriptions.active], ["Assinaturas em trial", data.subscriptions.trialing], ["Assinaturas vencidas", data.subscriptions.pastDue], ["Assinaturas canceladas", data.subscriptions.canceled], ["Assinaturas expiradas", data.subscriptions.expired],
-        ["Receita aprovada", money(data.payments.revenueCents)], ["Receita mensal", money(data.payments.monthlyRevenueCents)],
-        ["Pagamentos", data.payments.total], ["Aprovados", data.payments.approved], ["Pendentes", data.payments.pending], ["Falhos", data.payments.failed], ["Cancelados", data.payments.canceled], ["Estornados", data.payments.refunded],
-      ].map(([label, value]) => <article className="metric-card" key={label}><span className="metric-label">{label}</span><strong>{value}</strong></article>)}</section>
-      <section className="new-company-section"><h2>Webhooks recentes</h2>{data.recentEvents.length ? data.recentEvents.map(event => <p key={event.id}><Link href={`/super-admin/webhooks/${event.id}`}>{event.gateway} · {event.eventType || "Evento"} · {event.status}</Link> — {new Date(event.receivedAt).toLocaleString("pt-BR")}</p>) : <p>Nenhum evento recebido.</p>}</section>
+      {groups.map(group => <section className="dashboard-group" key={group.name}><h2>{group.name}</h2><div className="metric-grid">{group.items.map(([label, value]) => <article className="metric-card" key={label}><span className="metric-label">{label}</span><strong>{value}</strong></article>)}</div></section>)}
+      <p>Receita calculada pelo backend sobre pagamentos aprovados, descontando estornos parciais. Receita mensal considera a data de pagamento em UTC. Inativas pode incluir empresas suspensas ou canceladas.</p>
+      <section className="commercial-panel"><h2>Webhooks recentes</h2>{data.recentEvents.length ? data.recentEvents.map(event => <p key={event.id}><Link href={`/super-admin/webhooks/${event.id}`}>{event.gateway} · {event.eventType || "Evento"} · {event.status}</Link> — {new Date(event.receivedAt).toLocaleString("pt-BR")}</p>) : <p>Nenhum evento recebido.</p>}</section>
     </>}
   </>;
 }

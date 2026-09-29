@@ -33,8 +33,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     window.addEventListener("kalend:session-ended", clear);
     window.addEventListener("kalend:signed-in", check);
     window.addEventListener("focus", check);
+    window.addEventListener("kalend:tenant-changed", check);
     const timer = setTimeout(() => void reload(), 0);
-    return () => { clearTimeout(timer); window.removeEventListener("kalend:session-ended", clear); window.removeEventListener("kalend:signed-in", check); window.removeEventListener("focus", check); };
+    return () => { clearTimeout(timer); window.removeEventListener("kalend:session-ended", clear); window.removeEventListener("kalend:signed-in", check); window.removeEventListener("focus", check); window.removeEventListener("kalend:tenant-changed", check); };
   }, [reload]);
   const logout = useCallback(async () => {
     await api<void>("/auth/logout", { method: "POST" });

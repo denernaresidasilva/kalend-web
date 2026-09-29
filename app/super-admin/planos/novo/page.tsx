@@ -1,5 +1,6 @@
 "use client";
 
+import { moneyToCents } from "@/lib/plan-values";
 import { apiFetch } from "@/lib/api";
 
 import {
@@ -24,68 +25,6 @@ type Feature = {
   name: string;
   enabled: boolean;
 };
-
-const initialFeatures: Feature[] = [
-  { code: "agenda", name: "Agenda online", enabled: true },
-  { code: "clientes", name: "Gestão de clientes", enabled: true },
-  { code: "financeiro", name: "Controle financeiro", enabled: true },
-  {
-    code: "agendamento_online",
-    name: "Agendamento online 24 horas",
-    enabled: true,
-  },
-  { code: "pdv", name: "PDV e comandas", enabled: false },
-  {
-    code: "lembretes",
-    name: "Lembretes automáticos",
-    enabled: false,
-  },
-  {
-    code: "campanhas",
-    name: "Campanhas para clientes",
-    enabled: false,
-  },
-  {
-    code: "fidelidade",
-    name: "Programa de fidelidade",
-    enabled: false,
-  },
-  {
-    code: "whatsapp",
-    name: "Automação por WhatsApp",
-    enabled: false,
-  },
-  {
-    code: "multinivel",
-    name: "Fidelidade multinível",
-    enabled: false,
-  },
-  {
-    code: "relatorios",
-    name: "Relatórios avançados",
-    enabled: false,
-  },
-  {
-    code: "multiunidade",
-    name: "Gestão de múltiplas unidades",
-    enabled: false,
-  },
-];
-
-function moneyToCents(value: string) {
-  const normalized = value
-    .replace(/\./g, "")
-    .replace(",", ".")
-    .replace(/[^\d.]/g, "");
-
-  const number = Number(normalized);
-
-  if (Number.isNaN(number)) {
-    return 0;
-  }
-
-  return Math.round(number * 100);
-}
 
 function generateCode(value: string) {
   return value
@@ -118,10 +57,13 @@ export default function NewPlanPage() {
   const [maxUnits, setMaxUnits] = useState("1");
 
   const [displayOrder, setDisplayOrder] = useState("0");
+  const [isPublic, setIsPublic] = useState(true);
+  const [maxMessages, setMaxMessages] = useState("");
+
   const [isActive, setIsActive] = useState(true);
 
   const [features, setFeatures] =
-    useState<Feature[]>(initialFeatures);
+    useState<Feature[]>([]);
 
   const [newFeatureName, setNewFeatureName] = useState("");
 
@@ -188,6 +130,7 @@ export default function NewPlanPage() {
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
+    if (saving) return;
 
     if (!name.trim()) {
       setError("Informe o nome do plano.");
@@ -230,17 +173,19 @@ export default function NewPlanPage() {
 
         maxProfessionals: maxProfessionals.trim()
           ? Number(maxProfessionals)
-          : undefined,
+          : null,
 
         maxClients: maxClients.trim()
           ? Number(maxClients)
-          : undefined,
+          : null,
 
         maxUnits: maxUnits.trim()
           ? Number(maxUnits)
-          : undefined,
+          : null,
 
         isActive,
+        isPublic,
+        maxMessages: maxMessages.trim() ? Number(maxMessages) : null,
 
         features: features
           .filter((feature) => feature.enabled)
@@ -347,7 +292,7 @@ export default function NewPlanPage() {
         </div>
 
         {error && (
-          <div className="plan-form-error">
+          <div className="plan-form-error" role="alert">
             <X size={18} />
             <span>{error}</span>
           </div>
@@ -447,7 +392,7 @@ export default function NewPlanPage() {
                           event.target.value
                         )
                       }
-                      placeholder="89,90"
+                      placeholder="Valor em reais"
                     />
                   </div>
                 </label>
@@ -467,7 +412,7 @@ export default function NewPlanPage() {
                           event.target.value
                         )
                       }
-                      placeholder="862,80"
+                      placeholder="Valor em reais"
                     />
                   </div>
                 </label>
@@ -481,7 +426,7 @@ export default function NewPlanPage() {
                 </div>
 
                 <div>
-                  <h2>Teste grátis</h2>
+                  <h2>Teste grátis</h2><p>Alterar o trial do plano não altera retroativamente trials já iniciados.</p>
                   <p>
                     Configure o período de avaliação para
                     novas empresas.
@@ -506,11 +451,12 @@ export default function NewPlanPage() {
                   onClick={() =>
                     setTrialEnabled(!trialEnabled)
                   }
-                  aria-label="Ativar teste grátis"
+                  aria-label="Ativar teste grátis" role="switch" aria-checked={trialEnabled}
                 >
                   <span />
                 </button>
               </div>
+
 
               {trialEnabled && (
                 <label className="plan-field trial-days-field">
@@ -531,6 +477,14 @@ export default function NewPlanPage() {
                   </div>
                 </label>
               )}
+            </section>
+
+            <section className="plan-form-card"><h2>Catálogo e mensagens</h2>
+              <div className="commercial-form">
+                <label className="commercial-check"><input type="checkbox" checked={isPublic} onChange={e => setIsPublic(e.target.checked)} />Plano público — disponível no catálogo comercial</label>
+                <label>Limite de mensagens<input type="number" min="0" max="2147483647" step="1" value={maxMessages} onChange={e => setMaxMessages(e.target.value)} placeholder="Ilimitado" /></label>
+                <p>Limite vazio significa ilimitado. Zero bloqueia a criação do recurso.</p>
+              </div>
             </section>
 
             <section className="plan-form-card">
@@ -697,6 +651,7 @@ export default function NewPlanPage() {
 
                 <button
                   type="button"
+                  role="switch" aria-checked={isActive} aria-label="Plano ativo"
                   className={`plan-switch ${
                     isActive ? "on" : ""
                   }`}
@@ -783,7 +738,7 @@ export default function NewPlanPage() {
 
               <div className="plan-preview-price">
                 <strong>
-                  R$ {monthlyPrice || "0,00"}
+                  {monthlyPrice ? `R$ ${monthlyPrice}` : "Informe o preço"}
                 </strong>
                 <span>/mês</span>
               </div>
@@ -791,7 +746,7 @@ export default function NewPlanPage() {
               {trialEnabled && (
                 <div className="plan-preview-trial">
                   <Sparkles size={15} />
-                  {trialDays || "0"} dias de teste grátis
+                  {trialDays || "—"} dias de teste grátis
                 </div>
               )}
 

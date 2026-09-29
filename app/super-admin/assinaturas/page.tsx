@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { apiFetch } from "@/lib/api";
 
 import {
@@ -110,6 +111,8 @@ function formatMoney(cents: number) {
 function statusLabel(status: string) {
   const labels: Record<string, string> = {
     TRIALING: "Teste grátis",
+    PENDING: "Pendente",
+    SUSPENDED: "Suspensa",
     ACTIVE: "Ativa",
     PAST_DUE: "Pagamento pendente",
     CANCELED: "Cancelada",
@@ -148,6 +151,7 @@ export default function SubscriptionsPage() {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [attempt, setAttempt] = useState(0);
   const [search, setSearch] = useState("");
 
   useEffect(() => {
@@ -179,7 +183,7 @@ export default function SubscriptionsPage() {
     }
 
     loadSubscriptions();
-  }, []);
+  }, [attempt]);
 
   const filteredSubscriptions = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -275,7 +279,7 @@ export default function SubscriptionsPage() {
               RECEITA E RECORRÊNCIA
             </span>
 
-            <h1>Assinaturas</h1>
+            <h1>Assinaturas</h1><button type="button" className="new-company-submit" disabled={loading} onClick={() => setAttempt(value => value + 1)}>{error ? "Tentar novamente" : "Atualizar"}</button>
 
             <p>
               Acompanhe testes grátis, assinaturas
@@ -285,6 +289,7 @@ export default function SubscriptionsPage() {
         </header>
 
         <div className="companies-content">
+          {!loading && !error && (
           <section className="companies-summary">
             <article>
               <div className="companies-summary-icon green">
@@ -332,6 +337,7 @@ export default function SubscriptionsPage() {
               </div>
             </article>
           </section>
+          )}
 
           <section className="companies-panel">
             <div className="companies-panel-header">
@@ -428,9 +434,9 @@ export default function SubscriptionsPage() {
                         <th>Plano</th>
                         <th>Status</th>
                         <th>Período</th>
-                        <th>Valor</th>
+                        <th>Preço mensal do catálogo</th>
                         <th>Último pagamento</th>
-                        <th>Cadastro</th>
+                        <th>Cadastro</th><th>Detalhes</th>
                       </tr>
                     </thead>
 
@@ -561,6 +567,7 @@ export default function SubscriptionsPage() {
                                 )}
                               </span>
                             </td>
+                            <td><Link href={`/super-admin/assinaturas/${subscription.id}`}>Ver detalhes</Link></td>
                           </tr>
                         )
                       )}

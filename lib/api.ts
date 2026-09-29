@@ -1,5 +1,6 @@
-// NEXT_PUBLIC_* is embedded at build time; production remains the fallback.
-export const API_URL = (process.env.NEXT_PUBLIC_API_URL?.trim() || "https://api.kalend.tech").replace(/\/+$/, "");
+import { parseCommercialIssue, type CommercialIssue } from "./commercial-errors";
+// Public API base is supplied at build time. Never fall back to production.
+export const API_URL = (process.env.NEXT_PUBLIC_API_URL?.trim() || "").replace(/\/+$/, "");
 const messages: Record<number, string> = {
   400: "Confira os campos informados e tente novamente.",
   401: "Sessão encerrada. Entre novamente.",
@@ -12,7 +13,7 @@ const messages: Record<number, string> = {
   503: "Serviço ou integração indisponível. Tente novamente mais tarde.",
 };
 export class ApiError extends Error {
-  constructor(public status: number) { super(messages[status] || "Não foi possível conectar ao serviço. Tente novamente."); }
+  constructor(public status: number, public issue?: CommercialIssue) { super(issue ? (issue.code === "PLAN_LIMIT_REACHED" ? "O limite do plano foi atingido." : issue.code === "SUBSCRIPTION_REQUIRED" ? "Sua assinatura precisa de regularização." : "Recurso indisponível no plano atual.") : messages[status] || "Não foi possível conectar ao serviço. Tente novamente."); }
 }
 let refreshFlight: Promise<void> | null = null;
 let generation = 0;
@@ -22,6 +23,7 @@ function syncChannel() {
   if (typeof window !== "undefined" && typeof BroadcastChannel !== "undefined" && !channel) {
     channel = new BroadcastChannel("kalend-session");
     channel.onmessage = ({ data }) => {
+      if (data === "tenant-changed" && typeof window !== "undefined") window.dispatchEvent(new Event("kalend:tenant-changed"));
       if (data === "refreshed") generation++;
       if (data === "ended") endSession(false);
       if (data === "signed-in") { ended = false; generation++; window.dispatchEvent(new Event("kalend:signed-in")); }
@@ -40,6 +42,7 @@ export function sessionStarted() {
   syncChannel()?.postMessage("signed-in");
 }
 async function transport(path: string, init: RequestInit = {}) {
+  if (!API_URL) throw new Error("Configure NEXT_PUBLIC_API_URL para conectar à API DEV.");
   try {
     return await fetch(`${API_URL}${path}`, { ...init, credentials: "include", cache: "no-store" });
   } catch (error) {
@@ -86,7 +89,11 @@ export async function apiFetch(path: string, init: RequestInit = {}): Promise<Re
     response = await transport(path, init);
     if (response.status === 401) endSession();
   }
-  if (!response.ok) throw new ApiError(response.status);
+  if (!response.ok) {
+    const issue = response.status === 403 ? parseCommercialIssue(await response.json().catch(() => null)) : undefined;
+    if (issue && typeof window !== "undefined") window.dispatchEvent(new CustomEvent("kalend:commercial-issue", { detail: issue }));
+    throw new ApiError(response.status, issue);
+  }
   return response;
 }
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {
@@ -95,4 +102,21 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
 }
 export function jsonBody(value: unknown): RequestInit {
   return { headers: { "Content-Type": "application/json" }, body: JSON.stringify(value) };
+}
+
+export function tenantChanged() {
+  syncChannel()?.postMessage("tenant-changed");
+  if (typeof window !== "undefined") window.dispatchEvent(new Event("kalend:tenant-changed"));
+}
+// Serialize tenant selection and commercial requests across tabs, without transmitting credentials.
+export async function withTenantLock<T>(work: () => Promise<T>): Promise<T> {
+  if (typeof navigator === "undefined" || !navigator.locks) throw new Error("Use um navegador compatível com sessões seguras para gerenciar a assinatura.");
+  return navigator.locks.request("kalend-tenant-context", work);
+}
+export async function tenantApi<T>(companyId: string, path: string, init?: RequestInit): Promise<T> {
+  return withTenantLock(async () => {
+    const tenant = await api<{ selectedCompanyId: string | null }>("/auth/me");
+    if (tenant.selectedCompanyId !== companyId) { tenantChanged(); throw new Error("A empresa selecionada mudou em outra aba. Atualize a página."); }
+    return api<T>(path, init);
+  });
 }

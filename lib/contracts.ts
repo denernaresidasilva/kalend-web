@@ -1,13 +1,15 @@
 export type AuthMe = {
   user: { id: string; name: string; email: string; isSuperAdmin: boolean };
   systemRole: "SUPER_ADMIN" | "USER";
-  memberships: Array<{ id: string; role: "OWNER" | "ADMIN" | "RECEPTIONIST" | "PROFESSIONAL" | "CLIENT"; company: { id: string; name: string; slug: string; status: "TRIAL" | "ACTIVE"; isActive: true } }>;
+  memberships: Array<{ id: string; role: "OWNER" | "ADMIN" | "RECEPTIONIST" | "PROFESSIONAL" | "CLIENT"; company: { id: string; name: string; slug: string; status: "TRIAL" | "ACTIVE" | "SUSPENDED" | "CANCELED"; isActive: boolean } }>;
   selectedCompanyId: string | null;
   session: { expiresAt: string; refreshExpiresAt: string };
 };
 export type Gateway = {
-  gateway: "MERCADO_PAGO" | "STRIPE" | "PAGBANK";
+  gateway: "MERCADO_PAGO" | "STRIPE" | "PAGBANK" | "ASAAS";
   enabled: boolean; environment: "SANDBOX" | "PRODUCTION"; publicId: string | null;
+  provider: Gateway["gateway"]; capabilities: Capabilities; recurringConfigured: boolean;
+  webhookUrl: string | null; webhookStatus: "REMOTE_KEY_UNVERIFIED" | "CONFIGURED_UNVERIFIED" | "NOT_CONFIGURED";
   configured: boolean; webhookConfigured: boolean;
   status: "NOT_CONFIGURED" | "PENDING_VALIDATION" | "CONNECTED" | "FAILED";
   lastValidatedAt: string | null; adapterAvailable: boolean; webhookPath: string;
@@ -29,3 +31,41 @@ export type Summary = {
   recentEvents: WebhookMetadata[];
 };
 export const isSuperAdmin = (profile: AuthMe | null) => profile?.systemRole === "SUPER_ADMIN";
+
+export type Capabilities = {
+  checkout: boolean; recurring: boolean; nativeIdempotency: boolean;
+  cancelAtPeriodEnd: boolean; webhookManagement: boolean; limitation?: string;
+};
+export type PublicPlan = {
+  id: string; name: string; code: string; description: string | null;
+  monthlyPriceCents: number; yearlyPriceCents: number | null;
+  trialEnabled: boolean; trialDays: number; badge: string | null;
+  isFeatured: boolean; displayOrder: number; isActive: boolean; isPublic: boolean;
+  maxProfessionals: number | null; maxClients: number | null; maxUnits: number | null; maxMessages: number | null;
+  features: Array<{ id: string; code: string; name: string; enabled: boolean }>;
+};
+export type PendingCheckout = {
+  id: string; planId: string | null; gateway: string; billingInterval: "MONTHLY" | "YEARLY";
+  checkoutUrl: string | null; creationState: "READY" | "CREATING" | "CREATED" | "UNCERTAIN";
+};
+export type Regularization = {
+  companyId: string; accessAllowed: boolean; status: string; reason: string | null; trialExpired: boolean;
+  subscription: null | {
+    id: string; status: string; planId: string; planName: string; billingInterval: "MONTHLY" | "YEARLY";
+    trialStartedAt: string | null; trialEndsAt: string | null; currentPeriodEnd: string | null;
+    graceEndsAt: string | null; cancelAtPeriodEnd: boolean;
+  };
+  plans: PublicPlan[];
+  gateways: Array<{ provider: Gateway["gateway"]; environment: Gateway["environment"]; capabilities: Capabilities }>;
+  pendingCheckout: PendingCheckout | null;
+};
+export type SubscriptionDetail = {
+  id: string; status: string; billingInterval: string; gateway: string; environment: string | null;
+  trialStartedAt: string | null; trialEndsAt: string | null; currentPeriodStart: string | null;
+  currentPeriodEnd: string | null; graceEndsAt: string | null; canceledAt: string | null;
+  cancellationRequestedAt: string | null; cancelAtPeriodEnd: boolean; createdAt: string;
+  company: { name: string }; plan: { name: string }; payments: Array<{
+    id: string; status: string; amountCents: number; refundedAmountCents: number; currency: string;
+    gateway: string; environment: string | null; periodStart: string | null; periodEnd: string | null;
+  }>;
+};

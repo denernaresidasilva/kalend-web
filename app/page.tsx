@@ -34,7 +34,7 @@ export default function LoginPage() {
       sessionStarted();
       const me = await reload();
       if (me?.systemRole === "SUPER_ADMIN") router.replace("/super-admin");
-      else if (me) router.replace("/super-admin");
+      else if (me) router.replace("/conta");
       else setError("Não foi possível verificar a sessão. Tente entrar novamente.");
     } catch (err) {
       setError(err instanceof ApiError && err.status === 401 ? "E-mail ou senha inválidos." : err instanceof Error ? err.message : "Não foi possível entrar.");

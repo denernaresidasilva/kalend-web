@@ -1,5 +1,6 @@
 "use client";
 
+import { moneyToCents } from "@/lib/plan-values";
 import { apiFetch } from "@/lib/api";
 
 import {
@@ -40,6 +41,8 @@ type Plan = {
   maxProfessionals: number | null;
   maxClients: number | null;
   maxUnits: number | null;
+  isPublic: boolean;
+  maxMessages: number | null;
   isActive: boolean;
   features: Feature[];
 };
@@ -51,19 +54,6 @@ function centsToMoney(value: number | null) {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
-}
-
-function moneyToCents(value: string) {
-  const normalized = value
-    .replace(/\./g, "")
-    .replace(",", ".")
-    .replace(/[^\d.]/g, "");
-
-  const number = Number(normalized);
-
-  if (Number.isNaN(number)) return 0;
-
-  return Math.round(number * 100);
 }
 
 function generateCode(value: string) {
@@ -86,6 +76,7 @@ export default function EditPlanPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [wasActive, setWasActive] = useState(false);
 
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
@@ -108,6 +99,9 @@ export default function EditPlanPage() {
   const [maxUnits, setMaxUnits] = useState("");
 
   const [displayOrder, setDisplayOrder] = useState("0");
+
+  const [isPublic, setIsPublic] = useState(true);
+  const [maxMessages, setMaxMessages] = useState("");
 
   const [isActive, setIsActive] = useState(true);
 
@@ -172,6 +166,9 @@ export default function EditPlanPage() {
         );
 
         setIsActive(plan.isActive);
+        setWasActive(plan.isActive);
+        setIsPublic(plan.isPublic);
+        setMaxMessages(plan.maxMessages == null ? "" : String(plan.maxMessages));
 
         setFeatures(
           (plan.features ?? []).map((feature) => ({
@@ -249,6 +246,7 @@ export default function EditPlanPage() {
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
+    if (saving) return;
 
     if (!name.trim()) {
       setError("Informe o nome do plano.");
@@ -265,6 +263,7 @@ export default function EditPlanPage() {
       return;
     }
 
+    if (wasActive && !isActive && !window.confirm("Desativar este plano para novas compras? O histórico será preservado.")) return;
     try {
       setSaving(true);
       setError("");
@@ -273,7 +272,7 @@ export default function EditPlanPage() {
       const payload = {
         name: name.trim(),
         code: code.trim(),
-        description: description.trim() || null,
+        description: description.trim() || undefined,
 
         monthlyPriceCents:
           moneyToCents(monthlyPrice),
@@ -286,7 +285,7 @@ export default function EditPlanPage() {
 
         trialDays: trialEnabled ? Number(trialDays) : undefined,
 
-        badge: badge.trim() || null,
+        badge: badge.trim() || undefined,
 
         isFeatured,
 
@@ -307,6 +306,8 @@ export default function EditPlanPage() {
           : null,
 
         isActive,
+        isPublic,
+        maxMessages: maxMessages.trim() ? Number(maxMessages) : null,
 
         features: features.map((feature) => ({
           code: feature.code,
@@ -326,6 +327,7 @@ export default function EditPlanPage() {
         }
       );
 
+      setWasActive(isActive);
       setSuccess("Plano atualizado com sucesso.");
 
       window.setTimeout(() => {
@@ -441,7 +443,7 @@ export default function EditPlanPage() {
         </div>
 
         {error && (
-          <div className="plan-form-error">
+          <div className="plan-form-error" role="alert">
             <X size={18} />
             <span>{error}</span>
           </div>
@@ -449,7 +451,7 @@ export default function EditPlanPage() {
 
         {success && (
           <div
-            className="plan-form-error"
+            className="plan-form-error" role="status"
             style={{
               background: "#effbf5",
               borderColor: "#cdeedd",
@@ -589,7 +591,7 @@ export default function EditPlanPage() {
                 </div>
 
                 <div>
-                  <h2>Teste grátis</h2>
+                  <h2>Teste grátis</h2><p>Alterar o trial do plano não altera retroativamente trials já iniciados.</p>
                   <p>
                     Período de avaliação deste plano.
                   </p>
@@ -609,6 +611,7 @@ export default function EditPlanPage() {
 
                 <button
                   type="button"
+                  role="switch" aria-checked={trialEnabled} aria-label="Permitir teste grátis"
                   className={`plan-switch ${
                     trialEnabled ? "on" : ""
                   }`}
@@ -619,6 +622,7 @@ export default function EditPlanPage() {
                   <span />
                 </button>
               </div>
+
 
               {trialEnabled && (
                 <label className="plan-field trial-days-field">
@@ -641,6 +645,14 @@ export default function EditPlanPage() {
                   </div>
                 </label>
               )}
+            </section>
+
+            <section className="plan-form-card"><h2>Catálogo e mensagens</h2>
+              <div className="commercial-form">
+                <label className="commercial-check"><input type="checkbox" checked={isPublic} onChange={e => setIsPublic(e.target.checked)} />Plano público — disponível no catálogo comercial</label>
+                <label>Limite de mensagens<input type="number" min="0" max="2147483647" step="1" value={maxMessages} onChange={e => setMaxMessages(e.target.value)} placeholder="Ilimitado" /></label>
+                <p>Limite vazio significa ilimitado. Zero bloqueia a criação do recurso.</p>
+              </div>
             </section>
 
             <section className="plan-form-card">
@@ -812,6 +824,7 @@ export default function EditPlanPage() {
 
                 <button
                   type="button"
+                  role="switch" aria-checked={isActive} aria-label="Plano ativo"
                   className={`plan-switch ${
                     isActive ? "on" : ""
                   }`}
@@ -904,7 +917,7 @@ export default function EditPlanPage() {
 
               <div className="plan-preview-price">
                 <strong>
-                  R$ {monthlyPrice || "0,00"}
+                  {monthlyPrice ? `R$ ${monthlyPrice}` : "Informe o preço"}
                 </strong>
                 <span>/mês</span>
               </div>
@@ -912,7 +925,7 @@ export default function EditPlanPage() {
               {trialEnabled && (
                 <div className="plan-preview-trial">
                   <Sparkles size={15} />
-                  {trialDays || "0"} dias de teste
+                  {trialDays || "—"} dias de teste
                   grátis
                 </div>
               )}

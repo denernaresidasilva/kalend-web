@@ -1,9 +1,9 @@
 "use client";
 
+import { useAuth } from "@/components/auth-provider";
 import { apiFetch } from "@/lib/api";
 
 import {
-  Bell,
   Building2,
   CalendarDays,
   Check,
@@ -47,6 +47,8 @@ type Plan = {
   maxProfessionals: number | null;
   maxClients: number | null;
   maxUnits: number | null;
+  isPublic: boolean;
+  maxMessages: number | null;
   isActive: boolean;
   features: Feature[];
 };
@@ -98,11 +100,15 @@ function formatMoney(value: number) {
 
 export default function PlansPage() {
   const router = useRouter();
+  const { profile } = useAuth();
+  const adminName = profile?.user.name ?? "";
+  const adminInitials = adminName.trim().split(/\s+/).slice(0, 2).map(name => name[0]).join("").toUpperCase();
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [attempt, setAttempt] = useState(0);
 
   const navigate = (path: string) => {
     router.push(path);
@@ -134,7 +140,7 @@ export default function PlansPage() {
     }
 
     loadPlans();
-  }, []);
+  }, [attempt]);
 
   return (
     <main className="admin-shell">
@@ -191,10 +197,10 @@ export default function PlansPage() {
           </button>
 
           <div className="admin-profile">
-            <div className="admin-avatar">DN</div>
+            <div className="admin-avatar">{adminInitials}</div>
 
             <div>
-              <strong>Administrador</strong>
+              <strong>{adminName}</strong>
               <span>Super Admin</span>
             </div>
           </div>
@@ -225,19 +231,11 @@ export default function PlansPage() {
           </div>
 
           <div className="admin-top-actions">
-            <button
-              className="notification-button"
-              aria-label="Notificações"
-            >
-              <Bell size={20} />
-              <span />
-            </button>
-
             <div className="top-profile">
-              <div className="admin-avatar small">DN</div>
+              <div className="admin-avatar small">{adminInitials}</div>
 
               <div>
-                <strong>Administrador</strong>
+                <strong>{adminName}</strong>
                 <span>Super Admin</span>
               </div>
             </div>
@@ -251,7 +249,7 @@ export default function PlansPage() {
                 MONETIZAÇÃO
               </span>
 
-              <h1>Planos</h1>
+              <h1>Planos</h1><button type="button" className="new-company-submit" disabled={loading} onClick={() => setAttempt(value => value + 1)}>{error ? "Tentar novamente" : "Atualizar"}</button>
 
               <p>
                 Gerencie preços, benefícios, limites e períodos
@@ -270,6 +268,7 @@ export default function PlansPage() {
             </button>
           </div>
 
+          {!loading && !error && (
           <section className="plans-summary">
             <article>
               <div className="plans-summary-icon">
@@ -312,6 +311,7 @@ export default function PlansPage() {
               </div>
             </article>
           </section>
+          )}
 
           {loading && (
             <div className="plans-loading">
@@ -456,6 +456,7 @@ export default function PlansPage() {
                     </span>
                   </div>
 
+                  <p>{plan.isPublic ? "Público" : "Privado"} · Mensagens: {plan.maxMessages === null ? "ilimitadas" : plan.maxMessages}</p>
                   <div className="plan-features">
                     <span className="plan-features-title">
                       Recursos incluídos

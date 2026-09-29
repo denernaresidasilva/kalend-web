@@ -1,5 +1,7 @@
 "use client";
 
+import { ReconcileAction } from "@/components/reconcile-action";
+import Link from "next/link";
 import { apiFetch } from "@/lib/api";
 
 import {
@@ -125,7 +127,8 @@ function paymentStatusLabel(status: string) {
     PENDING: "Pendente",
     FAILED: "Falhou",
     CANCELED: "Cancelado",
-    REFUNDED: "Reembolsado",
+    REFUNDED: "Estorno total",
+    OVERDUE: "Em atraso",
   };
 
   return labels[status] ?? status;
@@ -156,19 +159,11 @@ export default function FinanceiroPage() {
   const router = useRouter();
 
   const [payments, setPayments] = useState<Payment[]>([]);
-  const [summary, setSummary] = useState<FinanceSummary>({
-    revenueCents: 0,
-    monthlyRevenueCents: 0,
-    paymentsCount: 0,
-    approvedCount: 0,
-    pendingCount: 0,
-    failedCount: 0,
-    canceledCount: 0,
-    refundedCount: 0,
-  });
+  const [summary, setSummary] = useState<FinanceSummary | null>(null);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [attempt, setAttempt] = useState(0);
   const [search, setSearch] = useState("");
 
   useEffect(() => {
@@ -219,7 +214,7 @@ export default function FinanceiroPage() {
     }
 
     loadFinance();
-  }, []);
+  }, [attempt]);
 
   const filteredPayments = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -308,7 +303,7 @@ export default function FinanceiroPage() {
               GESTÃO DA PLATAFORMA
             </span>
 
-            <h1>Financeiro</h1>
+            <h1>Financeiro</h1><button type="button" className="new-company-submit" disabled={loading} onClick={() => setAttempt(value => value + 1)}>{error ? "Tentar novamente" : "Atualizar"}</button>
 
             <p>
               Acompanhe faturamento, pagamentos e
@@ -318,6 +313,8 @@ export default function FinanceiroPage() {
         </header>
 
         <div className="companies-content">
+          <ReconcileAction refreshed={() => setAttempt(value => value + 1)} />
+          {!loading && !error && summary && <>
           <section className="companies-summary">
             <article>
               <div className="companies-summary-icon">
@@ -405,9 +402,11 @@ export default function FinanceiroPage() {
               </strong>
             </div>
             <div><span>Cancelados</span><strong>{summary.canceledCount}</strong></div>
-            <div><span>Estornados</span><strong>{summary.refundedCount}</strong></div>
+            <div><span>Estornos totais</span><strong>{summary.refundedCount}</strong></div>
           </section>
 
+          </>}
+          <p className="commercial-notice">Receita informada pelo backend, já descontados os estornos parciais. A lista mostra o valor original da cobrança. Estornos totais são contados separadamente; detalhes de estorno estão na assinatura vinculada.</p>
           <section className="companies-panel">
             <div className="companies-panel-header">
               <div>
@@ -512,7 +511,7 @@ export default function FinanceiroPage() {
                         <th>Status</th>
                         <th>Gateway</th>
                         <th>Pagamento</th>
-                        <th>Data</th>
+                        <th>Data</th><th>Detalhes</th>
                       </tr>
                     </thead>
 
@@ -587,6 +586,7 @@ export default function FinanceiroPage() {
                                 )}
                               </span>
                             </td>
+                            <td>{payment.subscription && <Link href={`/super-admin/assinaturas/${payment.subscription.id}`}>Ver assinatura e estornos</Link>}</td>
                           </tr>
                         )
                       )}

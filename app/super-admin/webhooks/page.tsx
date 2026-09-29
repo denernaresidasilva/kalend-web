@@ -1,6 +1,7 @@
 "use client";
 
-import { apiFetch, API_URL } from "@/lib/api";
+import Link from "next/link";
+import { apiFetch } from "@/lib/api";
 
 import {
   AlertCircle,
@@ -362,7 +363,7 @@ export default function WebhooksPage() {
             </div>
           </section>
 
-          <section className="new-company-section"><h2>URLs para os gateways</h2>{["mercado-pago", "stripe", "pagbank"].map(gateway => <p key={gateway} style={{ overflowWrap: "anywhere" }}><code>{API_URL}/webhooks/{gateway}</code></p>)}<p>Recepção externa indisponível enquanto os adapters estiverem pendentes.</p></section>
+          <section className="new-company-section"><h2>Configuração dos provedores</h2><p>Consulte as URLs, capacidades e o estado de verificação de cada webhook em <Link href="/super-admin/configuracoes/pagamentos">Configurações → Pagamentos</Link>.</p></section>
           <section className="companies-panel">
             <div className="companies-panel-header">
               <div>
