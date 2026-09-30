@@ -14,6 +14,7 @@ import {
   LayoutDashboard,
   Loader2,
   Menu,
+  MessageSquare,
   Search,
   Settings,
   Users,
@@ -83,6 +84,7 @@ const menuItems = [
     icon: Users,
     href: "/super-admin/usuarios",
   },
+  { label: "Comunicação", icon: MessageSquare, href: "/super-admin/comunicacao" },
 ];
 
 function formatDate(value: string | null | undefined) {

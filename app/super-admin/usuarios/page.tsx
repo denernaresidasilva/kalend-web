@@ -10,6 +10,7 @@ import {
   LayoutDashboard,
   Loader2,
   Menu,
+  MessageSquare,
   Search,
   Settings,
   ShieldCheck,
@@ -97,6 +98,7 @@ const menuItems = [
     icon: Users,
     path: "/super-admin/usuarios",
   },
+  { label: "Comunicação", icon: MessageSquare, path: "/super-admin/comunicacao" },
 ];
 
 function roleLabel(role: string) {

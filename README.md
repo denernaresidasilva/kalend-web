@@ -64,3 +64,5 @@ Para a origem do frontend de produção, GET /plans retornou o cabeçalho corres
 Esse bloqueio faz o navegador rejeitar fetch mesmo com uma resposta HTTP 200.
 
 A integração comercial da Fase 1 e suas limitações estão documentadas em [COMMERCIAL-FRONTEND.md](docs/COMMERCIAL-FRONTEND.md). Use Node 22 para instalação e validação.
+
+A Comunicação Global da Fase 2 do Super Admin está documentada em [COMMUNICATION-FRONTEND.md](docs/COMMUNICATION-FRONTEND.md), com contratos confirmados, segurança, limitações e resultados da validação local.

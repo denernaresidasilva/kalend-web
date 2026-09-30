@@ -7,6 +7,7 @@ import {
   CreditCard,
   LayoutDashboard,
   Menu,
+  MessageSquare,
   Settings,
   Users,
   WalletCards,
@@ -55,6 +56,7 @@ const menuItems = [
     icon: Users,
     path: "/super-admin/usuarios",
   },
+  { label: "Comunicação", icon: MessageSquare, path: "/super-admin/comunicacao" },
 ];
 
 export default function SuperAdminPage() {

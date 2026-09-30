@@ -14,6 +14,7 @@ import {
   LayoutDashboard,
   Loader2,
   Menu,
+  MessageSquare,
   Plus,
   Settings,
   Sparkles,
@@ -89,6 +90,7 @@ const menuItems = [
     icon: Users,
     path: "/super-admin/usuarios",
   },
+  { label: "Comunicação", icon: MessageSquare, path: "/super-admin/comunicacao" },
 ];
 
 function formatMoney(value: number) {

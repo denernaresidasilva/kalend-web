@@ -4028,3 +4028,16 @@ button:disabled { opacity: .55; cursor: not-allowed; }
 :where(a, button, input, select, summary):focus-visible { outline: 3px solid #7657d5; outline-offset: 3px; }
 @media (max-width: 760px) { .commercial-page { padding: 20px 16px; }.commercial-heading { flex-direction: column; gap: 14px; }.commercial-panel, .gateway-card { padding: 20px; }.commercial-global-notice { position: relative; padding: 12px; } }
 .dashboard-group { margin: 28px 0; }.dashboard-group h2 { font-size: 22px; font-weight: 700; margin: 18px 0; }.dashboard-group h3 { font-size: 18px; font-weight: 650; margin: 18px 0; }.dashboard-group > button { margin-bottom: 18px; }
+
+/* Global communication uses the Phase 1 administration components and palette. */
+.communication-page, .communication-page > section { min-width: 0; }
+.communication-navigation { display: flex; flex-wrap: wrap; gap: 10px; margin: 24px 0; }
+.communication-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+.communication-page textarea { width: 100%; border: 1px solid #d5d0e2; border-radius: 9px; padding: 12px; resize: vertical; font: inherit; background: white; }
+.communication-preview { white-space: pre-wrap; overflow-wrap: anywhere; border-radius: 9px; background: #f7f6fa; padding: 16px; font: inherit; }
+.communication-events { display: grid; gap: 20px; overflow-wrap: anywhere; }.communication-events dt { font-weight: 700; }.communication-events dd { margin: 8px 0; }
+.communication-page .communication-text { white-space: pre-wrap; overflow-wrap: anywhere; min-width: 180px; max-width: 360px; }
+.communication-page .commercial-table-wrap { max-width: 100%; }
+.communication-qr { display: grid; gap: 12px; justify-items: start; margin: 24px 0; }.communication-qr img { max-width: 100%; width: 280px; height: auto; }
+.communication-page :where(textarea):focus-visible { outline: 3px solid #7657d5; outline-offset: 3px; }
+@media (max-width: 760px) { .communication-form-grid { grid-template-columns: 1fr; }.communication-navigation button { flex: 1 1 140px; }.communication-page .commercial-actions button { flex: 1 1 180px; } }
