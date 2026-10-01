@@ -131,7 +131,7 @@ test('login form loads me, navigates, clears password and handles invalid creden
     const Login = load('app/page.tsx', {
       react: { ...React, useState: initial => [initial, value => messages.push(value)] },
       'next/navigation': { useRouter: () => ({ replace: path => calls.push(path) }) },
-      '@/components/auth-provider': { useAuth: () => ({ reload: async () => { calls.push('me'); return { systemRole: 'SUPER_ADMIN' }; } }) },
+      '@/components/auth-provider': { useAuth: () => ({ reload: async () => { calls.push('me'); return { systemRole: 'SUPER_ADMIN', user: { id: 'admin-fixture' }, memberships: [], selectedCompanyId: null }; } }) },
       '@/lib/api': { ...api, api: async path => { calls.push(path); if (invalid) throw new api.ApiError(401); } },
     }, { FormData: class { get(key) { return key === 'email' ? 'admin@example.test' : 'test-password'; } } }).default;
     const tree = Login();

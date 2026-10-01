@@ -266,7 +266,7 @@ test('frontend provider/template payloads execute the real local backend validat
   // Mock only DI/network infrastructure: actual configuration, template and common validators execute.
   const decorator = () => () => {};
   const nest = { BadRequestException: Error, ConflictException: Error, ServiceUnavailableException: Error, Inject: decorator, Injectable: decorator };
-  const mocks = { '@nestjs/common': nest, '../prisma/prisma.service.js': {}, '../billing/secret-vault.js': {}, './transports.js': {}, './network.js': { allowedHost() {} } };
+  const mocks = { '@nestjs/common': nest, '../prisma/prisma.service.js': {}, '../billing/secret-vault.js': {}, './transports.js': {}, './push.js': { validateVapid() { throw new Error('Push outside this SMTP/Meta fixture'); } }, './network.js': { allowedHost() {} } };
   const globals = { process: { env: { COMMUNICATION_META_GRAPH_VERSION: 'v25.0' } } };
   const backendConfig = load(path.join(backendRoot, 'communication/configuration.ts'), mocks, globals);
   const backendContracts = load(path.join(backendRoot, 'communication/contracts.ts'), mocks, globals);
@@ -286,7 +286,7 @@ test('frontend provider/template payloads execute the real local backend validat
 });
 test('real Evolution transport response variants are consumed by the frontend pairing handler', { skip: !fs.existsSync(path.join(backendRoot, 'communication/transports.ts')) }, async () => {
   let remote;
-  const mocks = { '@nestjs/common': { Injectable: () => () => {}, BadRequestException: Error }, nodemailer: {}, './meta.js': { MetaTransport: class {} }, './network.js': { allowedHost() {}, jsonRequest: async () => remote } };
+  const mocks = { '@nestjs/common': { Injectable: () => () => {}, Inject: () => () => {}, BadRequestException: Error }, './gmail.js': { GmailTransport: class {} }, './push.js': { GlobalPush: class {} }, nodemailer: {}, './meta.js': { MetaTransport: class {} }, './network.js': { allowedHost() {}, jsonRequest: async () => remote } };
   const backend = load(path.join(backendRoot, 'communication/transports.ts'), mocks);
   for (const value of [{ instance: { state: 'open' } }, { qrcode: { base64: 'data:image/png;base64,iVBORw0KGgo=' } }]) {
     remote = value;

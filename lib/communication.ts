@@ -43,7 +43,7 @@ export const stateLabel = (state: string) => states[state] ?? state;
 export function providerState(row?: CommunicationProvider) {
   if (!row) return "Estado não retornado pela API";
   if (row.provider === "GMAIL") return "Em breve · OAuth ainda não configurado";
-  if (row.provider === "PUSH_PENDING") return "Em breve";
+
   return stateLabel(row.status);
 }
 export const availableProvider = (p: ProviderName) => p !== "GMAIL" && p !== "PUSH_PENDING";

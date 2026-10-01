@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useState, type FormEvent } from "react";
 import { communication, providerNames, providerFields, secretFields, providerState, providerPatch, availableProvider, safeQr, type CommunicationProvider, type ProviderName, type Environment, type MetaTemplate } from "@/lib/communication";
 import { date } from "@/lib/commercial";
@@ -8,8 +9,9 @@ import { Feedback, ResourceState, useCommunicationResource } from "./communicati
 export function ProviderCards({ providers, select }: { providers: CommunicationProvider[]; select?: (provider: ProviderName) => void }) {
   return <div className="gateway-grid">{(Object.keys(providerNames) as ProviderName[]).map(name => {
     const row = providers.find(item => item.provider === name);
-    return <section className="gateway-card" key={name}><h2>{providerNames[name]}</h2><p>{name === "GMAIL" ? "Em breve · OAuth ainda não configurado" : name === "PUSH_PENDING" ? "Em breve" : providerState(row)}</p>
+    return <section className="gateway-card" key={name}><h2>{providerNames[name]}</h2><p>{name === "GMAIL" ? "Em breve · OAuth ainda não configurado" : name === "PUSH_PENDING" ? providerState(row) : providerState(row)}</p>
       {row && <><div className="commercial-badges"><span>Credencial: {row.configured ? "salva" : "não configurada"}</span><span>{row.enabled ? "Habilitado" : "Desabilitado"}</span><span>{row.environment === "SANDBOX" ? "Sandbox" : "Produção"}</span></div><p>Adapter: {row.adapterAvailable ? "disponível" : "indisponível"}</p></>}
+      {name === "PUSH_PENDING" && <Link href="/conta">Gerenciar notificações e dispositivos</Link>}
       {select && availableProvider(name) && <button onClick={() => select(name)}>Configurar</button>}
     </section>;
   })}</div>;

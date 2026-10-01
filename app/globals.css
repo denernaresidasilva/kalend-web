@@ -4041,3 +4041,13 @@ button:disabled { opacity: .55; cursor: not-allowed; }
 .communication-qr { display: grid; gap: 12px; justify-items: start; margin: 24px 0; }.communication-qr img { max-width: 100%; width: 280px; height: auto; }
 .communication-page :where(textarea):focus-visible { outline: 3px solid #7657d5; outline-offset: 3px; }
 @media (max-width: 760px) { .communication-form-grid { grid-template-columns: 1fr; }.communication-navigation button { flex: 1 1 140px; }.communication-page .commercial-actions button { flex: 1 1 180px; } }
+
+/* PWA controls reuse the existing account panel. */
+.pwa-banner { padding: 12px 16px; display: flex; flex-wrap: wrap; align-items: center; gap: 12px; background: #fff; color: #242039; border-bottom: 1px solid #dedbe8; }
+.pwa-banner p { margin: 0; flex: 1 1 240px; overflow-wrap: anywhere; }
+.pwa-banner button, .push-settings button { padding: 10px 14px; border: 1px solid #6558f5; border-radius: 8px; color: #493ace; background: #fff; cursor: pointer; white-space: normal; max-width: 100%; }
+.push-settings { min-width: 0; overflow-wrap: anywhere; }
+.push-settings ul { list-style: none; padding: 0; }
+.push-settings li { padding: 12px 0; border-top: 1px solid #dedbe8; }
+.push-settings button { margin: 4px 8px 4px 0; }
+.push-settings button:disabled { opacity: .55; cursor: default; }

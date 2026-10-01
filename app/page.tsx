@@ -12,11 +12,15 @@ import { FormEvent, useState } from "react";
 
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/auth-provider";
+import { CompanySelector } from "@/components/company-selector";
+import { accountDestination, linkedCompanies, prepareLogin, selectCompany } from "@/lib/company-selection";
+import type { AuthMe } from "@/lib/contracts";
 import { api, ApiError, jsonBody, sessionStarted } from "@/lib/api";
 
 export default function LoginPage() {
   const router = useRouter();
   const { reload } = useAuth();
+  const [selection, setSelection] = useState<AuthMe | null>(null);
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -33,13 +37,36 @@ export default function LoginPage() {
       form.reset();
       sessionStarted();
       const me = await reload();
-      if (me?.systemRole === "SUPER_ADMIN") router.replace("/super-admin");
-      else if (me) router.replace("/conta");
-      else setError("Não foi possível verificar a sessão. Tente entrar novamente.");
+      if (!me) throw new Error("Não foi possível verificar a sessão. Tente entrar novamente.");
+      if (linkedCompanies(me).length > 1) { setSelection(me); return; }
+      // Retain the authenticated state if context selection fails: retry without logging in again.
+      setSelection(me);
+      const prepared = await prepareLogin(me);
+      if (linkedCompanies(me).length === 1) {
+        const refreshed = await reload();
+        if (!refreshed || refreshed.user.id !== prepared.user.id || refreshed.selectedCompanyId !== prepared.selectedCompanyId) {
+          throw new Error("Não foi possível confirmar a empresa na sessão. Tente novamente.");
+        }
+      }
+      router.replace(accountDestination(prepared));
     } catch (err) {
       setError(err instanceof ApiError && err.status === 401 ? "E-mail ou senha inválidos." : err instanceof Error ? err.message : "Não foi possível entrar.");
     } finally { (form.elements.namedItem("password") as HTMLInputElement).value = ""; setLoading(false); }
 
+  }
+
+  async function chooseCompany(companyId: string) {
+    if (!selection || loading) return;
+    setLoading(true); setError("");
+    try {
+      const selected = await selectCompany(selection, companyId);
+      const refreshed = await reload();
+      if (!refreshed || refreshed.user.id !== selected.user.id || refreshed.selectedCompanyId !== companyId) {
+        throw new Error("Não foi possível confirmar a sessão. Atualize e tente novamente.");
+      }
+      router.replace(accountDestination(refreshed));
+    } catch (err) { setError(err instanceof Error ? err.message : "Não foi possível selecionar a empresa."); }
+    finally { setLoading(false); }
   }
 
   return (
@@ -86,14 +113,17 @@ export default function LoginPage() {
           <div className="login-heading">
             <span className="login-eyebrow">BEM-VINDO</span>
 
-            <h2>Entre na sua conta</h2>
+            <h2>{selection ? "Acesso à sua conta" : "Entre na sua conta"}</h2>
 
             <p>
-              Acesse o Super Admin para continuar.
+              Acesse o Kalend para continuar.
             </p>
           </div>
 
-          <form onSubmit={handleSubmit}>
+          {selection ? <>
+            {error && <p className="new-company-message error" role="alert">{error}</p>}
+            {linkedCompanies(selection).length > 1 ? <CompanySelector profile={selection} busy={loading} select={chooseCompany} /> : linkedCompanies(selection).length === 1 ? <button type="button" className="login-button" disabled={loading} onClick={() => void chooseCompany(linkedCompanies(selection)[0].company.id)}>{loading ? "Selecionando empresa…" : "Tentar acessar a empresa"}</button> : <p>Nenhuma empresa vinculada à sua conta.</p>}
+          </> : <form onSubmit={handleSubmit}>
             {error && <p className="new-company-message error" role="alert">{error}</p>}
             <label htmlFor="email">E-mail</label>
 
@@ -147,7 +177,7 @@ export default function LoginPage() {
 
               {!loading && <ArrowRight size={19} />}
             </button>
-          </form>
+          </form>}
 
 
         </div>
