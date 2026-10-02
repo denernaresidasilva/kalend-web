@@ -1,7 +1,7 @@
 import { gatewayNames } from "@/lib/commercial";
 import { Building2, LayoutDashboard, Users, CreditCard, WalletCards, CircleDollarSign, MessageSquare, Webhook, Settings } from "lucide-react";
 export const navigation = [
-  { label: "SISTEMA", items: [{ label: "Dashboard", href: "/super-admin", icon: LayoutDashboard }, { label: "Empresas", href: "/super-admin/empresas", icon: Building2 }, { label: "Usuários", href: "/super-admin/usuarios", icon: Users }] },
+  { label: "SISTEMA", items: [{ label: "Visão geral", href: "/super-admin", icon: LayoutDashboard }, { label: "Empresas", href: "/super-admin/empresas", icon: Building2 }, { label: "Usuários", href: "/super-admin/usuarios", icon: Users }] },
   { label: "NEGÓCIO", items: [{ label: "Planos", href: "/super-admin/planos", icon: CreditCard }, { label: "Assinaturas", href: "/super-admin/assinaturas", icon: WalletCards }, { label: "Financeiro", href: "/super-admin/financeiro", icon: CircleDollarSign }] },
   { label: "COMUNICAÇÃO", items: [{ label: "Comunicação", href: "/super-admin/comunicacao", icon: MessageSquare }, { label: "Webhooks", href: "/super-admin/webhooks", icon: Webhook }] },
   { label: "CONFIGURAÇÕES", items: [{ label: "Configurações", href: "/super-admin/configuracoes", icon: Settings }] },

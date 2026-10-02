@@ -2,12 +2,23 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { navigation, activeDestination } from "./navigation";
+import { KalendLogo } from "@/components/kalend-logo";
 import { Tooltip } from "@/components/ui/tooltip";
-export function Sidebar({ mobile = false, onNavigate }: { mobile?: boolean; onNavigate?: () => void }) {
+export type SidebarConfig = {
+  groups: typeof navigation;
+  label: string;
+  brandHref: string;
+  brandLabel: string;
+  activeHref?: string;
+};
+export function Sidebar({ mobile = false, onNavigate, config }: { mobile?: boolean; onNavigate?: () => void; config?: SidebarConfig }) {
   const pathname = usePathname();
-  return <><Link href="/super-admin" className="k-nav-brand" onClick={onNavigate} aria-label="Kalend · Dashboard"><span className="k-avatar" aria-hidden="true">K</span><span className={mobile ? "" : "k-desktop-expanded-label"}>Kalend</span></Link><nav aria-label="Navegação do Super Admin">{navigation.map(group => <section className="k-nav-group" key={group.label}><h2>{group.label}</h2>{group.items.map(item => {
+  const BrandLink = config?.brandHref.includes("#") ? "a" : Link;
+  return <><BrandLink href={config?.brandHref ?? "/super-admin"} className="k-nav-brand" onClick={onNavigate} aria-label={config?.brandLabel ?? "Kalend · Visão geral"}><KalendLogo compact /><span className={mobile ? "k-logo-word" : "k-desktop-expanded-label k-logo-word"}>KALEND</span></BrandLink><nav aria-label={config?.label ?? "Navegação do Super Admin"}>{(config?.groups ?? navigation).map(group => <section className="k-nav-group" key={group.label}><h2>{group.label}</h2>{group.items.map(item => {
     const Icon = item.icon;
-    const link = <Link href={item.href} className="k-nav-link" aria-label={item.label} aria-current={activeDestination(pathname, item.href) ? "page" : undefined} onClick={onNavigate}><Icon size={20} aria-hidden="true" /><span className={mobile ? "" : "k-desktop-expanded-label"}>{item.label}</span></Link>;
+    const active = config?.activeHref !== undefined ? config.activeHref === item.href : activeDestination(pathname, item.href);
+    const NavLink = item.href.includes("#") ? "a" : Link;
+    const link = <NavLink href={item.href} className="k-nav-link" aria-label={item.label} aria-current={active ? "page" : undefined} onClick={onNavigate}><Icon size={20} aria-hidden="true" /><span className={mobile ? "" : "k-desktop-expanded-label"}>{item.label}</span></NavLink>;
     return mobile ? <div key={item.href}>{link}</div> : <Tooltip key={item.href} label={item.label}>{link}</Tooltip>;
   })}</section>)}</nav></>;
 }

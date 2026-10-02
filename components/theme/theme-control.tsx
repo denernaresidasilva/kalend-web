@@ -1,9 +1,10 @@
 "use client";
-import { useId } from "react";
+import { Sun, Moon } from "lucide-react";
 import { useTheme } from "./theme-provider";
-import type { ThemePreference } from "@/lib/theme";
+import { IconButton } from "@/components/ui/icon-button";
 export function ThemeControl() {
-  const id = useId();
   const { preference, setPreference } = useTheme();
-  return <label className="k-theme-control" htmlFor={id}><span>Aparência</span><select id={id} value={preference} onChange={event => setPreference(event.target.value as ThemePreference)}><option value="light">Claro</option><option value="dark">Escuro</option><option value="system">Sistema</option></select></label>;
+  const dark = preference === "dark" || (preference === "system" && typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+  const label = dark ? "Ativar modo claro" : "Ativar modo escuro";
+  return <IconButton className="k-theme-control" aria-label={label} title={label} onClick={() => setPreference(dark ? "light" : "dark")}>{dark ? <Sun size={20} aria-hidden="true" /> : <Moon size={20} aria-hidden="true" />}</IconButton>;
 }

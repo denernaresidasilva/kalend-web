@@ -8,6 +8,7 @@ const ts = require('typescript');
 const React = require('react');
 const { renderToStaticMarkup } = require('react-dom/server');
 function load(file, mocks = {}, globals = {}) {
+  mocks = { "@/components/notification-center": {NotificationCenter:()=>null}, "@/components/notification-bell": {NotificationBell:()=>null}, ...mocks };
   const loaded = { exports: {} };
   const compiled = ts.transpileModule(fs.readFileSync(file, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX, target: ts.ScriptTarget.ES2020, esModuleInterop: true } }).outputText;
   vm.runInNewContext(compiled, { module: loaded, exports: loaded.exports, require: id => {
@@ -40,9 +41,10 @@ function fixture(count, options = {}) {
 }
 function harness(file, mocks) {
   const states = []; const effects = []; let cursor = 0;
-  const hooks = { ...React, useState(initial) { const i = cursor++; if (!(i in states)) states[i] = initial; return [states[i], next => states[i] = next]; }, useEffect(effect) { effects.push(effect); } };
-  const exports = load(file, { react: hooks, '@/lib/commercial-navigation': { loginDestination: async profile => mocks['@/lib/company-selection'].accountDestination(profile) }, '@/components/commercial-entry': { CommercialEntry: ({ children }) => children }, ...mocks }, { FormData: class { get(key) { return key === 'email' ? 'fixture@example.test' : 'fixture-password'; } } });
-  return { render(name, props) { cursor = 0; return exports[name](props); }, runEffects() { return effects.map(effect => effect()); } };
+  const hooks = { ...React, useState(initial) { const i = cursor++; if (!(i in states)) states[i] = initial; return [states[i], next => states[i] = next]; }, useEffect(effect) { effects.push(effect); }, useRef(initial) { const i=cursor++; if (!(i in states)) states[i]={current:initial}; return states[i]; }, useSyncExternalStore(_subscribe,_get,server) { return server(); } };
+  const exports = load(file, { react: hooks, '@/lib/account-session':{logoutAllSessions:async()=>{}}, '@/components/super-admin/admin-shell':{AdminShell:({children})=>children}, 'next/navigation':{useRouter:()=>({replace(){}})}, '@/lib/commercial-navigation': { loginDestination: async profile => mocks['@/lib/company-selection'].accountDestination(profile) }, '@/components/commercial-entry': { CommercialEntry: ({ children }) => children }, ...mocks }, { FormData: class { get(key) { return key === 'email' ? 'fixture@example.test' : 'fixture-password'; } } });
+  const account = file === "app/conta/page.tsx" ? load("components/account-content.tsx", { react: hooks, "@/lib/account-session": {logoutAllSessions:async()=>{}}, "@/components/super-admin/admin-shell":{AdminShell:({children})=>children}, "next/navigation":{useRouter:()=>({replace(){}})}, ...mocks }) : {};
+  return { render(name, props) { cursor = 0; return (exports[name] || account[name])(props); }, runEffects() { return effects.map(effect => effect()); } };
 }
 function nodes(tree, predicate) {
   const found = [];
@@ -121,7 +123,7 @@ for (const count of [0,1,2,5]) test(`login UI with ${count} memberships follows 
   assert.deepEqual(redirects, count > 1 ? [] : ['/conta']);
   if (count > 1) { await selectors[0].props.select('company-1'); assert.deepEqual(redirects, ['/conta']); assert.equal(f.me().selectedCompanyId, 'company-1'); }
 });
-for (const count of [0,1,2,5]) test(`account UI does not expose empty or sole-company selector (${count})`, () => {
+for (const count of [0,1,2,5]) test(`account UI exposes existing selector for explicit selection, including a sole unselected company (${count})`, () => {
   const f = fixture(count);
   const h = harness('app/conta/page.tsx', {
     '@/lib/company-selection': f.helper,
@@ -130,8 +132,8 @@ for (const count of [0,1,2,5]) test(`account UI does not expose empty or sole-co
     '@/components/regularization-panel': { RegularizationPanel: () => null },
     'next/link': ({ children }) => React.createElement('a', null, children),
   });
-  const tree = h.render('default');
-  assert.equal(nodes(tree, node => typeof node.type === 'function' && node.type.name === 'CompanySelector').length, count > 1 ? 1 : 0);
+  const tree = h.render('AccountContent', {profile:f.me(),reload:async()=>f.me(),logout:async()=>{}});
+  assert.equal(nodes(tree, node => typeof node.type === 'function' && node.type.name === 'CompanySelector').length, count > 0 ? 1 : 0);
   if (!count) assert.match(renderToStaticMarkup(tree), /Nenhuma empresa vinculada/);
   if (count === 1) assert.equal(nodes(tree, node => typeof node.type === 'function' && node.type.name === 'PushSettings').length, 0);
 });
@@ -145,7 +147,7 @@ test('Push uses company selected at login and blocks a later stale company', asy
   assert.equal(operations, 1);
 });
 
-test('direct account access automatically selects sole membership before mounting Push', async () => {
+test('direct account access never selects a sole membership until the user explicitly chooses it', async () => {
   const f = fixture(1);
   const h = harness('app/conta/page.tsx', {
     '@/lib/company-selection': f.helper,
@@ -154,11 +156,15 @@ test('direct account access automatically selects sole membership before mountin
     '@/components/regularization-panel': { RegularizationPanel: () => null },
     'next/link': ({ children }) => React.createElement('a', null, children),
   });
-  h.render('default'); const cleanup = h.runEffects(); await new Promise(resolve => setTimeout(resolve, 20));
-  assert.equal(f.me().selectedCompanyId, 'company-0');
-  const tree = h.render('default');
+  h.render('AccountContent', {profile:f.me(),reload:async()=>f.me(),logout:async()=>{}}); const cleanup = h.runEffects(); await new Promise(resolve => setTimeout(resolve, 20));
+  assert.equal(f.me().selectedCompanyId, null);
+  assert.equal(f.calls.length, 0);
+  const selector=nodes(h.render('AccountContent', {profile:f.me(),reload:async()=>f.me(),logout:async()=>{}}), node => typeof node.type === 'function' && node.type.name === 'CompanySelector')[0];
+  await selector.props.select('company-0');
+  assert.equal(f.me().selectedCompanyId,'company-0');
+  const tree = h.render('AccountContent', {profile:f.me(),reload:async()=>f.me(),logout:async()=>{}});
   assert.equal(nodes(tree, node => typeof node.type === 'function' && node.type.name === 'CompanySelector').length, 0);
-  assert.equal(nodes(tree, node => typeof node.type === 'function' && node.type.name === 'PushSettings').length, 1);
+  assert.equal(nodes(tree, node => typeof node.type === 'function' && node.type.name === 'RegularizationPanel').length, 1);
   cleanup.forEach(fn => fn?.());
 });
 test('failed automatic tenant selection preserves authenticated UI and never navigates', async () => {

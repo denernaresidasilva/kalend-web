@@ -30,7 +30,7 @@ export const metadata: Metadata = {
   icons: { apple: "/icons/kalend-180.png" },
 };
 
-export const viewport: Viewport = { width: "device-width", initialScale: 1, themeColor: "#6558f5" };
+export const viewport: Viewport = { width: "device-width", initialScale: 1, themeColor: "#090a0c" };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (

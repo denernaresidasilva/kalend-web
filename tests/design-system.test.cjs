@@ -8,6 +8,7 @@ const ts = require('typescript');
 const React = require('react');
 const { renderToStaticMarkup } = require('react-dom/server');
 function load(file, mocks = {}, globals = {}) {
+  mocks = { "@/components/notification-center": {NotificationCenter:()=>null}, "@/components/notification-bell": {NotificationBell:()=>null}, ...mocks };
   const output = ts.transpileModule(fs.readFileSync(file, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, jsx: ts.JsxEmit.ReactJSX, esModuleInterop: true } }).outputText;
   const loaded = { exports: {} };
   vm.runInNewContext(output, { module: loaded, exports: loaded.exports, require: id => {
@@ -33,20 +34,20 @@ const regularization = (extra = {}) => ({ serverNow: '2026-10-01T12:00:00Z', con
 test('theme resolves light/dark/system and stores only the visual preference', () => {
   const theme = load('lib/theme.ts'); const values = new Map();
   const storage = { getItem: key => values.get(key) ?? null, setItem: (key,value) => values.set(key,value) };
-  assert.equal(theme.readTheme(storage), 'system');
+  assert.equal(theme.readTheme(storage), 'dark');
   for (const preference of ['light','dark','system']) { theme.persistTheme(storage, preference); assert.equal(theme.readTheme(storage), preference); }
   assert.deepEqual([...values.keys()], ['kalend:theme']);
   assert.equal(theme.resolvedTheme('light',true),'light'); assert.equal(theme.resolvedTheme('dark',false),'dark');
   assert.equal(theme.resolvedTheme('system',true),'dark'); assert.equal(theme.resolvedTheme('system',false),'light');
-  assert.equal(theme.themePreference('unexpected'),'system');
-  assert.equal(theme.readTheme({ getItem() { throw Error('blocked'); } }), 'system');
+  assert.equal(theme.themePreference('unexpected'),'dark');
+  assert.equal(theme.readTheme({ getItem() { throw Error('blocked'); } }), 'dark');
   assert.doesNotThrow(() => theme.persistTheme({ setItem() { throw Error('blocked'); } }, 'dark'));
 });
 
 test('semantic text and control colors meet contrast thresholds in both themes', () => {
   const css=fs.readFileSync('app/styles/kalend-tokens.css','utf8');
   const luminance=hex=>{const values=[1,3,5].map(i=>parseInt(hex.slice(i,i+2),16)/255).map(v=>v<=.04045?v/12.92:((v+.055)/1.055)**2.4);return values.reduce((sum,v,i)=>sum+v*[.2126,.7152,.0722][i],0);};
-  for(const block of css.split('html[data-theme="dark"]')) {
+  for(const block of [css.slice(0,css.indexOf('html[data-theme')),css.slice(css.indexOf('html[data-theme'))]) {
     const tokens=Object.fromEntries([...block.matchAll(/--kalend-([\w-]+): (#[a-fA-F0-9]{6});/g)].map(m=>[m[1],m[2]]));
     for(const [a,b,minimum] of [['text-primary','surface',4.5],['text-secondary','surface',4.5],['text-muted','surface',4.5],['on-primary','primary',4.5],['primary','primary-soft',4.5],['control-border','surface',3]]) {
       const [low,high]=[luminance(tokens[a]),luminance(tokens[b])].sort((x,y)=>x-y);assert.ok((high+.05)/(low+.05)>=minimum,`${a} on ${b}`);
@@ -57,7 +58,7 @@ test('semantic text and control colors meet contrast thresholds in both themes',
 test('pre-paint theme bootstrap follows OS changes, manual preference and other tabs', () => {
   const { themeScript } = load('lib/theme.ts'); const dataset = {}; const events = {}; const media = { matches: true, addEventListener: (_event,listener) => events.media = listener };
   vm.runInNewContext(themeScript, { document: { documentElement: { dataset } }, localStorage: { getItem: () => null }, matchMedia: () => media, addEventListener: (event,listener) => events[event] = listener });
-  assert.equal(dataset.theme,'dark'); media.matches = false; events.media(); assert.equal(dataset.theme,'light');
+  assert.equal(dataset.theme,'dark'); media.matches = false; events.media(); assert.equal(dataset.theme,'dark');
   events.storage({ key: 'kalend:theme', newValue: 'dark' }); assert.equal(dataset.theme,'dark');
   media.matches = false; events.media(); assert.equal(dataset.theme,'dark');
   dataset.themePreference = 'light'; events['kalend:theme'](); assert.equal(dataset.theme,'light');
@@ -172,10 +173,27 @@ test('public LP reloads the real catalog with no cookies or authentication refre
   assert.equal(calls[0][0],'https://catalog.example/plans/public'); assert.equal(calls[0][1].credentials,'omit'); assert.equal(calls[0][1].cache,'no-store');
 });
 
-test('shared header uses actual identity, contextual action and keyboard close for user menu', () => {
+test('shared header exposes avatar/account, icon action and real logout', () => {
+  let loggedOut = false;
   const { Header } = load('components/super-admin/header.tsx', { 'next/link':link, 'next/navigation':{ usePathname: () => '/super-admin/empresas' }, '@/components/theme/theme-control':{ ThemeControl: () => null } });
-  const tree=Header({ profile:{ user:{ name:'Nome autenticado' } },onMenu() {},menuOpen:false,logout() {},leaving:false });
-  const html=renderToStaticMarkup(tree); assert.match(html,/Nome autenticado/); assert.match(html,/empresas\/nova/); assert.doesNotMatch(html,/notification-button/);
-  let focused=false;const details=nodes(tree,node=>node.type==='details')[0];const target={open:true,querySelector:()=>({focus:()=>focused=true})};
-  details.props.onKeyDown({key:'Escape',currentTarget:target});assert.equal(target.open,false);assert.equal(focused,true);
+  const tree=Header({ profile:{ user:{ name:'Nome autenticado' } },onMenu() {},menuOpen:false,logout() { loggedOut = true; },leaving:false });
+  const html=renderToStaticMarkup(tree); assert.match(html,/>NA</); assert.doesNotMatch(html,/Nome autenticado/);
+  const account=nodes(tree,node=>node.props['aria-label']==='Minha conta')[0];assert.equal(account.props.href,'/conta');
+  const action=nodes(tree,node=>node.props['aria-label']==='Nova empresa')[0];assert.equal(action.props.href,'/super-admin/empresas/nova');assert.equal(action.props.title,'Nova empresa');
+  nodes(tree,node=>node.props['aria-label']==='Sair')[0].props.onClick();assert.equal(loggedOut,true);
 });
+
+test('status charts preserve backend counts, including zero, and accessible labels', () => {
+  const { StatusChart } = load('components/dashboard-charts.tsx');
+  const html=renderToStaticMarkup(React.createElement(StatusChart,{title:'Pagamentos',items:[['Aprovados',20],['Pendentes',0],['Falhos',5]]}));
+  assert.match(html,/<dt>Aprovados<\/dt><dd><span>20<\/span>/);assert.match(html,/width:100%/);assert.match(html,/width:25%/);assert.match(html,/width:0%/);assert.match(html,/aria-hidden="true"/);
+  const empty=renderToStaticMarkup(React.createElement(StatusChart,{title:'Empresas',items:[['Ativas',0]]}));assert.match(empty,/Nenhum registro/);assert.doesNotMatch(empty,/NaN|Infinity/);
+});
+
+ test('icon theme control toggles explicit light and dark preferences', () => {
+  for (const [preference,label,next] of [['dark','Ativar modo claro','light'],['light','Ativar modo escuro','dark']]) {
+    let selected;
+    const { ThemeControl }=load('components/theme/theme-control.tsx',{'./theme-provider':{useTheme:()=>({preference,setPreference:value=>selected=value})}});
+    const button=ThemeControl();assert.equal(button.props['aria-label'],label);assert.equal(button.props.title,label);button.props.onClick();assert.equal(selected,next);
+  }
+ });

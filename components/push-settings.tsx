@@ -52,11 +52,11 @@ export function PushSettings() {
   const canManage = eligible(profile);
   const denied = typeof Notification !== "undefined" && Notification.permission === "denied";
   return <section className="commercial-panel push-settings" aria-labelledby="push-title">
-    <h2 id="push-title">Notificações</h2>
+    <h2 id="push-title">Push Web</h2>
     <p>{profile.selectedCompanyId ? "Preferências para a empresa selecionada." : "Preferências da conta administrativa."}</p>
     {!canManage ? <p>Selecione uma empresa para gerenciar notificações.</p> : <>
       {state === "unsupported" ? <p>Push indisponível neste navegador. Use um navegador compatível em HTTPS. No iOS, instale o aplicativo na Tela de Início.</p> : <>
-        <p role="status">{state === "subscribed" ? "✓ Notificações ativadas neste dispositivo" : denied ? "Notificações bloqueadas" : "Notificações não ativadas neste dispositivo"}</p>
+        <p role="status">{config && !config.available ? "Push Web não configurado no servidor" : state === "error" ? "Erro ao consultar Push Web" : state === "subscribed" ? "✓ Notificações ativadas neste dispositivo" : denied ? "Notificações bloqueadas pelo navegador" : state === "permission-default" ? "Permissão de notificações pendente" : "Notificações não ativadas neste dispositivo"}</p>
         <p>Dispositivo atual: {deviceLabel().label}</p>
         {denied && <p>Altere a permissão de notificações nas configurações deste site no navegador e volte ao Kalend.</p>}
         {config && !config.available && <p>O servidor ainda não disponibilizou Push.</p>}
@@ -64,13 +64,14 @@ export function PushSettings() {
         <button type="button" disabled={busy} onClick={() => void action(load)}>Atualizar estado</button>
         {devices.length > 0 && <><h3>Dispositivos registrados</h3><ul>{devices.map(row => <li key={row.id}>
           <p>{row.label || row.platform}{row.id === localId ? " · Este dispositivo" : ""} · {activeDevice(row) ? "Ativo" : "Inativo"}</p>
+          {row.lastSeenAt && <p>Último acesso: <time dateTime={row.lastSeenAt}>{new Date(row.lastSeenAt).toLocaleString("pt-BR")}</time></p>}
           {!row.revokedAt && <button type="button" disabled={busy || (!activeDevice(row) && denied)} onClick={() => void action(() => inContext(profile, () => pushApi.update(row.id, !activeDevice(row))))}>{activeDevice(row) ? "Desativar" : "Reativar"}{row.id === localId ? " neste dispositivo" : ""}{profile.selectedCompanyId ? " para esta empresa" : ""}</button>}
           <button type="button" disabled={busy} onClick={() => {
             if (!window.confirm("Remover este dispositivo revoga Push em todas as empresas. Continuar?")) return;
             void action(() => removeDevice(profile, row.id, localId));
           }}>Remover dispositivo em todas as empresas</button>
         </li>)}</ul></>}
-        {!localId && state === "unsubscribed" && <p>Ativar reutiliza a subscription válida deste navegador e vincula o registro à sessão atual.</p>}
+        {!localId && state === "unsubscribed" && <p>Ativar reutiliza a inscrição válida deste navegador e vincula o registro à sessão atual.</p>}
       </>}
     </>}
     {message && <p role="alert">{message}</p>}

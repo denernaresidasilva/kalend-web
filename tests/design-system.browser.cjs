@@ -5,7 +5,7 @@ const assert = require('node:assert/strict');
 const cwd = process.cwd();
 const owner = process.argv.includes('--owner');
 const server = spawn(process.execPath, ['node_modules/next/dist/bin/next','start','--hostname','127.0.0.1','--port','3100'], { cwd, stdio:['ignore','pipe','pipe'] });
-const chrome = spawn('/usr/bin/google-chrome', ['--headless','--no-sandbox','--disable-dev-shm-usage','--disable-background-networking','--no-first-run','--no-default-browser-check','--remote-debugging-port=9224','--user-data-dir=/tmp/kalend-phase42-browser-profile','about:blank'], { stdio:'ignore' });
+const chrome = spawn('/usr/bin/google-chrome', ['--headless','--no-sandbox','--disable-dev-shm-usage','--disable-background-networking','--no-first-run','--no-default-browser-check','--remote-debugging-port=9224','--user-data-dir=/tmp/kalend-phase43-browser-profile','about:blank'], { stdio:'ignore' });
 const sleep = ms => new Promise(resolve => setTimeout(resolve,ms));
 let socket;
 async function waitUrl(url) { for(let i=0;i<120;i++){ try { const response = await fetch(url); if(response.ok)return response; }catch{} await sleep(250); }throw Error('Server/browser did not start'); }
@@ -45,26 +45,26 @@ async function waitUrl(url) { for(let i=0;i<120;i++){ try { const response = awa
  else if(path==='/webhooks/summary')data={total:1,received:1,processing:0,processed:0,failed:0,ignored:0};
  else if(path==='/webhooks')data=[event];else if(path.startsWith('/webhooks/'))data=event;
  else if(path==='/billing/regularization')data={serverNow:'2026-10-01T12:00:00Z',trial:{active:false,endsAt:'2026-09-30T00:00:00Z',remainingDays:0,expired:true},financial:{requiresAction:location.search.includes('fixture-pendencia'),status:'EXPIRED'},context:{systemRole:'USER',role:'OWNER',commercialApplicable:true},companyId:company.id,status:'TRIAL_EXPIRED',reason:location.search.includes('fixture-pendencia')?'PAYMENT_REQUIRED':'TRIAL_EXPIRED',accessAllowed:false,trialExpired:true,subscription:{...subscription,status:'EXPIRED',planId:p.id,planName:p.name,trialEndsAt:'2026-09-30T00:00:00Z'},plans:[p,{...p,id:'monthly-fixture',name:'Plano mensal',isFeatured:false,badge:null,yearlyPriceCents:null}],gateways:[{provider:'STRIPE',environment:'SANDBOX',capabilities:{checkout:true,recurring:false}}],pendingCheckout:null};
- else if(path==='/push/public-config')data={available:false,publicKey:null};
+ else if(path==='/communication/push/public-config')data={available:false,publicKey:null};
  if(path==='/billing/regularization' && location.search.includes('fixture-carencia'))data={...data,trial:{active:false,endsAt:null,remainingDays:0,expired:false},financial:{requiresAction:false,status:'PAST_DUE'},status:'PAST_DUE',reason:null,accessAllowed:true,trialExpired:false,pendingCheckout:{id:'optional-upgrade',creationState:'CREATED',checkoutUrl:'https://checkout.example.invalid',gateway:'STRIPE',planId:p.id,billingInterval:'MONTHLY'}};
  return new Response(JSON.stringify(data),{status:200,headers:{'Content-Type':'application/json'}});};`;
  await call('Page.addScriptToEvaluateOnNewDocument',{source:fixture});
- const widths=[320,375,390,430,768,1024,1280,1440,1920];
- const routes=owner ? ['/conta/planos','/conta/regularizar','/conta'] : ['/super-admin','/planos','/super-admin/empresas','/super-admin/empresas/nova','/super-admin/usuarios','/super-admin/planos','/super-admin/planos/novo','/super-admin/planos/fixture-plan','/super-admin/assinaturas','/super-admin/assinaturas/fixture-subscription','/super-admin/financeiro','/super-admin/webhooks','/super-admin/webhooks/fixture-event','/super-admin/configuracoes','/super-admin/configuracoes/pagamentos','/super-admin/configuracoes/pagamentos/PAGBANK','/super-admin/comunicacao'];
+ const widths=[360,375,390,414,768,1024,1280,1440,1920];
+ const routes=owner ? ['/conta/planos','/conta/regularizar','/conta'] : ['/','/super-admin','/planos','/super-admin/empresas','/super-admin/empresas/nova','/super-admin/usuarios','/super-admin/planos','/super-admin/planos/novo','/super-admin/planos/fixture-plan','/super-admin/assinaturas','/super-admin/assinaturas/fixture-subscription','/super-admin/financeiro','/super-admin/webhooks','/super-admin/webhooks/fixture-event','/super-admin/configuracoes','/super-admin/configuracoes/pagamentos','/super-admin/configuracoes/pagamentos/PAGBANK','/super-admin/comunicacao'];
  const results=[];
  for(const route of routes){
   await call('Page.navigate',{url:'http://127.0.0.1:3100'+route});
   for(let i=0;i<60;i++){await sleep(100); if(await evaluate("document.querySelector('h1') && !document.body.innerText.includes('Verificando sessão')"))break;}
   for(const width of widths){await call('Emulation.setDeviceMetricsOverride',{width,height:900,deviceScaleFactor:1,mobile:false});await sleep(35);
    for(const theme of ['light','dark']){await evaluate(`document.documentElement.dataset.theme='${theme}';document.documentElement.dataset.themePreference='${theme}';window.dispatchEvent(new Event('kalend:theme'))`);await sleep(15);
-    const measurement=await evaluate(`({width:innerWidth,scrollWidth:document.documentElement.scrollWidth,title:document.querySelector('h1')?.innerText,overflow:[...document.querySelectorAll('body *')].filter(e=>{const r=e.getBoundingClientRect();return r.width>0&&r.right>innerWidth+1&&getComputedStyle(e).position!=='absolute'&&!e.closest('.companies-table-wrap,.companies-table-wrapper,.commercial-table-wrap,.k-table-scroll,.k-tooltip-wrap')}).slice(0,8).map(e=>({tag:e.tagName,class:e.className,right:Math.round(e.getBoundingClientRect().right)}))})`);
+    const measurement=await evaluate(`({width:innerWidth,scrollWidth:document.documentElement.scrollWidth,headerHeight:document.querySelector('.k-admin-header')?.getBoundingClientRect().height,title:document.querySelector('h1')?.innerText,overflow:[...document.querySelectorAll('body *')].filter(e=>{const r=e.getBoundingClientRect();return r.width>0&&r.right>innerWidth+1&&getComputedStyle(e).position!=='absolute'&&!e.closest('.companies-table-wrap,.companies-table-wrapper,.commercial-table-wrap,.k-table-scroll,.k-tooltip-wrap')}).slice(0,8).map(e=>({tag:e.tagName,class:e.className,right:Math.round(e.getBoundingClientRect().right)}))})`);
     results.push({route,width,theme,...measurement});
    }
   }
   console.log('validated',route);
  }
- fs.writeFileSync(owner ? '/tmp/kalend-phase42-owner-responsive.json' : '/tmp/kalend-phase42-responsive.json',JSON.stringify({fixtureOnly:true,results,errors},null,2));
- fs.writeFileSync(owner ? '/tmp/kalend-phase42-owner-responsive.json' : '/tmp/kalend-phase42-responsive.json',JSON.stringify({fixtureOnly:true,results,errors},null,2));
+ fs.writeFileSync(owner ? '/tmp/kalend-phase43-owner-responsive.json' : '/tmp/kalend-phase43-responsive.json',JSON.stringify({fixtureOnly:true,results,errors},null,2));
+ fs.writeFileSync(owner ? '/tmp/kalend-phase43-owner-responsive.json' : '/tmp/kalend-phase43-responsive.json',JSON.stringify({fixtureOnly:true,results,errors},null,2));
  if (!owner) {
  await call('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:false});await call('Page.navigate',{url:'http://127.0.0.1:3100/super-admin'});await sleep(600);
  await evaluate(`document.querySelector('button[aria-label="Abrir menu"]').click()`);await sleep(100);
@@ -73,14 +73,24 @@ async function waitUrl(url) { for(let i=0;i<120;i++){ try { const response = awa
  await call('Input.dispatchKeyEvent',{type:'keyDown',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});await call('Input.dispatchKeyEvent',{type:'keyUp',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});await sleep(100);
  assert.equal(await evaluate("!!document.querySelector('dialog')"),false);
  assert.equal(await evaluate("document.activeElement.getAttribute('aria-label')"),'Abrir menu');
- // Test real theme control persistence and OS behavior.
- await evaluate(`const s=document.querySelector('.k-theme-control select');s.value='dark';s.dispatchEvent(new Event('change',{bubbles:true}));`);await sleep(100);
- assert.equal(await evaluate("localStorage.getItem('kalend:theme')"),'dark');
- await call('Page.reload');await sleep(600);assert.equal(await evaluate("document.documentElement.dataset.theme"),'dark');
- await evaluate(`const s=document.querySelector('.k-theme-control select');s.value='system';s.dispatchEvent(new Event('change',{bubbles:true}));`);
- await call('Emulation.setEmulatedMedia',{features:[{name:'prefers-color-scheme',value:'light'},{name:'prefers-reduced-motion',value:'reduce'}]});await sleep(100);assert.equal(await evaluate("document.documentElement.dataset.theme"),'light');
- await call('Emulation.setEmulatedMedia',{features:[{name:'prefers-color-scheme',value:'dark'}]});await sleep(100);assert.equal(await evaluate("document.documentElement.dataset.theme"),'dark');
- const shot=await call('Page.captureScreenshot',{format:'png'});fs.writeFileSync('/tmp/kalend-phase42-dashboard-390.png',Buffer.from(shot.data,'base64'));
+ // First visit stays dark even on a light OS; icon toggles persist across reload.
+ await call('Emulation.setEmulatedMedia',{features:[{name:'prefers-color-scheme',value:'light'}]});
+ await evaluate("localStorage.removeItem('kalend:theme')");await call('Page.reload');await sleep(600);
+ assert.equal(await evaluate("document.documentElement.dataset.theme"),'dark');
+ await evaluate("document.querySelector('button[aria-label=\"Ativar modo claro\"]').click()");await sleep(100);
+ assert.equal(await evaluate("localStorage.getItem('kalend:theme')"),'light');
+ await call('Page.reload');await sleep(600);assert.equal(await evaluate("document.documentElement.dataset.theme"),'light');
+ await evaluate("document.querySelector('button[aria-label=\"Ativar modo escuro\"]').click()");await sleep(100);
+ assert.equal(await evaluate("document.documentElement.dataset.theme"),'dark');
+ assert.equal(await evaluate("document.querySelector('.k-admin-header a[aria-label=\"Minha conta\"]').getAttribute('href')"),'/conta');
+ assert.equal(await evaluate("document.querySelector('.k-admin-header a[aria-label=\"Nova empresa\"]').textContent"),'');
+ assert.equal(await evaluate("['Atualizar métricas','Atualizado em','Período mensal','Acompanhe os dados e a operação'].some(t=>document.body.innerText.includes(t))"),false);
+ const shot=await call('Page.captureScreenshot',{format:'png'});fs.writeFileSync('/tmp/kalend-phase43-dashboard-390.png',Buffer.from(shot.data,'base64'));
+ await call('Emulation.setDeviceMetricsOverride',{width:1440,height:1000,deviceScaleFactor:1,mobile:false});await sleep(100);
+ const desktop=await call('Page.captureScreenshot',{format:'png'});fs.writeFileSync('/tmp/kalend-phase43-dashboard-1440.png',Buffer.from(desktop.data,'base64'));
+ await call('Page.navigate',{url:'http://127.0.0.1:3100/'});await sleep(500);
+ const login=await call('Page.captureScreenshot',{format:'png'});fs.writeFileSync('/tmp/kalend-phase43-login.png',Buffer.from(login.data,'base64'));
+
  } else {
   await call('Page.navigate',{url:'http://127.0.0.1:3100/conta/planos'});await sleep(700);
   await evaluate(`document.querySelector('input[name="plan"]').click()`);await sleep(100);
@@ -94,9 +104,9 @@ async function waitUrl(url) { for(let i=0;i<120;i++){ try { const response = awa
   assert.equal(await evaluate('location.pathname'),'/conta/regularizar');
   await call('Page.navigate',{url:'http://127.0.0.1:3100/conta?fixture-carencia'});await sleep(900);
   assert.equal(await evaluate('location.pathname'),'/conta');
-  const shot=await call('Page.captureScreenshot',{format:'png'});fs.writeFileSync('/tmp/kalend-phase42-plans-authenticated.png',Buffer.from(shot.data,'base64'));
+  const shot=await call('Page.captureScreenshot',{format:'png'});fs.writeFileSync('/tmp/kalend-phase43-plans-authenticated.png',Buffer.from(shot.data,'base64'));
  }
- fs.writeFileSync(owner ? '/tmp/kalend-phase42-owner-responsive.json' : '/tmp/kalend-phase42-responsive.json',JSON.stringify({fixtureOnly:true,results,errors,interactionChecks:owner ? 'plan selection, annual period, expired trial redirect, financial priority passed' : 'drawer Escape/focus/scroll, theme persistence/reload/system passed'},null,2));
- const failures=results.filter(result=>result.scrollWidth>result.width+1);console.log(JSON.stringify({checks:results.length,overflowFailures:failures.map(({route,width,theme,scrollWidth,overflow})=>({route,width,theme,scrollWidth,overflow})),errors},null,2));
+ fs.writeFileSync(owner ? '/tmp/kalend-phase43-owner-responsive.json' : '/tmp/kalend-phase43-responsive.json',JSON.stringify({fixtureOnly:true,results,errors,interactionChecks:owner ? 'plan selection, annual period, expired trial redirect, financial priority passed' : 'drawer Escape/focus/scroll, dark default, icon toggle/persistence/reload, avatar/action passed'},null,2));
+ const failures=results.filter(result=>result.scrollWidth>result.width+1 || result.headerHeight>80);console.log(JSON.stringify({checks:results.length,overflowFailures:failures.map(({route,width,theme,scrollWidth,overflow})=>({route,width,theme,scrollWidth,overflow})),errors},null,2));
  if(failures.length||errors.length)process.exitCode=1;
 })().catch(error=>{console.error(error);process.exitCode=1}).finally(()=>{socket?.close();chrome.kill('SIGTERM');server.kill('SIGTERM');});

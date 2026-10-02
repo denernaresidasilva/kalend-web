@@ -5,7 +5,7 @@ function safeUrl(value) {
     const url = new URL(typeof value === 'string' ? value : FALLBACK, self.location.origin);
     // Only application destinations; no API, auth redirects or query-string credentials.
     if (url.origin !== self.location.origin || url.username || url.password || url.search || url.hash ||
-        !/^\/(?:conta(?:\/)?|super-admin(?:\/[a-zA-Z0-9_-]+)*\/?|)$/.test(url.pathname)) return new URL(FALLBACK, self.location.origin).href;
+        !/^\/(?:conta(?:\/notificacoes)?(?:\/)?|super-admin(?:\/[a-zA-Z0-9_-]+)*\/?|)$/.test(url.pathname)) return new URL(FALLBACK, self.location.origin).href;
     return url.href;
   } catch { return new URL(FALLBACK, self.location.origin).href; }
 }
@@ -22,10 +22,14 @@ self.addEventListener('push', event => {
   try { payload = event.data?.json() || {}; } catch { /* Display a generic notification. */ }
   const title = typeof payload.title === 'string' ? payload.title.slice(0, 200) : 'Kalend';
   const body = typeof payload.body === 'string' ? payload.body.slice(0, 3000) : 'Uma atualização está disponível no Kalend.';
-  event.waitUntil(self.registration.showNotification(title || 'Kalend', {
-    body, icon: safeImage(payload.icon, '/icons/kalend-192.png'),
-    badge: safeImage(payload.badge, '/icons/kalend-192.png'), data: { url: safeUrl(payload.url) },
-  }));
+  event.waitUntil((async () => {
+    await self.registration.showNotification(title || 'Kalend', {
+      body, icon: safeImage(payload.icon, '/icons/kalend-192.png'),
+      badge: safeImage(payload.badge, '/icons/kalend-192.png'), data: { url: safeUrl(payload.url) },
+    });
+    const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    for (const client of windows) if (new URL(client.url).origin === self.location.origin) client.postMessage({ type: 'KALEND_NOTIFICATION_RECEIVED' });
+  })());
 });
 self.addEventListener('notificationclick', event => {
   event.notification.close();

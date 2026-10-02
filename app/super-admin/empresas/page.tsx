@@ -198,10 +198,11 @@ export default function CompaniesPage() {
 
             <Link
               href="/super-admin/empresas/nova"
-              className="companies-new-button"
+              className="companies-new-button k-icon-button"
+              aria-label="Nova empresa"
+              title="Nova empresa"
             >
               <Plus size={18} aria-hidden="true" />
-              Nova empresa
             </Link>
           </div>
         </header>

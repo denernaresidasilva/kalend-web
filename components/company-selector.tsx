@@ -2,12 +2,12 @@
 import { useState } from "react";
 import { linkedCompanies } from "@/lib/company-selection";
 import type { AuthMe } from "@/lib/contracts";
-export function CompanySelector({ profile, busy, select }: {
-  profile: AuthMe; busy: boolean; select: (companyId: string) => Promise<void>;
+export function CompanySelector({ profile, busy, select, allowSingle = false }: {
+  profile: AuthMe; busy: boolean; select: (companyId: string) => Promise<void>; allowSingle?: boolean;
 }) {
   const [companyId, setCompanyId] = useState("");
   const companies = linkedCompanies(profile);
-  if (companies.length <= 1) return null;
+  if (companies.length === 0 || (companies.length === 1 && !allowSingle)) return null;
   return <section className="commercial-panel commercial-form" aria-label="Selecionar empresa">
     <h2>Selecionar empresa</h2>
     <label>Empresa<select disabled={busy} value={companyId} onChange={event => setCompanyId(event.target.value)}>

@@ -1,7 +1,7 @@
 .k-admin-shell { min-height: 100dvh; }
 .k-admin-sidebar { display: none; }
 .k-admin-workspace { min-width: 0; }
-.k-admin-header { padding: 12px 16px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; background: var(--kalend-surface); border-bottom: 1px solid var(--kalend-border); }
+.k-admin-header { padding: 12px 16px; display: flex; flex-wrap: nowrap; align-items: center; justify-content: space-between; gap: 8px; background: var(--kalend-surface); border-bottom: 1px solid var(--kalend-border); }
 .k-admin-context { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .k-admin-context > div { min-width: 0; }
 .k-admin-header .k-actions { gap: 8px; }
@@ -25,7 +25,7 @@
   .k-desktop-expanded-label, .k-admin-sidebar .k-nav-group h2 { display: none; }
   .k-mobile-menu { display: none; }
   .k-admin-main { padding: 32px 24px 48px; }
-  .k-admin-header { padding: 16px 24px; }
+  .k-admin-header { padding: 8px 24px; }
 }
 @media (min-width: 1024px) {
   .k-admin-shell:not(.k-admin-collapsed) { grid-template-columns: 248px minmax(0,1fr); }
@@ -76,3 +76,42 @@
 @media (max-width: 767px) { .k-admin-main .plan-form-sidebar,.k-admin-main .plan-fields-grid,.k-admin-main .plan-fields-grid.three,.k-admin-main .plan-features-editor { display: grid; grid-template-columns: minmax(0,1fr); }.k-admin-main .companies-topbar,.k-admin-main .companies-topbar-actions { flex-wrap: wrap; }.k-admin-main .commercial-details { grid-template-columns: minmax(0,1fr); }.k-admin-main .new-company-options { grid-template-columns: minmax(0,1fr); } }
 .k-nav-collapse { display: none; }
 @media (min-width: 1024px) { .k-nav-collapse { display: inline-flex; } }
+
+.k-admin-header { min-height: 64px; padding-top: 8px; padding-bottom: 8px; }
+.k-admin-header .k-actions { flex-wrap: nowrap; flex-shrink: 0; gap: 2px; }
+.k-admin-context { flex: 1; gap: 8px; overflow: hidden; }
+.k-admin-context strong { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kalend-ui .k-header-icon { min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; color: var(--kalend-text-secondary); text-decoration: none; }
+.k-header-icon:hover { background: var(--kalend-primary-soft); }
+.k-nav-link[aria-current="page"] { box-shadow: inset 3px 0 var(--kalend-primary); }
+.k-admin-header .k-avatar { border: 1px solid var(--kalend-primary); font-size: 12px; }
+@media (max-width: 414px) { .k-admin-header { padding-left: 8px; padding-right: 8px; }.k-admin-context strong { font-size: 12px; } }
+
+/* Phase 4.3: shared bell and persistent inbox. */
+.k-notification-bell { position: relative; }
+.k-notification-badge { position: absolute; top: 0; right: 0; min-width: 16px; padding: 1px 3px; border-radius: 999px; background: var(--kalend-primary); color: var(--kalend-on-primary); font-size: 10px; line-height: 14px; font-weight: 700; }
+.k-notification-list { list-style: none; padding: 0; margin: 16px 0; }
+.k-notification-item { display: flex; gap: 12px; padding: 16px 12px; border-bottom: 1px solid var(--kalend-border); border-radius: 8px; min-width: 0; }
+.k-notification-item.is-unread { background: var(--kalend-primary-soft); border-left: 3px solid var(--kalend-primary); }
+.k-notification-type-icon { flex: 0 0 auto; color: var(--kalend-primary); margin-top: 2px; }
+.k-notification-content { min-width: 0; flex: 1; overflow-wrap: anywhere; }
+.k-notification-content p { margin: 8px 0; }
+.k-notification-content time { display: block; font-size: 12px; color: var(--kalend-text-secondary); margin-top: 6px; }
+.k-notification-title { display: flex; align-items: center; gap: 8px; }
+.k-unread-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--kalend-primary); flex: 0 0 auto; }
+.k-notification-actions, .k-notification-toolbar, .k-notification-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; }
+.k-notification-actions > a { display: inline-flex; align-items: center; gap: 6px; }
+.k-notification-actions .k-button { white-space: normal; text-align: left; height: auto; }
+.k-notification-empty { padding: 24px 8px; text-align: center; }
+.k-notification-empty > svg { color: var(--kalend-primary); }
+#notification-panel { inset: 12px 12px auto auto; margin: 0; width: min(440px, calc(100vw - 24px)); height: auto; max-height: min(600px, calc(100dvh - 24px)); border: 1px solid var(--kalend-border); border-radius: 12px; overflow: hidden; }
+.k-notification-panel { display: flex; flex-direction: column; min-width: 0; max-height: min(500px, calc(100dvh - 140px)); overflow-wrap: anywhere; }
+.k-notification-panel > .k-notification-list { overflow-y: auto; min-height: 0; overscroll-behavior: contain; }
+.k-notification-panel > .k-notification-actions { flex-shrink: 0; }
+#preferencias { scroll-margin-top: 80px; }
+@media (max-width: 414px) { .k-admin-context strong { display: none; } }
+@media (max-width: 767px) {
+  #notification-panel { inset: auto 0 0; width: 100%; max-width: 100%; max-height: 90dvh; border-radius: 16px 16px 0 0; }
+  .k-notification-panel { max-height: calc(90dvh - 100px); }
+  .k-notification-item { padding: 12px 8px; gap: 8px; }
+}

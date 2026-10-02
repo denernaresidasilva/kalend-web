@@ -2,7 +2,6 @@
 
 import {
   ArrowRight,
-  CalendarDays,
   Eye,
   EyeOff,
   LockKeyhole,
@@ -10,6 +9,8 @@ import {
 } from "lucide-react";
 import { FormEvent, useState } from "react";
 
+import { KalendLogo } from "@/components/kalend-logo";
+import { ThemeControl } from "@/components/theme/theme-control";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/auth-provider";
 import { CompanySelector } from "@/components/company-selector";
@@ -71,15 +72,10 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="login-page">
+    <main className="kalend-ui login-page">
       <section className="login-brand">
         <div className="brand-content">
-          <div className="brand-logo">
-            <CalendarDays size={27} strokeWidth={2.2} />
-            <span>K</span>
-          </div>
-
-          <div className="brand-name">Kalend</div>
+          <KalendLogo />
 
           <div className="brand-message">
             <span className="brand-pill">GESTÃO INTELIGENTE</span>
@@ -101,13 +97,9 @@ export default function LoginPage() {
         </div>
       </section>
 
-      <section className="login-area">
+      <section className="login-area"><div className="k-login-theme"><ThemeControl /></div>
         <div className="mobile-logo">
-          <div className="brand-logo small">
-            <CalendarDays size={23} />
-            <span>K</span>
-          </div>
-          <strong>Kalend</strong>
+          <KalendLogo />
         </div>
 
         <div className="login-card">

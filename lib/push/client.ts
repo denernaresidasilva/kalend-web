@@ -4,7 +4,7 @@ export type PushProfile = Pick<AuthMe, "systemRole" | "selectedCompanyId"> & { u
 export type PushState = "unsupported" | "permission-default" | "permission-granted" | "permission-denied" | "subscribed" | "unsubscribed" | "error";
 export type Device = {
   id: string; label: string | null; platform: "WEB" | "ANDROID" | "IOS"; active: boolean;
-  revokedAt: string | null; expiresAt: string | null;
+  revokedAt: string | null; expiresAt: string | null; lastSeenAt?: string | null; lastUsedAt?: string | null;
   authorizations?: { active: boolean; revokedAt: string | null }[];
 };
 export type PublicConfig = { available: boolean; publicKey: string | null; environment: string | null };

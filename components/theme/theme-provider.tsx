@@ -5,7 +5,7 @@ import { persistTheme, readTheme, themePreference, resolvedTheme, type ThemePref
 function preference() {
   const current = document.documentElement.dataset.themePreference;
   if (current) return themePreference(current);
-  try { return readTheme(window.localStorage); } catch { return "system" as const; }
+  try { return readTheme(window.localStorage); } catch { return "dark" as const; }
 }
 function subscribe(listener: () => void) {
   window.addEventListener("storage", listener);
@@ -19,7 +19,7 @@ function subscribeSystem(listener: () => void) {
 }
 const ThemeContext = createContext<{ preference: ThemePreference; setPreference: (value: ThemePreference) => void } | null>(null);
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const value = useSyncExternalStore(subscribe, preference, () => "system" as const);
+  const value = useSyncExternalStore(subscribe, preference, () => "dark" as const);
   const systemDark = useSyncExternalStore(subscribeSystem, () => window.matchMedia("(prefers-color-scheme: dark)").matches, () => false);
   function setPreference(next: ThemePreference) {
     try { persistTheme(window.localStorage, next); } catch { /* Storage may be unavailable. */ }

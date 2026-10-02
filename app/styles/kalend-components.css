@@ -40,8 +40,6 @@
 .k-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
 .k-breadcrumb ol { display: flex; flex-wrap: wrap; list-style: none; gap: 8px; padding: 0; margin: 0 0 6px; font-size: 12px; }
 .k-breadcrumb li + li::before { content: '/'; color: var(--kalend-text-muted); margin-right: 8px; }
-.k-theme-control { display: grid; gap: 4px; font-size: 12px; color: var(--kalend-text-secondary); }
-.k-theme-control select { min-height: 44px; border: 1px solid var(--kalend-control-border); border-radius: 8px; padding: 8px; background: var(--kalend-surface); color: var(--kalend-text-primary); max-width: 100%; }
 .k-tooltip-wrap { display: block; position: relative; }
 .k-tooltip { position: absolute; left: calc(100% + 8px); top: 6px; z-index: 10; width: max-content; max-width: 220px; padding: 8px 12px; border-radius: 8px; background: var(--kalend-surface-elevated); color: var(--kalend-text-primary); box-shadow: var(--kalend-shadow); border: 1px solid var(--kalend-border); opacity: 0; pointer-events: none; }
 .k-tooltip-wrap:hover .k-tooltip, .k-tooltip-wrap:focus-within .k-tooltip { opacity: 1; }
@@ -57,3 +55,78 @@
 @media (min-width: 430px) { .k-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } }
 @media (min-width: 1280px) { .k-grid { grid-template-columns: repeat(4,minmax(0,1fr)); } }
 @media (prefers-reduced-motion: reduce) { .kalend-ui *, .kalend-ui *::before, .kalend-ui *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }
+
+.k-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.k-logo { display: inline-flex; align-items: center; gap: 12px; color: #e6bf67; }
+.k-logo-symbol { width: 44px; height: 44px; display: grid; place-items: center; border-radius: 12px; background: #090a0c; border: 1px solid #805a10; box-shadow: 0 0 18px #e6bf6718; flex-shrink: 0; }
+.k-logo-word { font-weight: 700; letter-spacing: .13em; color: var(--kalend-primary); text-shadow: 0 0 20px #e6bf6725; }
+.k-dashboard-metrics { margin-bottom: 24px; }
+.k-dashboard-metrics .k-metric { border-top: 2px solid var(--kalend-primary); }
+.k-dashboard-charts { display: grid; gap: 16px; grid-template-columns: minmax(0,1fr); margin-bottom: 24px; }
+.k-status-chart h2 { font-size: 17px; margin: 0 0 24px; }
+.k-status-chart dl { display: grid; gap: 16px; margin: 0; }
+.k-status-chart dt { font-size: 13px; color: var(--kalend-text-secondary); }
+.k-status-chart dd { margin: 4px 0 0; display: grid; grid-template-columns: 40px minmax(0,1fr); align-items: center; gap: 12px; font-variant-numeric: tabular-nums; }
+.k-chart-track { height: 8px; background: var(--kalend-primary-soft); border-radius: 6px; overflow: hidden; }
+.k-chart-track > span { display: block; height: 100%; background: var(--kalend-primary); border-radius: inherit; }
+.k-dashboard-details { margin-bottom: 24px; }
+.k-dashboard-details summary { min-height: 44px; cursor: pointer; color: var(--kalend-primary); padding: 12px 0; }
+@media (min-width: 1280px) { .k-dashboard-charts { grid-template-columns: repeat(3,minmax(0,1fr)); } }
+
+/* Theme bridge for the existing login/account/commercial screens. */
+body { background: var(--kalend-background); color: var(--kalend-text-primary); }
+.kalend-theme-root { --primary: var(--kalend-primary); --primary-dark: var(--kalend-primary-hover); --background: var(--kalend-background); --foreground: var(--kalend-text-primary); --muted: var(--kalend-text-muted); --border: var(--kalend-border); --white: var(--kalend-surface); min-height: 100dvh; }
+.kalend-ui.login-page { background: var(--kalend-background); }
+.login-brand { background: radial-gradient(ellipse at 10% 20%, #e6bf671c, transparent 55%), #090a0c; color: #f5f3ee; }
+.login-brand .k-logo-word,.brand-message h1 strong,.brand-pill { color: #e6bf67; }
+.brand-message p,.brand-footer { color: #c6c3bd; }
+.login-heading h2,.login-card label,.input-wrapper input { color: var(--kalend-text-primary); }
+.input-wrapper { background: var(--kalend-surface); border-color: var(--kalend-control-border); }
+.input-wrapper input { min-width: 0; }
+.input-wrapper input::placeholder,.input-wrapper > svg,.password-toggle { color: var(--kalend-text-muted); }
+.input-wrapper:focus-within { border-color: var(--kalend-primary); box-shadow: 0 0 0 3px var(--kalend-primary-soft); }
+.login-button { background: var(--kalend-primary); color: var(--kalend-on-primary); box-shadow: none; }
+.login-button:hover { background: var(--kalend-primary-hover); box-shadow: 0 0 20px #e6bf6718; }
+.password-toggle { min-width: 44px; min-height: 44px; }
+.k-login-theme { position: absolute; top: 16px; right: 16px; }
+.account-page :is(.commercial-panel,.commercial-notice,.push-devices li) { background: var(--kalend-surface); color: var(--kalend-text-primary); border-color: var(--kalend-border); }
+.account-page a { color: var(--kalend-primary); }
+.account-page button,.pwa-banner button { background: var(--kalend-surface); color: var(--kalend-text-primary); border: 1px solid var(--kalend-control-border); border-radius: 8px; min-height: 44px; }
+.account-page :is(h1,h2,p,dt,dd,small),.account-page .commercial-heading p { color: var(--kalend-text-primary); }
+.pwa-banner { background: var(--kalend-surface); color: var(--kalend-text-primary); border-color: var(--kalend-border); }
+@media (max-width: 767px) { .login-area { padding: 100px 24px 48px; }.mobile-logo { color: var(--kalend-primary); } }
+
+:where(a,button,input,select,textarea,summary):focus-visible { outline: 3px solid var(--kalend-primary); outline-offset: 3px; }
+.kalend-ui .commercial-page,.account-page { color: var(--kalend-text-primary); }
+.kalend-ui .commercial-page button:not(.commercial-primary):not(.k-button) { background: var(--kalend-surface); color: var(--kalend-text-primary); border-color: var(--kalend-control-border); }
+.kalend-ui .commercial-form :is(input,select),.account-page select { background: var(--kalend-surface); color: var(--kalend-text-primary); border-color: var(--kalend-control-border); }
+.kalend-ui .commercial-form :is(input[type=checkbox],input[type=radio]) { accent-color: var(--kalend-primary); }
+.kalend-ui .commercial-plan { background: var(--kalend-surface); border-color: var(--kalend-border); }
+.kalend-ui .commercial-plan.selected { background: var(--kalend-primary-soft); border-color: var(--kalend-primary); }
+
+@media (min-width: 360px) and (max-width: 767px) {
+  .k-dashboard-metrics { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; }
+  .k-dashboard-metrics .k-metric { padding: 16px; gap: 10px; }
+  .k-dashboard-metrics .k-metric span { font-size: 12px; min-height: 32px; }
+  .k-dashboard-metrics .k-metric strong { font-size: 22px; }
+}
+
+/* Account uses the shared shell and semantic design tokens. */
+.k-account-page { max-width: 1100px; min-width: 0; margin: 0 auto; }
+.k-account-heading { margin-bottom: 24px; }
+.k-account-heading h1 { font-size: clamp(24px,3vw,32px); margin: 8px 0 0; }
+.k-account-stack { display: grid; gap: 20px; }
+.k-account-stack h2 { font-size: 19px; margin: 0 0 12px; }
+.k-account-stack p { line-height: 1.6; }
+.k-account-identity { display: flex; align-items: center; gap: 20px; margin-bottom: 20px; }
+.k-account-identity > div { min-width: 0; }
+.k-account-identity p { margin: 4px 0 10px; }
+.k-account-identity .k-avatar-large { white-space: nowrap; line-height: 1; width: 80px; height: 80px; font-size: 26px; border: 1px solid var(--kalend-primary); }
+.k-account-data { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,240px),1fr)); gap: 20px; margin: 24px 0; }
+.k-account-data div { min-width: 0; }
+.k-account-data dt { font-size: 12px; color: var(--kalend-text-muted); margin-bottom: 8px; }
+.k-account-data dd { margin: 0; overflow-wrap: anywhere; line-height: 1.5; }
+.k-account-page .commercial-panel { margin-bottom: 0; }
+.k-account-page .commercial-form select { max-width: 100%; }
+.k-account-page .new-company-submit { width: auto; }
+@media (max-width: 414px) { .k-account-page .k-card { padding: 20px 16px; }.k-account-identity { gap: 12px; }.k-account-identity .k-avatar-large { width: 64px; height: 64px; font-size: 22px; } }
