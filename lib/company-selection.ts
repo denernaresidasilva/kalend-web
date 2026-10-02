@@ -7,8 +7,13 @@ export function linkedCompanies(profile: AuthMe) {
   return profile.memberships.filter((membership, index, memberships) =>
     !!membership.company.id && memberships.findIndex(row => row.company.id === membership.company.id) === index);
 }
+// These roles have no dedicated dashboard in the current App Router.
+// Keep the actual account route as an explicit temporary destination for each role.
+export const roleDestinations = { OWNER: "/conta", ADMIN: "/conta", RECEPTIONIST: "/conta", PROFESSIONAL: "/conta", CLIENT: "/conta" } as const;
 export function accountDestination(profile: AuthMe) {
-  return profile.systemRole === "SUPER_ADMIN" ? "/super-admin" : "/conta";
+  if (profile.systemRole === "SUPER_ADMIN") return "/super-admin";
+  const membership = profile.memberships.find(row => row.company.id === profile.selectedCompanyId);
+  return membership ? roleDestinations[membership.role] : "/conta";
 }
 export async function selectCompany(profile: AuthMe, companyId: string): Promise<AuthMe> {
   if (!companyId || !linkedCompanies(profile).some(row => row.company.id === companyId)) {

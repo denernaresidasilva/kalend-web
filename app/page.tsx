@@ -13,8 +13,9 @@ import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/auth-provider";
 import { CompanySelector } from "@/components/company-selector";
-import { accountDestination, linkedCompanies, prepareLogin, selectCompany } from "@/lib/company-selection";
+import { linkedCompanies, prepareLogin, selectCompany } from "@/lib/company-selection";
 import type { AuthMe } from "@/lib/contracts";
+import { loginDestination } from "@/lib/commercial-navigation";
 import { api, ApiError, jsonBody, sessionStarted } from "@/lib/api";
 
 export default function LoginPage() {
@@ -48,7 +49,7 @@ export default function LoginPage() {
           throw new Error("Não foi possível confirmar a empresa na sessão. Tente novamente.");
         }
       }
-      router.replace(accountDestination(prepared));
+      router.replace(await loginDestination(prepared));
     } catch (err) {
       setError(err instanceof ApiError && err.status === 401 ? "E-mail ou senha inválidos." : err instanceof Error ? err.message : "Não foi possível entrar.");
     } finally { (form.elements.namedItem("password") as HTMLInputElement).value = ""; setLoading(false); }
@@ -64,7 +65,7 @@ export default function LoginPage() {
       if (!refreshed || refreshed.user.id !== selected.user.id || refreshed.selectedCompanyId !== companyId) {
         throw new Error("Não foi possível confirmar a sessão. Atualize e tente novamente.");
       }
-      router.replace(accountDestination(refreshed));
+      router.replace(await loginDestination(refreshed));
     } catch (err) { setError(err instanceof Error ? err.message : "Não foi possível selecionar a empresa."); }
     finally { setLoading(false); }
   }

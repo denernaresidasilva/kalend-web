@@ -41,7 +41,7 @@ function fixture(count, options = {}) {
 function harness(file, mocks) {
   const states = []; const effects = []; let cursor = 0;
   const hooks = { ...React, useState(initial) { const i = cursor++; if (!(i in states)) states[i] = initial; return [states[i], next => states[i] = next]; }, useEffect(effect) { effects.push(effect); } };
-  const exports = load(file, { react: hooks, ...mocks }, { FormData: class { get(key) { return key === 'email' ? 'fixture@example.test' : 'fixture-password'; } } });
+  const exports = load(file, { react: hooks, '@/lib/commercial-navigation': { loginDestination: async profile => mocks['@/lib/company-selection'].accountDestination(profile) }, '@/components/commercial-entry': { CommercialEntry: ({ children }) => children }, ...mocks }, { FormData: class { get(key) { return key === 'email' ? 'fixture@example.test' : 'fixture-password'; } } });
   return { render(name, props) { cursor = 0; return exports[name](props); }, runEffects() { return effects.map(effect => effect()); } };
 }
 function nodes(tree, predicate) {

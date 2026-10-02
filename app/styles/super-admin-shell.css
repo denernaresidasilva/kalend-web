@@ -1,0 +1,78 @@
+.k-admin-shell { min-height: 100dvh; }
+.k-admin-sidebar { display: none; }
+.k-admin-workspace { min-width: 0; }
+.k-admin-header { padding: 12px 16px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; background: var(--kalend-surface); border-bottom: 1px solid var(--kalend-border); }
+.k-admin-context { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.k-admin-context > div { min-width: 0; }
+.k-admin-header .k-actions { gap: 8px; }
+.k-admin-user { position: relative; }
+.k-admin-user summary { min-height: 44px; display: flex; gap: 8px; align-items: center; cursor: pointer; padding: 8px; border-radius: 8px; }
+.k-avatar { width: 32px; height: 32px; display: grid; place-items: center; border-radius: 50%; background: var(--kalend-primary-soft); color: var(--kalend-primary); flex-shrink: 0; }
+.k-user-menu { position: absolute; z-index: 30; right: 0; top: 100%; padding: 16px; min-width: 200px; max-width: 80vw; background: var(--kalend-surface-elevated); border: 1px solid var(--kalend-border); border-radius: 12px; box-shadow: var(--kalend-shadow); display: grid; gap: 12px; }
+.k-user-menu a { min-height: 44px; display: flex; align-items: center; }
+.k-admin-main { max-width: 1536px; margin: 0 auto; padding: 24px 16px 48px; min-width: 0; }
+.k-skip { position: absolute; top: -100px; left: 16px; z-index: 100; background: var(--kalend-surface); padding: 12px; }.k-skip:focus { top: 8px; }
+.k-nav-brand { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; text-decoration: none; font-weight: 700; font-size: 22px; min-height: 44px; }
+.k-nav-brand .k-avatar { width: 40px; height: 40px; border-radius: 12px; }
+.k-nav-group { margin: 24px 0; }.k-nav-group h2 { font-size: 11px; letter-spacing: .1em; color: var(--kalend-text-muted); margin: 0 12px 8px; }
+.kalend-ui .k-nav-link { display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 10px 12px; border-radius: 8px; color: var(--kalend-text-secondary); text-decoration: none; font-size: 14px; }
+.kalend-ui .k-nav-link:hover { background: var(--kalend-primary-soft); }.kalend-ui .k-nav-link[aria-current="page"] { background: var(--kalend-primary-soft); color: var(--kalend-primary); font-weight: 600; }
+.k-nav-link svg { flex-shrink: 0; }.k-nav-collapse { margin-top: 16px; }
+@media (min-width: 768px) {
+  .k-admin-shell { display: grid; grid-template-columns: 72px minmax(0,1fr); }
+  .k-admin-sidebar { display: block; padding: 24px 10px; background: var(--kalend-surface); border-right: 1px solid var(--kalend-border); }
+  .k-admin-sidebar > div { position: sticky; top: 24px; }
+  .k-desktop-expanded-label, .k-admin-sidebar .k-nav-group h2 { display: none; }
+  .k-mobile-menu { display: none; }
+  .k-admin-main { padding: 32px 24px 48px; }
+  .k-admin-header { padding: 16px 24px; }
+}
+@media (min-width: 1024px) {
+  .k-admin-shell:not(.k-admin-collapsed) { grid-template-columns: 248px minmax(0,1fr); }
+  .k-admin-shell:not(.k-admin-collapsed) .k-desktop-expanded-label, .k-admin-shell:not(.k-admin-collapsed) .k-nav-group h2 { display: block; }
+  .k-admin-shell:not(.k-admin-collapsed) .k-tooltip { display: none; }
+}
+/* Presentation bridge for existing domain screens. Their handlers and contracts stay intact. */
+.k-admin-main :is(.companies-admin-page,.subscriptions-admin-page,.plans-admin-page,.new-company-page,.plan-form-page) { background: transparent; min-height: auto; color: var(--kalend-text-primary); }
+.k-admin-main :is(.companies-main,.admin-content,.plans-admin-main) { margin-left: 0; padding-top: 0; padding-bottom: 0; min-height: auto; }
+.k-admin-main :is(.companies-content,.commercial-page,.new-company-container,.plan-form-container,.plan-form-topbar-inner) { width: 100%; max-width: none; padding-left: 0; padding-right: 0; }
+.k-admin-main :is(.companies-topbar,.plan-form-topbar) { position: static; background: transparent; color: var(--kalend-text-primary); padding: 0 0 24px; height: auto; }
+.k-admin-main :is(.companies-panel,.companies-summary article,.companies-summary-card,.finance-secondary-stats > div,.commercial-panel,.gateway-card,.admin-plan-card,.plans-summary article,.new-company-section,.plan-form-card,.plan-preview-card,.plan-publish-card) { background: var(--kalend-surface); color: var(--kalend-text-primary); border-color: var(--kalend-border); box-shadow: var(--kalend-shadow); }
+.k-admin-main :is(h1,h2,h3,strong,dt) { color: var(--kalend-text-primary); }
+.k-admin-main :is(p,small,.company-muted,.dashboard-eyebrow,.metric-label) { color: var(--kalend-text-secondary); }
+.k-admin-main :is(input,select,textarea) { background: var(--kalend-surface); color: var(--kalend-text-primary); border-color: var(--kalend-control-border); min-height: 44px; }
+.k-admin-main input[type=checkbox],.k-admin-main input[type=radio] { min-height: 20px; accent-color: var(--kalend-primary); }
+.k-admin-main :is(button,.new-company-submit,.commercial-primary) { min-height: 44px; }
+.k-admin-main :is(.new-company-submit,.commercial-primary,.new-plan-button,.plan-save-button,.new-company-button) { background: var(--kalend-primary); color: var(--kalend-on-primary); border-color: var(--kalend-primary); }
+.k-admin-main :is(.companies-table-wrapper,.companies-table-wrap,.commercial-table-wrap) { overflow-x: auto; max-width: 100%; }
+.k-admin-main :is(td,th) { border-color: var(--kalend-border); }
+.k-admin-main :is(.commercial-notice,.communication-preview,.commercial-skeleton) { background: var(--kalend-primary-soft); color: var(--kalend-text-primary); }
+.k-settings-grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit,minmax(min(100%,280px),1fr)); }
+.k-settings-grid a { display: block; min-height: 44px; margin-top: 12px; }
+@media (max-width: 767px) { .k-admin-main .companies-summary { grid-template-columns: minmax(0,1fr); }.k-admin-main .companies-search { width: 100%; }.k-admin-main .companies-panel-header { flex-wrap: wrap; }.k-admin-main .plan-form-sidebar { grid-template-columns: minmax(0,1fr); } }
+.k-admin-main :is(.plan-field > span,.plan-setting-row > div > span,.plan-feature-editor-row span,.plan-preview-price span,.plan-preview-features div,.companies-summary span,.finance-secondary-stats span,.company-date,.company-name-cell small,.subscription-date-note,.new-company-section label,.new-company-section p,.new-company-plan span) { color: var(--kalend-text-secondary); font-size: 13px; }
+.k-admin-main :is(.plan-form-brand,.plan-preview-card,.plan-publish-card,.money-input,.number-suffix-input,.feature-checkbox,.plan-cancel-button,.plan-back-button,.plan-edit-button,.plan-feature-editor-row,.plan-form-sidebar .plan-form-card,.new-company-plan,.new-company-actions,.new-company-cancel,.companies-search,.companies-table thead,.companies-panel-header,.company-name-cell > div,.commercial-url) { background: var(--kalend-surface); color: var(--kalend-text-primary); border-color: var(--kalend-border); }
+.k-admin-main :is(.money-input,.number-suffix-input) { min-height: 48px; overflow: visible; }
+.k-admin-main :is(.money-input > span,.number-suffix-input > span,.plan-section-icon,.plans-summary-icon,.companies-summary-icon,.companies-empty-icon,.plan-preview-trial,.featured-plan-label) { background: var(--kalend-primary-soft); color: var(--kalend-primary); }
+.k-admin-main .money-input > span { min-height: 46px; }
+.k-admin-main :is(.feature-checkbox,.feature-delete-button,.plan-switch,.plan-edit-button,.plan-back-button) { min-width: 44px; min-height: 44px; flex-shrink: 0; }
+.k-admin-main .plan-switch { width: 48px; flex-basis: 48px; background: var(--kalend-control-border); }
+.k-admin-main .plan-switch span { top: 12px; background: var(--kalend-surface); }.k-admin-main .plan-switch.on { background: var(--kalend-primary); }.k-admin-main .plan-switch.on span { left: 27px; }
+.k-admin-main :is(.feature-checkbox.checked,.plan-preview-badge,.companies-new-button) { background: var(--kalend-primary); color: var(--kalend-on-primary); border-color: var(--kalend-primary); }
+.k-admin-main :is(.plan-feature-editor-row strong,.plan-feature-editor-row span) { white-space: normal; overflow: visible; }
+.k-admin-main :is(.plan-status,.subscription-status,.company-status,.finance-status,.commercial-badges span) { background: var(--kalend-surface); color: var(--kalend-text-secondary); border: 1px solid currentColor; }
+.k-admin-main :is(.plan-status.active,.subscription-status.success,.company-status.success,.finance-status-success) { color: var(--kalend-success); }
+.k-admin-main :is(.subscription-status.warning,.company-status.warning,.finance-status-warning) { color: var(--kalend-warning); }
+.k-admin-main :is(.subscription-status.danger,.company-status.danger,.finance-status-danger,.plan-form-error,.new-company-message.error) { background: var(--kalend-surface); color: var(--kalend-danger); border-color: var(--kalend-danger); }
+.k-admin-main :is(.subscription-status.trial,.plan-trial,.plan-preview-trial) { color: var(--kalend-primary); background: var(--kalend-primary-soft); }
+.k-admin-main .companies-table tbody tr:hover { background: var(--kalend-primary-soft); }
+.k-admin-main .companies-summary-card span { color: var(--kalend-text-secondary); }
+.k-admin-main .new-company-page { padding: 0; }
+.k-admin-main .plan-mobile-actions { position: static; margin-top: 24px; background: var(--kalend-surface); border-color: var(--kalend-border); }
+.k-admin-main .plan-mobile-actions button:first-child { background: var(--kalend-surface); color: var(--kalend-text-primary); border-color: var(--kalend-control-border); }
+.k-admin-main .plan-mobile-actions button:last-child { background: var(--kalend-primary); color: var(--kalend-on-primary); }
+.k-admin-main .plan-form-layout > *, .k-admin-main .companies-content > * { min-width: 0; }
+@media (max-width: 1023px) { .k-admin-main .plan-form-layout { grid-template-columns: minmax(0,1fr); }.k-admin-main .plan-form-sidebar { position: static; } }
+@media (max-width: 767px) { .k-admin-main .plan-form-sidebar,.k-admin-main .plan-fields-grid,.k-admin-main .plan-fields-grid.three,.k-admin-main .plan-features-editor { display: grid; grid-template-columns: minmax(0,1fr); }.k-admin-main .companies-topbar,.k-admin-main .companies-topbar-actions { flex-wrap: wrap; }.k-admin-main .commercial-details { grid-template-columns: minmax(0,1fr); }.k-admin-main .new-company-options { grid-template-columns: minmax(0,1fr); } }
+.k-nav-collapse { display: none; }
+@media (min-width: 1024px) { .k-nav-collapse { display: inline-flex; } }

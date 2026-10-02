@@ -3,20 +3,7 @@
 import { moneyToCents } from "@/lib/plan-values";
 import { apiFetch } from "@/lib/api";
 
-import {
-  ArrowLeft,
-  Building2,
-  Check,
-  ChevronDown,
-  CircleDollarSign,
-  CreditCard,
-  Loader2,
-  Plus,
-  Save,
-  Sparkles,
-  Trash2,
-  X,
-} from "lucide-react";
+import { ArrowLeft, Building2, Check, ChevronDown, CircleDollarSign, CreditCard, Loader2, Plus, Save, Sparkles, Trash2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 
@@ -226,7 +213,7 @@ export default function NewPlanPage() {
         <div className="plan-form-topbar-inner">
           <button
             type="button"
-            className="plan-back-button"
+            className="plan-back-button" aria-label="Voltar para planos"
             onClick={() =>
               router.push("/super-admin/planos")
             }
@@ -292,7 +279,7 @@ export default function NewPlanPage() {
         </div>
 
         {error && (
-          <div className="plan-form-error" role="alert">
+          <div id="plan-form-error" className="plan-form-error" role="alert">
             <X size={18} />
             <span>{error}</span>
           </div>
@@ -320,7 +307,7 @@ export default function NewPlanPage() {
 
                   <input
                     type="text"
-                    value={name}
+                    value={name} aria-invalid={error === "Informe o nome do plano." || undefined} aria-describedby={error === "Informe o nome do plano." ? "plan-form-error" : undefined}
                     onChange={(event) =>
                       handleNameChange(event.target.value)
                     }
@@ -333,7 +320,7 @@ export default function NewPlanPage() {
 
                   <input
                     type="text"
-                    value={code}
+                    value={code} aria-invalid={error === "Informe o código do plano." || undefined} aria-describedby={error === "Informe o código do plano." ? "plan-form-error" : undefined}
                     onChange={(event) =>
                       setCode(
                         generateCode(event.target.value)
@@ -386,7 +373,7 @@ export default function NewPlanPage() {
                     <input
                       type="text"
                       inputMode="decimal"
-                      value={monthlyPrice}
+                      value={monthlyPrice} aria-invalid={error === "Informe o valor mensal do plano." || undefined} aria-describedby={error === "Informe o valor mensal do plano." ? "plan-form-error" : undefined}
                       onChange={(event) =>
                         setMonthlyPrice(
                           event.target.value
@@ -572,6 +559,7 @@ export default function NewPlanPage() {
                   >
                     <button
                       type="button"
+                      aria-label={`Incluir recurso ${feature.name}`} aria-pressed={feature.enabled}
                       className={`feature-checkbox ${
                         feature.enabled ? "checked" : ""
                       }`}
@@ -610,7 +598,7 @@ export default function NewPlanPage() {
                   onChange={(event) =>
                     setNewFeatureName(event.target.value)
                   }
-                  placeholder="Nome do novo recurso"
+                  aria-label="Nome do novo recurso" placeholder="Nome do novo recurso"
                   onKeyDown={(event) => {
                     if (event.key === "Enter") {
                       event.preventDefault();
@@ -673,6 +661,7 @@ export default function NewPlanPage() {
 
                 <button
                   type="button"
+                  role="switch" aria-checked={isFeatured} aria-label="Plano em destaque"
                   className={`plan-switch ${
                     isFeatured ? "on" : ""
                   }`}

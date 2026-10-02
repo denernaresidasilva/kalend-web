@@ -49,15 +49,19 @@ export type PendingCheckout = {
   checkoutUrl: string | null; creationState: "READY" | "CREATING" | "CREATED" | "UNCERTAIN";
 };
 export type Regularization = {
-  companyId: string; accessAllowed: boolean; status: string; reason: string | null; trialExpired: boolean;
-  subscription: null | {
+  serverNow: string;
+  trial: { active: boolean; endsAt: string | null; remainingDays: number; expired: boolean };
+  financial: { requiresAction: boolean; status: string | null; paymentStatus?: string | null };
+  context: { companyId?: string; role: AuthMe["memberships"][number]["role"] | null; systemRole?: AuthMe["systemRole"]; commercialApplicable?: boolean };
+  companyId?: string | null;
+  subscription?: null | {
     id: string; status: string; planId: string; planName: string; billingInterval: "MONTHLY" | "YEARLY";
     trialStartedAt: string | null; trialEndsAt: string | null; currentPeriodEnd: string | null;
     graceEndsAt: string | null; cancelAtPeriodEnd: boolean;
   };
-  plans: PublicPlan[];
-  gateways: Array<{ provider: Gateway["gateway"]; environment: Gateway["environment"]; capabilities: Capabilities }>;
-  pendingCheckout: PendingCheckout | null;
+  plans?: PublicPlan[];
+  gateways?: Array<{ provider: Gateway["gateway"]; environment: Gateway["environment"]; capabilities: Capabilities }>;
+  pendingCheckout?: PendingCheckout | null;
 };
 export type SubscriptionDetail = {
   id: string; status: string; billingInterval: string; gateway: string; environment: string | null;

@@ -2,27 +2,8 @@
 
 import { apiFetch } from "@/lib/api";
 
-import {
-  Building2,
-  CheckCircle2,
-  CreditCard,
-  DollarSign,
-  LayoutDashboard,
-  Loader2,
-  Menu,
-  MessageSquare,
-  Search,
-  Settings,
-  ShieldCheck,
-  UserCheck,
-  UserRound,
-  Users,
-  UserX,
-  WalletCards,
-  Webhook,
-} from "lucide-react";
+import { Building2, CheckCircle2, Loader2, Search, ShieldCheck, UserCheck, UserRound, Users, UserX } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 
 type Company = {
   id: string;
@@ -62,44 +43,6 @@ type UsersSummary = {
   clients: number;
 };
 
-const menuItems = [
-  {
-    label: "Dashboard",
-    icon: LayoutDashboard,
-    path: "/super-admin",
-  },
-  {
-    label: "Empresas",
-    icon: Building2,
-    path: "/super-admin/empresas",
-  },
-  {
-    label: "Planos",
-    icon: CreditCard,
-    path: "/super-admin/planos",
-  },
-  {
-    label: "Assinaturas",
-    icon: WalletCards,
-    path: "/super-admin/assinaturas",
-  },
-  {
-    label: "Financeiro",
-    icon: DollarSign,
-    path: "/super-admin/financeiro",
-  },
-  {
-    label: "Webhooks",
-    icon: Webhook,
-    path: "/super-admin/webhooks",
-  },
-  {
-    label: "Usuários",
-    icon: Users,
-    path: "/super-admin/usuarios",
-  },
-  { label: "Comunicação", icon: MessageSquare, path: "/super-admin/comunicacao" },
-];
 
 function roleLabel(role: string) {
   const labels: Record<string, string> = {
@@ -122,7 +65,6 @@ function formatDate(value: string) {
 }
 
 export default function UsuariosPage() {
-  const router = useRouter();
 
   const [users, setUsers] = useState<User[]>([]);
   const [summary, setSummary] = useState<UsersSummary>({
@@ -223,51 +165,6 @@ export default function UsuariosPage() {
 
   return (
     <main className="companies-admin-page">
-      <aside className="companies-sidebar">
-        <div className="companies-brand">
-          <div className="companies-brand-icon">
-            K
-          </div>
-
-          <div>
-            <strong>Kalend</strong>
-            <span>Super Admin</span>
-          </div>
-        </div>
-
-        <nav className="companies-menu">
-          {menuItems.map((item) => {
-            const Icon = item.icon;
-
-            return (
-              <button
-                key={item.path}
-                type="button"
-                className={
-                  item.path ===
-                  "/super-admin/usuarios"
-                    ? "active"
-                    : ""
-                }
-                onClick={() =>
-                  router.push(item.path)
-                }
-              >
-                <Icon size={19} />
-                <span>{item.label}</span>
-              </button>
-            );
-          })}
-        </nav>
-
-        <button
-          type="button"
-          className="companies-settings"
-        >
-          <Settings size={19} />
-          <span>Configurações</span>
-        </button>
-      </aside>
 
       <section className="companies-main">
         <header className="companies-topbar">
@@ -279,16 +176,7 @@ export default function UsuariosPage() {
             </p>
           </div>
 
-          <div className="companies-topbar-user">
-            <div>
-              <strong>Super Admin</strong>
-              <span>Administrador</span>
-            </div>
 
-            <div className="companies-avatar">
-              SA
-            </div>
-          </div>
         </header>
 
         <div className="companies-content">
@@ -376,7 +264,7 @@ export default function UsuariosPage() {
 
                 <input
                   type="text"
-                  placeholder="Buscar usuário..."
+                  aria-label="Buscar usuário" placeholder="Buscar usuário..."
                   value={search}
                   onChange={(event) =>
                     setSearch(event.target.value)
@@ -386,7 +274,7 @@ export default function UsuariosPage() {
             </div>
 
             {loading ? (
-              <div className="companies-empty">
+              <div className="companies-empty" role={error ? "alert" : "status"}>
                 <Loader2
                   size={30}
                   className="animate-spin"
@@ -397,7 +285,7 @@ export default function UsuariosPage() {
                 </strong>
               </div>
             ) : error ? (
-              <div className="companies-empty">
+              <div className="companies-empty" role={error ? "alert" : "status"}>
                 <UserX size={34} />
 
                 <strong>{error}</strong>
@@ -408,7 +296,7 @@ export default function UsuariosPage() {
                 </span>
               </div>
             ) : filteredUsers.length === 0 ? (
-              <div className="companies-empty">
+              <div className="companies-empty" role={error ? "alert" : "status"}>
                 <Users size={38} />
 
                 <strong>
@@ -424,15 +312,15 @@ export default function UsuariosPage() {
                 </span>
               </div>
             ) : (
-              <div className="companies-table-wrapper">
+              <div className="companies-table-wrapper" role="region" aria-label="Tabela de usuarios" tabIndex={0}>
                 <table className="companies-table">
                   <thead>
                     <tr>
-                      <th>Usuário</th>
-                      <th>Empresa</th>
-                      <th>Função</th>
-                      <th>Status</th>
-                      <th>Cadastro</th>
+                      <th scope="col">Usuário</th>
+                      <th scope="col">Empresa</th>
+                      <th scope="col">Função</th>
+                      <th scope="col">Status</th>
+                      <th scope="col">Cadastro</th>
                     </tr>
                   </thead>
 
@@ -546,55 +434,6 @@ export default function UsuariosPage() {
           </section>
         </div>
       </section>
-
-      <nav className="companies-mobile-nav">
-        <button
-          type="button"
-          onClick={() =>
-            router.push("/super-admin")
-          }
-        >
-          <LayoutDashboard size={20} />
-          <span>Início</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() =>
-            router.push(
-              "/super-admin/empresas",
-            )
-          }
-        >
-          <Building2 size={20} />
-          <span>Empresas</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() =>
-            router.push(
-              "/super-admin/planos",
-            )
-          }
-        >
-          <CreditCard size={20} />
-          <span>Planos</span>
-        </button>
-
-        <button
-          type="button"
-          className="active"
-        >
-          <Users size={20} />
-          <span>Usuários</span>
-        </button>
-
-        <button type="button">
-          <Menu size={20} />
-          <span>Mais</span>
-        </button>
-      </nav>
     </main>
   );
 }

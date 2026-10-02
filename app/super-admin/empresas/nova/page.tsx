@@ -2,15 +2,7 @@
 
 import { apiFetch } from "@/lib/api";
 
-import {
-  ArrowLeft,
-  Building2,
-  CalendarDays,
-  CheckCircle2,
-  CreditCard,
-  Loader2,
-  UserRound,
-} from "lucide-react";
+import { ArrowLeft, Building2, CalendarDays, CheckCircle2, CreditCard, Loader2, UserRound } from "lucide-react";
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -435,7 +427,7 @@ export default function NewCompanyPage() {
 
                 <input
                   type="password"
-                  value={ownerPassword}
+                  value={ownerPassword} aria-invalid={error.startsWith("A senha precisa") || undefined} aria-describedby={error.startsWith("A senha precisa") ? "new-company-error" : undefined}
                   onChange={(event) =>
                     setOwnerPassword(
                       event.target.value,
@@ -640,13 +632,13 @@ export default function NewCompanyPage() {
           </section>
 
           {error && (
-            <div className="new-company-message error">
+            <div id="new-company-error" className="new-company-message error" role="alert">
               {error}
             </div>
           )}
 
           {success && (
-            <div className="new-company-message success">
+            <div className="new-company-message success" role="status">
               <CheckCircle2 size={18} />
               {success}
             </div>

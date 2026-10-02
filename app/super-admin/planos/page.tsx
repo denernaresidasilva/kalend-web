@@ -1,28 +1,8 @@
 "use client";
 
-import { useAuth } from "@/components/auth-provider";
 import { apiFetch } from "@/lib/api";
 
-import {
-  Building2,
-  CalendarDays,
-  Check,
-  CircleDollarSign,
-  CreditCard,
-  Crown,
-  Edit3,
-  LayoutDashboard,
-  Loader2,
-  Menu,
-  MessageSquare,
-  Plus,
-  Settings,
-  Sparkles,
-  Users,
-  WalletCards,
-  Webhook,
-  X,
-} from "lucide-react";
+import { Building2, Check, CreditCard, Crown, Edit3, Loader2, Plus, Sparkles, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -54,44 +34,6 @@ type Plan = {
   features: Feature[];
 };
 
-const menuItems = [
-  {
-    label: "Dashboard",
-    icon: LayoutDashboard,
-    path: "/super-admin",
-  },
-  {
-    label: "Empresas",
-    icon: Building2,
-    path: "/super-admin/empresas",
-  },
-  {
-    label: "Planos",
-    icon: CreditCard,
-    path: "/super-admin/planos",
-  },
-  {
-    label: "Assinaturas",
-    icon: WalletCards,
-    path: "/super-admin/assinaturas",
-  },
-  {
-    label: "Financeiro",
-    icon: CircleDollarSign,
-    path: "/super-admin/financeiro",
-  },
-  {
-    label: "Webhooks",
-    icon: Webhook,
-    path: "/super-admin/webhooks",
-  },
-  {
-    label: "Usuários",
-    icon: Users,
-    path: "/super-admin/usuarios",
-  },
-  { label: "Comunicação", icon: MessageSquare, path: "/super-admin/comunicacao" },
-];
 
 function formatMoney(value: number) {
   return new Intl.NumberFormat("pt-BR", {
@@ -102,11 +44,7 @@ function formatMoney(value: number) {
 
 export default function PlansPage() {
   const router = useRouter();
-  const { profile } = useAuth();
-  const adminName = profile?.user.name ?? "";
-  const adminInitials = adminName.trim().split(/\s+/).slice(0, 2).map(name => name[0]).join("").toUpperCase();
 
-  const [menuOpen, setMenuOpen] = useState(false);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -114,7 +52,6 @@ export default function PlansPage() {
 
   const navigate = (path: string) => {
     router.push(path);
-    setMenuOpen(false);
   };
 
   useEffect(() => {
@@ -145,106 +82,11 @@ export default function PlansPage() {
   }, [attempt]);
 
   return (
-    <main className="admin-shell">
-      <aside className={`admin-sidebar ${menuOpen ? "open" : ""}`}>
-        <div className="admin-brand">
-          <div className="admin-brand-icon">
-            <CalendarDays size={22} />
-            <span>K</span>
-          </div>
-
-          <strong>Kalend</strong>
-
-          <button
-            className="sidebar-close"
-            onClick={() => setMenuOpen(false)}
-            aria-label="Fechar menu"
-          >
-            <X size={22} />
-          </button>
-        </div>
-
-        <div className="admin-badge">SUPER ADMIN</div>
-
-        <nav className="admin-nav">
-          {menuItems.map((item) => {
-            const Icon = item.icon;
-
-            return (
-              <button
-                key={item.label}
-                className={`admin-nav-item ${
-                  item.path === "/super-admin/planos"
-                    ? "active"
-                    : ""
-                }`}
-                onClick={() => navigate(item.path)}
-              >
-                <Icon size={19} />
-                <span>{item.label}</span>
-              </button>
-            );
-          })}
-        </nav>
-
-        <div className="admin-sidebar-bottom">
-          <button
-            className="admin-nav-item"
-            onClick={() =>
-              navigate("/super-admin/configuracoes")
-            }
-          >
-            <Settings size={19} />
-            <span>Configurações</span>
-          </button>
-
-          <div className="admin-profile">
-            <div className="admin-avatar">{adminInitials}</div>
-
-            <div>
-              <strong>{adminName}</strong>
-              <span>Super Admin</span>
-            </div>
-          </div>
-        </div>
-      </aside>
-
-      {menuOpen && (
-        <button
-          className="sidebar-overlay"
-          onClick={() => setMenuOpen(false)}
-          aria-label="Fechar menu"
-        />
-      )}
+    <main className="k-plans-page">
 
       <section className="admin-content">
-        <header className="admin-topbar">
-          <button
-            className="mobile-menu-button"
-            onClick={() => setMenuOpen(true)}
-            aria-label="Abrir menu"
-          >
-            <Menu size={23} />
-          </button>
 
-          <div className="mobile-admin-logo">
-            <div className="mobile-admin-mark">K</div>
-            <strong>Kalend</strong>
-          </div>
-
-          <div className="admin-top-actions">
-            <div className="top-profile">
-              <div className="admin-avatar small">{adminInitials}</div>
-
-              <div>
-                <strong>{adminName}</strong>
-                <span>Super Admin</span>
-              </div>
-            </div>
-          </div>
-        </header>
-
-        <div className="admin-main plans-admin-main">
+        <div className="plans-admin-main">
           <div className="plans-heading">
             <div>
               <span className="dashboard-eyebrow">
@@ -496,41 +338,6 @@ export default function PlansPage() {
             </section>
           )}
         </div>
-
-        <nav className="admin-mobile-nav">
-          <button
-            onClick={() => navigate("/super-admin")}
-          >
-            <LayoutDashboard size={21} />
-            <span>Início</span>
-          </button>
-
-          <button
-            onClick={() =>
-              navigate("/super-admin/empresas")
-            }
-          >
-            <Building2 size={21} />
-            <span>Empresas</span>
-          </button>
-
-          <button
-            className="active"
-            onClick={() =>
-              navigate("/super-admin/planos")
-            }
-          >
-            <CreditCard size={21} />
-            <span>Planos</span>
-          </button>
-
-          <button
-            onClick={() => setMenuOpen(true)}
-          >
-            <Menu size={21} />
-            <span>Menu</span>
-          </button>
-        </nav>
       </section>
     </main>
   );

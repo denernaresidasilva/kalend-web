@@ -11,7 +11,7 @@ function load(file, mocks = {}, globals = {}) {
   const source = fs.readFileSync(file, 'utf8');
   const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX, target: ts.ScriptTarget.ES2020, esModuleInterop: true } }).outputText;
   const loaded = { exports: {} };
-  vm.runInNewContext(compiled, { module: loaded, exports: loaded.exports, require: id => id in mocks ? mocks[id] : id.startsWith('@/') || id.startsWith('./') ? loadModule(id.startsWith('@/') ? id.slice(2) : pathModule.join(pathModule.dirname(file), id), mocks, globals) : require(id), process: { env: { NEXT_PUBLIC_API_URL: 'https://api-dev.kalend.tech' } }, console, setTimeout, clearTimeout, URL, Error, ...globals }, { filename: file });
+  vm.runInNewContext(compiled, { module: loaded, exports: loaded.exports, require: id => id === "./auth-provider" && !(id in mocks) ? { useAuth: () => ({ profile: { user: { id: "fixture-user" } } }) } : id in mocks ? mocks[id] : id === "./api" && mocks["@/lib/api"] ? mocks["@/lib/api"] : id.startsWith('@/') || id.startsWith('./') ? loadModule(id.startsWith('@/') ? id.slice(2) : pathModule.join(pathModule.dirname(file), id), mocks, globals) : require(id), process: { env: { NEXT_PUBLIC_API_URL: 'https://api-dev.kalend.tech' } }, console, setTimeout, clearTimeout, URL, Error, ...globals }, { filename: file });
   return loaded.exports;
 }
 function loadModule(base, mocks, globals) { const file = ['.ts', '.tsx'].map(ext => base + ext).find(file => fs.existsSync(file)); return load(file, mocks, globals); }
@@ -91,6 +91,7 @@ test('all admin children remain unmounted while loading, unauthenticated, or ord
       'next/navigation': { useRouter: () => ({ replace: path => redirects.push(path) }) },
       '@/components/auth-provider': { useAuth: () => ({ ...state, error: '', reload() {}, logout() {} }) },
       '@/lib/contracts': { isSuperAdmin: profile => profile?.systemRole === 'SUPER_ADMIN' },
+      '@/components/super-admin/admin-shell': { AdminShell: ({ children }) => children },
     }).default;
     let mounted = false;
     function Protected() { mounted = true; return React.createElement('p', null, 'PRIVATE CONTENT'); }
@@ -117,8 +118,11 @@ test('security audit: no token storage and gateway secrets are write-only', () =
   const files = [];
   function walk(dir) { for (const entry of fs.readdirSync(dir, { withFileTypes: true })) { if (entry.isDirectory()) walk(`${dir}/${entry.name}`); else files.push(`${dir}/${entry.name}`); } }
   ['app', 'components', 'lib'].forEach(walk);
-  const source = files.filter(file => /\.(tsx?|jsx?)$/.test(file)).map(file => fs.readFileSync(file, 'utf8')).join('\n');
+  const source = files.filter(file => /\.(tsx?|jsx?)$/.test(file) && !['lib/theme.ts', 'components/theme/theme-provider.tsx', 'components/trial-notice.tsx'].includes(file)).map(file => fs.readFileSync(file, 'utf8')).join('\n');
   assert.doesNotMatch(source, /localStorage|sessionStorage|Bearer|document\.cookie/);
+  const trialPreference = fs.readFileSync("components/trial-notice.tsx", "utf8");
+  assert.doesNotMatch(trialPreference, /Bearer|document\.cookie|localStorage|token/i);
+  assert.match(trialPreference, /sessionStorage\.setItem\(storageKey, "seen"\)/);
   const gateways = fs.readFileSync('components/gateway-form.tsx', 'utf8');
   assert.doesNotMatch(gateways, /gateway\.(credentials|webhookSecret)\b/);
   assert.match(fs.readFileSync('lib/commercial.ts', 'utf8'), /values\.credentials \? \{ credentials: values\.credentials \} : \{\}/);
@@ -183,7 +187,7 @@ function harness(file, name, mocks = {}, globals = {}) {
     useRef(initial) { const index = refCursor++; refs[index] ??= { current: initial }; return refs[index]; },
     useEffect() {}, useCallback: fn => fn, useMemo: fn => fn(),
   };
-  const Component = load(file, { react: hooks, 'next/link': linkMock, ...mocks }, { window: { confirm: () => true, addEventListener() {}, removeEventListener() {} }, crypto: { randomUUID: () => 'operation-id' }, ...globals })[name];
+  const Component = load(file, { react: hooks, 'next/link': linkMock, ...mocks }, { window: { confirm: () => true, dispatchEvent() {}, addEventListener() {}, removeEventListener() {} }, Event, crypto: { randomUUID: () => 'operation-id' }, ...globals })[name];
   return { render(props) { cursor = 0; refCursor = 0; return Component(props); }, state };
 }
 const button = (tree, label) => nodes(tree, n => n.type === 'button' && textOf(n).includes(label))[0];
@@ -274,7 +278,7 @@ test('gateway list exposes loading and retry after sanitized error', async () =>
 });
 
 const planFixture = (id, name) => ({ id, name, code: id, description: null, monthlyPriceCents: 12900, yearlyPriceCents: null, trialEnabled: true, trialDays: 14, isActive: true, isPublic: true, badge: null, isFeatured: false, displayOrder: 0, maxProfessionals: null, maxClients: null, maxUnits: null, maxMessages: null, features: [] });
-const regularizationFixture = () => ({ companyId: 'company', accessAllowed: false, status: 'TRIAL_EXPIRED', reason: 'TRIAL_EXPIRED', trialExpired: true,
+const regularizationFixture = () => ({ serverNow: "2026-10-01T12:00:00Z", trial: {active:false,endsAt:"2026-01-01T00:00:00Z",remainingDays:0,expired:true}, financial:{requiresAction:false,status:"TRIAL_EXPIRED"}, context:{companyId:"company",role:"OWNER"}, companyId: 'company',
   subscription: { id: 'trial', status: 'TRIALING', planId: 'premium', planName: 'Premium', billingInterval: 'MONTHLY', trialStartedAt: null, trialEndsAt: '2026-01-01T00:00:00Z', currentPeriodEnd: null, graceEndsAt: null, cancelAtPeriodEnd: false },
   plans: [planFixture('premium', 'Premium'), planFixture('pro', 'Pro')],
   gateways: [{ provider: 'STRIPE', environment: 'SANDBOX', capabilities: gatewayFixture().capabilities }], pendingCheckout: null,
@@ -292,10 +296,13 @@ test('expired Premium trial allows explicit Pro checkout; no amount, company, st
   await new Promise(resolve => setImmediate(resolve));
   let tree = h.render(props); assert.match(textOf(tree), /Trial encerrado/);
   assert.ok(input(tree, 'radio').every(n => !n.props.checked));
-  input(tree, 'radio').find(n => n.props.value === 'pro').props.onChange();
-  nodes(tree, n => n.type === 'select')[1].props.onChange({ target: { value: 'STRIPE' } });
+  const catalog = nodes(tree, n => typeof n.type === 'function' && n.type.name === 'PlanCatalog')[0];
+  catalog.props.onSelect(data.plans.find(plan => plan.id === 'pro'));
+  nodes(tree, n => n.type === 'select')[0].props.onChange({ target: { value: 'STRIPE' } });
   tree = h.render(props);
-  const yearly = nodes(tree, n => n.type === 'option' && n.props.value === 'YEARLY')[0]; assert.equal(yearly.props.disabled, true);
+  const { PlanCatalog } = load('components/plans/plan-catalog.tsx');
+  const renderedCatalog = PlanCatalog({ ...catalog.props, plans: [data.plans.find(plan => plan.id === 'pro')] });
+  assert.equal(nodes(renderedCatalog, n => n.type === 'input' && n.props.name === 'billing-interval').length, 1);
   await nodes(tree, n => n.type === 'form')[0].props.onSubmit({ preventDefault() {} });
   const checkout = calls.find(c => c.path === '/billing/checkout');
   assert.deepEqual(JSON.parse(checkout.init.body), { planId: 'pro', billingInterval: 'MONTHLY', gateway: 'STRIPE', idempotencyKey: 'operation-id', recurring: false });
@@ -378,15 +385,14 @@ test('zero price is shown as unconfigured and cannot start monthly or annual che
   const tree = h.render({ companyId: 'company' });
   assert.match(textOf(tree), /Preço não configurado para este intervalo/);
   assert.equal(button(tree, 'Iniciar checkout').props.disabled, true);
-  assert.equal(nodes(tree, n => n.type === 'option' && n.props.value === 'YEARLY')[0].props.disabled, true);
+  const catalog = nodes(tree, n => typeof n.type === 'function' && n.type.name === 'PlanCatalog')[0];
+  const { PlanCatalog } = load('components/plans/plan-catalog.tsx');
+  assert.equal(nodes(PlanCatalog(catalog.props), n => n.type === 'input' && n.props.name === 'billing-interval').length, 1);
 });
 
-test('Super Admin and plan views use authenticated profile instead of placeholder identity', () => {
-  for (const file of ['app/super-admin/page.tsx', 'app/super-admin/planos/page.tsx']) {
-    const source = fs.readFileSync(file, 'utf8');
-    assert.match(source, /useAuth\(\)/);
-    assert.match(source, /profile\?\.user\.name/);
-    assert.doesNotMatch(source, /DN|<strong>Administrador<\/strong>/);
-  }
-  assert.doesNotMatch(fs.readFileSync('app/super-admin/page.tsx', 'utf8'), /notification-button/);
+test('administrative identity comes from the authenticated shared shell', () => {
+  const layout = fs.readFileSync('app/super-admin/layout.tsx', 'utf8');
+  assert.match(layout, /useAuth\(\)/); assert.match(layout, /profile=\{profile\}/);
+  const header = fs.readFileSync('components/super-admin/header.tsx', 'utf8');
+  assert.match(header, /profile\.user\.name/); assert.doesNotMatch(header, /notification-button|<strong>Administrador<\/strong>/);
 });

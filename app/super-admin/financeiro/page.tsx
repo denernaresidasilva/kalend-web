@@ -4,27 +4,8 @@ import { ReconcileAction } from "@/components/reconcile-action";
 import Link from "next/link";
 import { apiFetch } from "@/lib/api";
 
-import {
-  AlertCircle,
-  Building2,
-  CheckCircle2,
-  Clock3,
-  CreditCard,
-  DollarSign,
-  LayoutDashboard,
-  Loader2,
-  Menu,
-  MessageSquare,
-  ReceiptText,
-  Search,
-  Settings,
-  TrendingUp,
-  Users,
-  Webhook,
-  WalletCards,
-} from "lucide-react";
+import { AlertCircle, CheckCircle2, Clock3, DollarSign, Loader2, ReceiptText, Search, TrendingUp } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 
 type Payment = {
   id: string;
@@ -65,44 +46,6 @@ type FinanceSummary = {
   refundedCount: number;
 };
 
-const menuItems = [
-  {
-    label: "Dashboard",
-    icon: LayoutDashboard,
-    href: "/super-admin",
-  },
-  {
-    label: "Empresas",
-    icon: Building2,
-    href: "/super-admin/empresas",
-  },
-  {
-    label: "Planos",
-    icon: CreditCard,
-    href: "/super-admin/planos",
-  },
-  {
-    label: "Assinaturas",
-    icon: WalletCards,
-    href: "/super-admin/assinaturas",
-  },
-  {
-    label: "Financeiro",
-    icon: DollarSign,
-    href: "/super-admin/financeiro",
-  },
-  {
-    label: "Webhooks",
-    icon: Webhook,
-    href: "/super-admin/webhooks",
-  },
-  {
-    label: "Usuários",
-    icon: Users,
-    href: "/super-admin/usuarios",
-  },
-  { label: "Comunicação", icon: MessageSquare, href: "/super-admin/comunicacao" },
-];
 
 function formatMoney(cents: number) {
   return new Intl.NumberFormat("pt-BR", {
@@ -158,7 +101,6 @@ function statusClass(status: string) {
 }
 
 export default function FinanceiroPage() {
-  const router = useRouter();
 
   const [payments, setPayments] = useState<Payment[]>([]);
   const [summary, setSummary] = useState<FinanceSummary | null>(null);
@@ -249,54 +191,6 @@ export default function FinanceiroPage() {
 
   return (
     <main className="companies-admin-page">
-      <aside className="companies-sidebar">
-        <div className="companies-brand">
-          <div>K</div>
-
-          <span>
-            <strong>Kalend</strong>
-            <small>Super Admin</small>
-          </span>
-        </div>
-
-        <nav className="companies-menu">
-          {menuItems.map((item) => {
-            const Icon = item.icon;
-
-            return (
-              <button
-                key={item.href}
-                type="button"
-                className={
-                  item.href ===
-                  "/super-admin/financeiro"
-                    ? "active"
-                    : ""
-                }
-                onClick={() =>
-                  router.push(item.href)
-                }
-              >
-                <Icon size={18} />
-                <span>{item.label}</span>
-              </button>
-            );
-          })}
-        </nav>
-
-        <button
-          type="button"
-          className="companies-settings"
-          onClick={() =>
-            router.push(
-              "/super-admin/configuracoes"
-            )
-          }
-        >
-          <Settings size={18} />
-          <span>Configurações</span>
-        </button>
-      </aside>
 
       <section className="companies-main">
         <header className="companies-topbar">
@@ -425,7 +319,7 @@ export default function FinanceiroPage() {
 
                 <input
                   type="text"
-                  placeholder="Buscar pagamento..."
+                  aria-label="Buscar pagamento" placeholder="Buscar pagamento..."
                   value={search}
                   onChange={(event) =>
                     setSearch(
@@ -437,7 +331,7 @@ export default function FinanceiroPage() {
             </div>
 
             {loading && (
-              <div className="companies-state">
+              <div className="companies-state" role="status">
                 <Loader2
                   size={25}
                   className="plans-spinner"
@@ -450,7 +344,7 @@ export default function FinanceiroPage() {
             )}
 
             {!loading && error && (
-              <div className="companies-state error">
+              <div className="companies-state error" role="alert">
                 <AlertCircle size={29} />
 
                 <strong>
@@ -464,7 +358,7 @@ export default function FinanceiroPage() {
             {!loading &&
               !error &&
               payments.length === 0 && (
-                <div className="companies-state">
+                <div className="companies-state" role="status">
                   <div className="companies-empty-icon">
                     <ReceiptText size={27} />
                   </div>
@@ -486,7 +380,7 @@ export default function FinanceiroPage() {
               !error &&
               payments.length > 0 &&
               filteredPayments.length === 0 && (
-                <div className="companies-state">
+                <div className="companies-state" role="status">
                   <Search size={27} />
 
                   <strong>
@@ -503,17 +397,17 @@ export default function FinanceiroPage() {
             {!loading &&
               !error &&
               filteredPayments.length > 0 && (
-                <div className="companies-table-wrap">
+                <div className="companies-table-wrap" role="region" aria-label="Tabela de financeiro" tabIndex={0}>
                   <table className="companies-table">
                     <thead>
                       <tr>
-                        <th>Empresa</th>
-                        <th>Plano</th>
-                        <th>Valor</th>
-                        <th>Status</th>
-                        <th>Gateway</th>
-                        <th>Pagamento</th>
-                        <th>Data</th><th>Detalhes</th>
+                        <th scope="col">Empresa</th>
+                        <th scope="col">Plano</th>
+                        <th scope="col">Valor</th>
+                        <th scope="col">Status</th>
+                        <th scope="col">Gateway</th>
+                        <th scope="col">Pagamento</th>
+                        <th scope="col">Data</th><th scope="col">Detalhes</th>
                       </tr>
                     </thead>
 
@@ -599,55 +493,6 @@ export default function FinanceiroPage() {
           </section>
         </div>
       </section>
-
-      <nav className="companies-mobile-nav">
-        <button
-          type="button"
-          onClick={() =>
-            router.push("/super-admin")
-          }
-        >
-          <LayoutDashboard size={19} />
-          <span>Início</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() =>
-            router.push(
-              "/super-admin/empresas"
-            )
-          }
-        >
-          <Building2 size={19} />
-          <span>Empresas</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() =>
-            router.push(
-              "/super-admin/planos"
-            )
-          }
-        >
-          <CreditCard size={19} />
-          <span>Planos</span>
-        </button>
-
-        <button
-          type="button"
-          className="active"
-        >
-          <DollarSign size={19} />
-          <span>Financeiro</span>
-        </button>
-
-        <button type="button">
-          <Menu size={19} />
-          <span>Menu</span>
-        </button>
-      </nav>
     </main>
   );
 }

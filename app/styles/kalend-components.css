@@ -1,0 +1,59 @@
+.kalend-ui { min-width: 0; overflow-wrap: anywhere; }
+.kalend-ui :where(a,button,input,select,textarea,summary,[tabindex]):focus-visible { outline: 3px solid var(--kalend-primary); outline-offset: 3px; }
+.kalend-ui a { color: var(--kalend-primary); }
+.kalend-ui button, .kalend-ui input, .kalend-ui select, .kalend-ui textarea { font: inherit; }
+.kalend-ui :where(button,input,select,textarea):disabled { cursor: not-allowed; opacity: .65; }
+.k-button, .kalend-ui .k-link-button { min-height: 44px; padding: 10px 16px; border: 1px solid transparent; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; font-weight: 600; text-decoration: none; white-space: normal; transition: background .15s; }
+.k-button-primary, .kalend-ui .k-link-button { background: var(--kalend-primary); color: var(--kalend-on-primary); }
+.k-button-primary:hover:not(:disabled), .kalend-ui .k-link-button:hover { background: var(--kalend-primary-hover); }
+.k-button-secondary { background: var(--kalend-surface); color: var(--kalend-text-primary); border-color: var(--kalend-control-border); }
+.k-button-ghost { background: transparent; color: var(--kalend-text-secondary); }
+.k-button-ghost:hover:not(:disabled) { background: var(--kalend-primary-soft); }
+.k-button-danger { color: var(--kalend-danger); background: var(--kalend-surface); border-color: var(--kalend-danger); }
+.k-icon-button { min-width: 44px; padding: 10px; }
+.k-card { min-width: 0; border: 1px solid var(--kalend-border); border-radius: var(--kalend-radius); background: var(--kalend-surface); padding: 24px; box-shadow: var(--kalend-shadow); }
+.k-grid { display: grid; gap: 16px; grid-template-columns: minmax(0,1fr); }
+.k-metric { display: flex; flex-direction: column; gap: 12px; }
+.k-metric span { color: var(--kalend-text-secondary); font-size: 14px; }
+.k-metric strong { font-size: clamp(24px,2.5vw,32px); line-height: 1.2; font-variant-numeric: tabular-nums; }
+.k-section { margin: 32px 0; }
+.k-section h2 { font-size: 20px; margin: 0 0 16px; }
+.k-section h3 { margin: 24px 0 12px; }
+.k-muted { color: var(--kalend-text-muted); font-size: 14px; line-height: 1.6; }
+.k-badge { display: inline-flex; align-items: center; width: fit-content; font-size: 12px; padding: 4px 10px; border: 1px solid currentColor; border-radius: 999px; color: var(--kalend-text-secondary); }
+.k-badge-primary { color: var(--kalend-primary); background: var(--kalend-primary-soft); }
+.k-badge-success { color: var(--kalend-success); }
+.k-badge-warning { color: var(--kalend-warning); }
+.k-badge-danger { color: var(--kalend-danger); }
+.k-badge-info { color: var(--kalend-info); }
+.k-alert { border: 1px solid currentColor; border-radius: 8px; padding: 16px; margin: 16px 0; line-height: 1.6; color: var(--kalend-info); background: var(--kalend-surface); }
+.k-alert-danger { color: var(--kalend-danger); }.k-alert-warning { color: var(--kalend-warning); }.k-alert-success { color: var(--kalend-success); }
+.k-empty, .k-loading, .k-skeleton { padding: 32px 16px; color: var(--kalend-text-secondary); }
+.k-empty { display: grid; justify-items: center; gap: 12px; text-align: center; }
+.k-loading { display: flex; align-items: center; gap: 12px; }
+.k-spinner { display: inline-block; width: 20px; height: 20px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: k-spin .8s linear infinite; }
+@keyframes k-spin { to { transform: rotate(360deg); } }
+.k-skeleton div { height: 80px; border-radius: 8px; background: var(--kalend-primary-soft); margin-top: 16px; }
+.k-page-header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: start; gap: 16px; margin: 0 0 32px; }
+.k-page-header h1 { font-size: clamp(24px,3vw,32px); line-height: 1.2; margin: 0 0 8px; letter-spacing: -.03em; }
+.k-page-header p { color: var(--kalend-text-secondary); margin: 0; line-height: 1.6; }
+.k-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.k-breadcrumb ol { display: flex; flex-wrap: wrap; list-style: none; gap: 8px; padding: 0; margin: 0 0 6px; font-size: 12px; }
+.k-breadcrumb li + li::before { content: '/'; color: var(--kalend-text-muted); margin-right: 8px; }
+.k-theme-control { display: grid; gap: 4px; font-size: 12px; color: var(--kalend-text-secondary); }
+.k-theme-control select { min-height: 44px; border: 1px solid var(--kalend-control-border); border-radius: 8px; padding: 8px; background: var(--kalend-surface); color: var(--kalend-text-primary); max-width: 100%; }
+.k-tooltip-wrap { display: block; position: relative; }
+.k-tooltip { position: absolute; left: calc(100% + 8px); top: 6px; z-index: 10; width: max-content; max-width: 220px; padding: 8px 12px; border-radius: 8px; background: var(--kalend-surface-elevated); color: var(--kalend-text-primary); box-shadow: var(--kalend-shadow); border: 1px solid var(--kalend-border); opacity: 0; pointer-events: none; }
+.k-tooltip-wrap:hover .k-tooltip, .k-tooltip-wrap:focus-within .k-tooltip { opacity: 1; }
+.k-drawer { margin: 0; padding: 20px 16px; width: min(88vw,320px); max-width: 100%; height: 100dvh; max-height: 100dvh; border: 0; background: var(--kalend-surface-elevated); color: var(--kalend-text-primary); }
+.k-drawer::backdrop { background: var(--kalend-overlay); }
+.k-drawer-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 20px; }
+.k-gateway-grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit,minmax(min(100%,230px),1fr)); }
+.kalend-ui .k-gateway-card { display: flex; flex-direction: column; gap: 16px; text-decoration: none; color: var(--kalend-text-primary); }
+.k-gateway-card > strong { font-size: 20px; }.k-gateway-card > span:last-child { margin-top: auto; color: var(--kalend-primary); font-weight: 600; }
+.k-table-scroll { overflow-x: auto; max-width: 100%; }
+.k-table-scroll table { border-collapse: collapse; width: 100%; }.k-table-scroll th,.k-table-scroll td { padding: 14px; text-align: left; border-bottom: 1px solid var(--kalend-border); }
+.k-table-scroll th { font-weight: 600; }.k-table-scroll caption { text-align: left; padding: 12px 0; }
+@media (min-width: 430px) { .k-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+@media (min-width: 1280px) { .k-grid { grid-template-columns: repeat(4,minmax(0,1fr)); } }
+@media (prefers-reduced-motion: reduce) { .kalend-ui *, .kalend-ui *::before, .kalend-ui *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }

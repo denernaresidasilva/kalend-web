@@ -3,6 +3,11 @@ import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import type { Gateway } from "@/lib/contracts";
 import { GatewayCards } from "./gateway-cards";
+import Link from "next/link";
+import { Button } from "./ui/button";
+import { Loading } from "./ui/loading";
+import { Alert } from "./ui/alert";
+import { MetricCard } from "./ui/metric-card";
 type WebhookSummary = { total: number; received: number; processing: number; processed: number; failed: number; ignored: number };
 export function DashboardOperations() {
   const [gateways, setGateways] = useState<Gateway[] | null>(null);
@@ -18,5 +23,5 @@ export function DashboardOperations() {
     setLoading(false);
   }, []);
   useEffect(() => { const timer = setTimeout(() => void load(), 0); return () => clearTimeout(timer); }, [load]);
-  return <section className="dashboard-group"><h2>Operação de pagamentos</h2><button className="new-company-submit" disabled={loading} onClick={() => void load()}>{error ? "Tentar novamente" : "Atualizar operação"}</button>{loading ? <p role="status">Carregando operação…</p> : <>{error && <p role="alert">{error}</p>}{gateways && <GatewayCards gateways={gateways} />}{webhooks && <><h3>Webhooks</h3><div className="metric-grid">{[["Total", webhooks.total], ["Recebidos", webhooks.received], ["Em processamento", webhooks.processing], ["Processados", webhooks.processed], ["Falhos", webhooks.failed], ["Ignorados", webhooks.ignored]].map(([label, value]) => <article key={label} className="metric-card"><span className="metric-label">{label}</span><strong>{value}</strong></article>)}</div></>}</>}</section>;
+  return <section className="k-section"><h2>Operação de pagamentos</h2><div className="k-actions"><Button variant="secondary" loading={loading} onClick={() => void load()}>{error ? "Tentar novamente" : "Atualizar operação"}</Button><Link href="/super-admin/configuracoes">Configurações</Link></div><p className="k-muted">Estados informados pelos provedores. Configuração salva não comprova conexão ou homologação financeira.</p>{loading ? <Loading>Carregando operação…</Loading> : <>{error && <Alert tone="danger">{error}</Alert>}{gateways && <GatewayCards gateways={gateways} />}{webhooks && <><h3>Webhooks</h3><div className="k-grid">{[["Total", webhooks.total], ["Recebidos", webhooks.received], ["Em processamento", webhooks.processing], ["Processados", webhooks.processed], ["Falhos", webhooks.failed], ["Ignorados", webhooks.ignored]].map(([label, value]) => <MetricCard key={label} label={String(label)} value={value} />)}</div></>}</>}</section>;
 }

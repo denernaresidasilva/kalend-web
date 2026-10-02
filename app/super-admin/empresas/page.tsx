@@ -2,21 +2,7 @@
 
 import { apiFetch } from "@/lib/api";
 
-import {
-  Building2,
-  ChevronRight,
-  CreditCard,
-  LayoutDashboard,
-  Loader2,
-  Menu,
-  MessageSquare,
-  Plus,
-  Search,
-  Settings,
-  Users,
-  Webhook,
-  WalletCards,
-} from "lucide-react";
+import { Building2, ChevronRight, CreditCard, Loader2, Plus, Search, Users, WalletCards } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -52,44 +38,6 @@ type Company = {
   } | null;
 };
 
-const menuItems = [
-  {
-    label: "Dashboard",
-    icon: LayoutDashboard,
-    href: "/super-admin",
-  },
-  {
-    label: "Empresas",
-    icon: Building2,
-    href: "/super-admin/empresas",
-  },
-  {
-    label: "Planos",
-    icon: CreditCard,
-    href: "/super-admin/planos",
-  },
-  {
-    label: "Assinaturas",
-    icon: WalletCards,
-    href: "/super-admin/assinaturas",
-  },
-  {
-    label: "Financeiro",
-    icon: WalletCards,
-    href: "/super-admin/financeiro",
-  },
-  {
-    label: "Webhooks",
-    icon: Webhook,
-    href: "/super-admin/webhooks",
-  },
-  {
-    label: "Usuários",
-    icon: Users,
-    href: "/super-admin/usuarios",
-  },
-  { label: "Comunicação", icon: MessageSquare, href: "/super-admin/comunicacao" },
-];
 
 function formatDate(value: string | null | undefined) {
   if (!value) return "—";
@@ -231,51 +179,6 @@ export default function CompaniesPage() {
 
   return (
     <main className="companies-admin-page">
-      <aside className="companies-sidebar">
-        <div className="companies-brand">
-          <div>K</div>
-
-          <span>
-            <strong>Kalend</strong>
-            <small>Super Admin</small>
-          </span>
-        </div>
-
-        <nav className="companies-menu">
-          {menuItems.map((item) => {
-            const Icon = item.icon;
-
-            return (
-              <button
-                key={item.href}
-                type="button"
-                className={
-                  item.href === "/super-admin/empresas"
-                    ? "active"
-                    : ""
-                }
-                onClick={() => router.push(item.href)}
-              >
-                <Icon size={18} />
-                <span>{item.label}</span>
-              </button>
-            );
-          })}
-        </nav>
-
-        <button
-          type="button"
-          className="companies-settings"
-          onClick={() =>
-            router.push(
-              "/super-admin/configuracoes"
-            )
-          }
-        >
-          <Settings size={18} />
-          <span>Configurações</span>
-        </button>
-      </aside>
 
       <section className="companies-main">
         <header className="companies-topbar">
@@ -365,7 +268,7 @@ export default function CompaniesPage() {
 
                 <input
                   type="text"
-                  placeholder="Buscar empresa..."
+                  aria-label="Buscar empresa" placeholder="Buscar empresa..."
                   value={search}
                   onChange={(event) =>
                     setSearch(event.target.value)
@@ -375,7 +278,7 @@ export default function CompaniesPage() {
             </div>
 
             {loading && (
-              <div className="companies-state">
+              <div className="companies-state" role="status">
                 <Loader2
                   size={25}
                   className="plans-spinner"
@@ -388,7 +291,7 @@ export default function CompaniesPage() {
             )}
 
             {!loading && error && (
-              <div className="companies-state error">
+              <div className="companies-state error" role="alert">
                 <Building2 size={29} />
 
                 <strong>
@@ -402,7 +305,7 @@ export default function CompaniesPage() {
             {!loading &&
               !error &&
               companies.length === 0 && (
-                <div className="companies-state">
+                <div className="companies-state" role="status">
                   <div className="companies-empty-icon">
                     <Building2 size={27} />
                   </div>
@@ -423,7 +326,7 @@ export default function CompaniesPage() {
               !error &&
               companies.length > 0 &&
               filteredCompanies.length === 0 && (
-                <div className="companies-state">
+                <div className="companies-state" role="status">
                   <Search size={27} />
 
                   <strong>
@@ -440,16 +343,16 @@ export default function CompaniesPage() {
             {!loading &&
               !error &&
               filteredCompanies.length > 0 && (
-                <div className="companies-table-wrap">
+                <div className="companies-table-wrap" role="region" aria-label="Tabela de empresas" tabIndex={0}>
                   <table className="companies-table">
                     <thead>
                       <tr>
-                        <th>Empresa</th>
-                        <th>Responsável</th>
-                        <th>Plano</th>
-                        <th>Assinatura</th>
-                        <th>Usuários</th>
-                        <th>Cadastro</th>
+                        <th scope="col">Empresa</th>
+                        <th scope="col">Responsável</th>
+                        <th scope="col">Plano</th>
+                        <th scope="col">Assinatura</th>
+                        <th scope="col">Usuários</th>
+                        <th scope="col">Cadastro</th>
                         <th />
                       </tr>
                     </thead>
@@ -590,41 +493,6 @@ export default function CompaniesPage() {
           </section>
         </div>
       </section>
-
-      <nav className="companies-mobile-nav">
-        <button
-          type="button"
-          onClick={() =>
-            router.push("/super-admin")
-          }
-        >
-          <LayoutDashboard size={19} />
-          <span>Início</span>
-        </button>
-
-        <button
-          type="button"
-          className="active"
-        >
-          <Building2 size={19} />
-          <span>Empresas</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() =>
-            router.push("/super-admin/planos")
-          }
-        >
-          <CreditCard size={19} />
-          <span>Planos</span>
-        </button>
-
-        <button type="button">
-          <Menu size={19} />
-          <span>Menu</span>
-        </button>
-      </nav>
     </main>
   );
 }

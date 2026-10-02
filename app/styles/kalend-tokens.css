@@ -1,0 +1,47 @@
+.kalend-ui {
+  --kalend-primary: #6558f5;
+  --kalend-primary-hover: #5546e0;
+  --kalend-primary-soft: #f8f7ff;
+  --kalend-secondary: #475569;
+  --kalend-background: #f7f8fc;
+  --kalend-surface: #ffffff;
+  --kalend-surface-elevated: #ffffff;
+  --kalend-border: #e2e5ee;
+  --kalend-text-primary: #171b2d;
+  --kalend-text-secondary: #4b5568;
+  --kalend-text-muted: #647084;
+  --kalend-success: #16734b;
+  --kalend-warning: #8a5200;
+  --kalend-danger: #b42332;
+  --kalend-info: #225cb0;
+  --kalend-on-primary: #ffffff;
+  --kalend-control-border: #7c879a;
+  --kalend-overlay: #0f111780;
+  --kalend-shadow: 0 8px 32px #171b2d0d;
+  --kalend-radius: 12px;
+  color-scheme: light;
+  color: var(--kalend-text-primary);
+  background: var(--kalend-background);
+  font-family: var(--font-geist-sans), Arial, sans-serif;
+}
+html[data-theme="dark"] .kalend-ui, .kalend-theme-root[data-theme="dark"] .kalend-ui, .kalend-ui[data-theme="dark"] {
+  --kalend-primary: #a79bff;
+  --kalend-primary-hover: #b9afff;
+  --kalend-primary-soft: #292344;
+  --kalend-secondary: #cbd5e1;
+  --kalend-background: #0f1117;
+  --kalend-surface: #171a23;
+  --kalend-surface-elevated: #202430;
+  --kalend-border: #343a49;
+  --kalend-text-primary: #f1f3f9;
+  --kalend-text-secondary: #b8c0d0;
+  --kalend-text-muted: #929eb3;
+  --kalend-success: #67d8a4;
+  --kalend-warning: #f4c16b;
+  --kalend-danger: #ff939c;
+  --kalend-info: #8dbbff;
+  --kalend-on-primary: #171b2d;
+  --kalend-control-border: #69758b;
+  --kalend-shadow: 0 8px 32px #00000033;
+  color-scheme: dark;
+}

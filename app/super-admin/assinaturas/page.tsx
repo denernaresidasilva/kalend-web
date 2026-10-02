@@ -3,22 +3,8 @@
 import Link from "next/link";
 import { apiFetch } from "@/lib/api";
 
-import {
-  Building2,
-  CalendarDays,
-  CreditCard,
-  LayoutDashboard,
-  Loader2,
-  Menu,
-  MessageSquare,
-  Search,
-  Settings,
-  Users,
-  WalletCards,
-  Webhook,
-} from "lucide-react";
+import { Building2, CalendarDays, CreditCard, Loader2, Search, WalletCards } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 
 type Subscription = {
   id: string;
@@ -54,44 +40,6 @@ type Subscription = {
   } | null;
 };
 
-const menuItems = [
-  {
-    label: "Dashboard",
-    icon: LayoutDashboard,
-    href: "/super-admin",
-  },
-  {
-    label: "Empresas",
-    icon: Building2,
-    href: "/super-admin/empresas",
-  },
-  {
-    label: "Planos",
-    icon: CreditCard,
-    href: "/super-admin/planos",
-  },
-  {
-    label: "Assinaturas",
-    icon: WalletCards,
-    href: "/super-admin/assinaturas",
-  },
-  {
-    label: "Financeiro",
-    icon: WalletCards,
-    href: "/super-admin/financeiro",
-  },
-  {
-    label: "Webhooks",
-    icon: Webhook,
-    href: "/super-admin/webhooks",
-  },
-  {
-    label: "Usuários",
-    icon: Users,
-    href: "/super-admin/usuarios",
-  },
-  { label: "Comunicação", icon: MessageSquare, href: "/super-admin/comunicacao" },
-];
 
 function formatDate(value?: string | null) {
   if (!value) return "—";
@@ -145,7 +93,6 @@ function statusClass(status: string) {
 }
 
 export default function SubscriptionsPage() {
-  const router = useRouter();
 
   const [subscriptions, setSubscriptions] = useState<
     Subscription[]
@@ -225,54 +172,6 @@ export default function SubscriptionsPage() {
 
   return (
     <main className="subscriptions-admin-page">
-      <aside className="companies-sidebar">
-        <div className="companies-brand">
-          <div>K</div>
-
-          <span>
-            <strong>Kalend</strong>
-            <small>Super Admin</small>
-          </span>
-        </div>
-
-        <nav className="companies-menu">
-          {menuItems.map((item) => {
-            const Icon = item.icon;
-
-            return (
-              <button
-                key={item.href}
-                type="button"
-                className={
-                  item.href ===
-                  "/super-admin/assinaturas"
-                    ? "active"
-                    : ""
-                }
-                onClick={() =>
-                  router.push(item.href)
-                }
-              >
-                <Icon size={18} />
-                <span>{item.label}</span>
-              </button>
-            );
-          })}
-        </nav>
-
-        <button
-          type="button"
-          className="companies-settings"
-          onClick={() =>
-            router.push(
-              "/super-admin/configuracoes"
-            )
-          }
-        >
-          <Settings size={18} />
-          <span>Configurações</span>
-        </button>
-      </aside>
 
       <section className="companies-main">
         <header className="companies-topbar">
@@ -356,7 +255,7 @@ export default function SubscriptionsPage() {
 
                 <input
                   type="text"
-                  placeholder="Buscar assinatura..."
+                  aria-label="Buscar assinatura" placeholder="Buscar assinatura..."
                   value={search}
                   onChange={(event) =>
                     setSearch(event.target.value)
@@ -366,7 +265,7 @@ export default function SubscriptionsPage() {
             </div>
 
             {loading && (
-              <div className="companies-state">
+              <div className="companies-state" role="status">
                 <Loader2
                   size={25}
                   className="plans-spinner"
@@ -379,7 +278,7 @@ export default function SubscriptionsPage() {
             )}
 
             {!loading && error && (
-              <div className="companies-state error">
+              <div className="companies-state error" role="alert">
                 <CreditCard size={29} />
                 <strong>Erro ao carregar</strong>
                 <span>{error}</span>
@@ -389,7 +288,7 @@ export default function SubscriptionsPage() {
             {!loading &&
               !error &&
               subscriptions.length === 0 && (
-                <div className="companies-state">
+                <div className="companies-state" role="status">
                   <div className="companies-empty-icon">
                     <CreditCard size={27} />
                   </div>
@@ -411,7 +310,7 @@ export default function SubscriptionsPage() {
               !error &&
               subscriptions.length > 0 &&
               filteredSubscriptions.length === 0 && (
-                <div className="companies-state">
+                <div className="companies-state" role="status">
                   <Search size={27} />
 
                   <strong>
@@ -428,17 +327,17 @@ export default function SubscriptionsPage() {
             {!loading &&
               !error &&
               filteredSubscriptions.length > 0 && (
-                <div className="companies-table-wrap">
+                <div className="companies-table-wrap" role="region" aria-label="Tabela de assinaturas" tabIndex={0}>
                   <table className="companies-table subscriptions-table">
                     <thead>
                       <tr>
-                        <th>Empresa</th>
-                        <th>Plano</th>
-                        <th>Status</th>
-                        <th>Período</th>
-                        <th>Preço mensal do catálogo</th>
-                        <th>Último pagamento</th>
-                        <th>Cadastro</th><th>Detalhes</th>
+                        <th scope="col">Empresa</th>
+                        <th scope="col">Plano</th>
+                        <th scope="col">Status</th>
+                        <th scope="col">Período</th>
+                        <th scope="col">Preço mensal do catálogo</th>
+                        <th scope="col">Último pagamento</th>
+                        <th scope="col">Cadastro</th><th scope="col">Detalhes</th>
                       </tr>
                     </thead>
 
@@ -580,41 +479,6 @@ export default function SubscriptionsPage() {
           </section>
         </div>
       </section>
-
-      <nav className="companies-mobile-nav">
-        <button
-          type="button"
-          onClick={() =>
-            router.push("/super-admin")
-          }
-        >
-          <LayoutDashboard size={19} />
-          <span>Início</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() =>
-            router.push("/super-admin/empresas")
-          }
-        >
-          <Building2 size={19} />
-          <span>Empresas</span>
-        </button>
-
-        <button
-          type="button"
-          className="active"
-        >
-          <CreditCard size={19} />
-          <span>Assinaturas</span>
-        </button>
-
-        <button type="button">
-          <Menu size={19} />
-          <span>Menu</span>
-        </button>
-      </nav>
     </main>
   );
 }

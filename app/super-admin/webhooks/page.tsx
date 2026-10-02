@@ -3,25 +3,7 @@
 import Link from "next/link";
 import { apiFetch } from "@/lib/api";
 
-import {
-  AlertCircle,
-  Building2,
-  CheckCircle2,
-  Clock3,
-  CreditCard,
-  DollarSign,
-  Eye,
-  LayoutDashboard,
-  Loader2,
-  Menu,
-  MessageSquare,
-  Search,
-  Settings,
-  Users,
-  Webhook,
-  WalletCards,
-  XCircle,
-} from "lucide-react";
+import { AlertCircle, CheckCircle2, Clock3, Eye, Loader2, Search, Webhook, XCircle } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -48,44 +30,6 @@ type WebhookSummary = {
   ignored: number;
 };
 
-const menuItems = [
-  {
-    label: "Dashboard",
-    icon: LayoutDashboard,
-    href: "/super-admin",
-  },
-  {
-    label: "Empresas",
-    icon: Building2,
-    href: "/super-admin/empresas",
-  },
-  {
-    label: "Planos",
-    icon: CreditCard,
-    href: "/super-admin/planos",
-  },
-  {
-    label: "Assinaturas",
-    icon: WalletCards,
-    href: "/super-admin/assinaturas",
-  },
-  {
-    label: "Financeiro",
-    icon: DollarSign,
-    href: "/super-admin/financeiro",
-  },
-  {
-    label: "Webhooks",
-    icon: Webhook,
-    href: "/super-admin/webhooks",
-  },
-  {
-    label: "Usuários",
-    icon: Users,
-    href: "/super-admin/usuarios",
-  },
-  { label: "Comunicação", icon: MessageSquare, href: "/super-admin/comunicacao" },
-];
 
 function formatDate(value: string | null | undefined) {
   if (!value) return "—";
@@ -228,53 +172,6 @@ export default function WebhooksPage() {
 
   return (
     <main className="companies-admin-page">
-      <aside className="companies-sidebar">
-        <div className="companies-brand">
-          <div>K</div>
-
-          <span>
-            <strong>Kalend</strong>
-            <small>Super Admin</small>
-          </span>
-        </div>
-
-        <nav className="companies-menu">
-          {menuItems.map((item) => {
-            const Icon = item.icon;
-
-            return (
-              <button
-                key={item.href}
-                type="button"
-                className={
-                  item.href === "/super-admin/webhooks"
-                    ? "active"
-                    : ""
-                }
-                onClick={() =>
-                  router.push(item.href)
-                }
-              >
-                <Icon size={18} />
-                <span>{item.label}</span>
-              </button>
-            );
-          })}
-        </nav>
-
-        <button
-          type="button"
-          className="companies-settings"
-          onClick={() =>
-            router.push(
-              "/super-admin/configuracoes"
-            )
-          }
-        >
-          <Settings size={18} />
-          <span>Configurações</span>
-        </button>
-      </aside>
 
       <section className="companies-main">
         <header className="companies-topbar">
@@ -382,7 +279,7 @@ export default function WebhooksPage() {
 
                 <input
                   type="text"
-                  placeholder="Buscar webhook..."
+                  aria-label="Buscar webhook" placeholder="Buscar webhook..."
                   value={search}
                   onChange={(event) =>
                     setSearch(event.target.value)
@@ -392,7 +289,7 @@ export default function WebhooksPage() {
             </div>
 
             {loading && (
-              <div className="companies-state">
+              <div className="companies-state" role="status">
                 <Loader2
                   size={25}
                   className="plans-spinner"
@@ -405,7 +302,7 @@ export default function WebhooksPage() {
             )}
 
             {!loading && error && (
-              <div className="companies-state error">
+              <div className="companies-state error" role="alert">
                 <AlertCircle size={29} />
 
                 <strong>
@@ -419,7 +316,7 @@ export default function WebhooksPage() {
             {!loading &&
               !error &&
               events.length === 0 && (
-                <div className="companies-state">
+                <div className="companies-state" role="status">
                   <div className="companies-empty-icon">
                     <Webhook size={27} />
                   </div>
@@ -441,7 +338,7 @@ export default function WebhooksPage() {
               !error &&
               events.length > 0 &&
               filteredEvents.length === 0 && (
-                <div className="companies-state">
+                <div className="companies-state" role="status">
                   <Search size={27} />
 
                   <strong>
@@ -458,17 +355,17 @@ export default function WebhooksPage() {
             {!loading &&
               !error &&
               filteredEvents.length > 0 && (
-                <div className="companies-table-wrap">
+                <div className="companies-table-wrap" role="region" aria-label="Tabela de webhooks" tabIndex={0}>
                   <table className="companies-table">
                     <thead>
                       <tr>
-                        <th>Gateway</th>
-                        <th>Evento</th>
-                        <th>ID externo</th>
-                        <th>Empresa</th>
-                        <th>Status</th>
-                        <th>Recebido</th>
-                        <th>Processado</th>
+                        <th scope="col">Gateway</th>
+                        <th scope="col">Evento</th>
+                        <th scope="col">ID externo</th>
+                        <th scope="col">Empresa</th>
+                        <th scope="col">Status</th>
+                        <th scope="col">Recebido</th>
+                        <th scope="col">Processado</th>
                         <th />
                       </tr>
                     </thead>
@@ -549,55 +446,6 @@ export default function WebhooksPage() {
           </section>
         </div>
       </section>
-
-      <nav className="companies-mobile-nav">
-        <button
-          type="button"
-          onClick={() =>
-            router.push("/super-admin")
-          }
-        >
-          <LayoutDashboard size={19} />
-          <span>Início</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() =>
-            router.push(
-              "/super-admin/empresas"
-            )
-          }
-        >
-          <Building2 size={19} />
-          <span>Empresas</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() =>
-            router.push(
-              "/super-admin/financeiro"
-            )
-          }
-        >
-          <DollarSign size={19} />
-          <span>Financeiro</span>
-        </button>
-
-        <button
-          type="button"
-          className="active"
-        >
-          <Webhook size={19} />
-          <span>Webhooks</span>
-        </button>
-
-        <button type="button">
-          <Menu size={19} />
-          <span>Menu</span>
-        </button>
-      </nav>
     </main>
   );
 }

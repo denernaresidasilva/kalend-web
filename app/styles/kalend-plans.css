@@ -1,0 +1,31 @@
+.k-plans-public { min-height: 100dvh; }
+.k-public-header { padding: 16px max(16px,calc((100vw - 1280px)/2)); background: var(--kalend-surface); border-bottom: 1px solid var(--kalend-border); display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
+.k-public-header > a { font-size: 24px; font-weight: 700; text-decoration: none; }.k-public-header a { min-height: 44px; display: inline-flex; align-items: center; }
+.k-plans-container { width: min(100%,1280px); margin: 0 auto; padding: 24px 16px 48px; }
+.k-plans-hero { padding: 48px 0; max-width: 800px; }
+.k-eyebrow { color: var(--kalend-primary); font-size: 12px; font-weight: 700; letter-spacing: .12em; }
+.k-plans-hero h1 { font-size: clamp(32px,5vw,60px); font-weight: 700; letter-spacing: -.04em; line-height: 1.08; margin: 20px 0; }
+.k-plans-hero p { font-size: 18px; line-height: 1.7; color: var(--kalend-text-secondary); margin-bottom: 24px; }
+.k-plan-benefits { display: grid; gap: 24px; margin: 0 0 48px; }.k-plan-benefits h2 { font-size: 18px; }.k-plan-benefits p { color: var(--kalend-text-secondary); line-height: 1.6; }
+.k-interval { border: 0; padding: 0; margin: 24px 0; display: flex; flex-wrap: wrap; gap: 12px; }.k-interval legend { margin-bottom: 12px; font-weight: 600; }.k-interval label { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 10px 16px; border: 1px solid var(--kalend-control-border); border-radius: 8px; background: var(--kalend-surface); cursor: pointer; }
+.k-interval label:has(:checked) { background: var(--kalend-primary-soft); border-color: var(--kalend-primary); }.k-catalog input[type=radio] { accent-color: var(--kalend-primary); width: 20px; height: 20px; }
+.k-plan-grid { display: grid; gap: 24px; grid-template-columns: repeat(auto-fit,minmax(min(100%,280px),1fr)); align-items: stretch; }
+.k-plan { display: flex; flex-direction: column; gap: 16px; position: relative; }.k-plan h3 { margin: 0; font-size: 24px; }.k-plan p { margin: 0; line-height: 1.6; color: var(--kalend-text-secondary); }
+.k-plan-featured { border-color: var(--kalend-primary); box-shadow: 0 0 0 1px var(--kalend-primary); }.k-plan-selected { outline: 3px solid var(--kalend-primary); outline-offset: 3px; }
+.k-plan-price strong { font-size: clamp(24px,3vw,36px); letter-spacing: -.04em; }.k-plan-price span { color: var(--kalend-text-secondary); }
+.k-plan-features { padding-left: 20px; line-height: 1.8; margin: 0; }.k-plan-limits { display: grid; gap: 8px; margin: 0; padding-top: 16px; border-top: 1px solid var(--kalend-border); }
+.k-plan-limits > div, .k-comparison-mobile dl > div { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; }.k-plan-limits dd { margin: 0; color: var(--kalend-text-secondary); }
+.k-plan-choice { display: flex !important; align-items: center; gap: 12px; min-height: 48px; margin-top: auto; padding: 12px; border: 1px solid var(--kalend-control-border); border-radius: 8px; cursor: pointer; }.k-plan > .k-link-button { margin-top: auto; }
+.k-comparison-desktop { display: none; }.k-comparison-mobile { display: grid; gap: 16px; }.k-comparison-mobile h3 { margin: 0 0 16px; }.k-comparison-mobile dd { margin: 0; }
+.k-faq details { border-bottom: 1px solid var(--kalend-border); padding: 12px 0; }.k-faq summary { min-height: 44px; padding: 10px 0; cursor: pointer; font-weight: 600; }.k-faq p { line-height: 1.7; color: var(--kalend-text-secondary); }
+.k-plans-final { border-radius: 16px; padding: 32px 24px; background: var(--kalend-primary-soft); margin-top: 48px; }.k-plans-final h2 { margin: 0; }.k-plans-final p { line-height: 1.6; }
+.k-billing-page { min-height: 100dvh; }.k-billing-page .commercial-panel { background: var(--kalend-surface); color: var(--kalend-text-primary); border-color: var(--kalend-border); }.k-billing-page :is(input,select,textarea) { background: var(--kalend-surface); color: var(--kalend-text-primary); border-color: var(--kalend-control-border); }.k-billing-page .commercial-primary { background: var(--kalend-primary); color: var(--kalend-on-primary); border-color: var(--kalend-primary); }.k-billing-page .commercial-notice,.k-billing-page .commercial-skeleton { background: var(--kalend-primary-soft); color: var(--kalend-text-primary); }
+.k-billing-page .commercial-heading { flex-wrap: wrap; }.k-billing-page .commercial-panel { padding: 20px 16px; }.k-billing-page .commercial-details { grid-template-columns: repeat(auto-fit,minmax(min(100%,190px),1fr)); }
+@media (min-width: 768px) { .k-plans-container { padding: 32px; }.k-plan-benefits { grid-template-columns: repeat(3,minmax(0,1fr)); }.k-comparison-desktop { display: block; }.k-comparison-mobile { display: none; }.k-billing-page .commercial-panel { padding: 24px; } }
+.k-billing-page button:where(:not(.k-button):not(.commercial-primary)) { min-height: 44px; padding: 10px 16px; border: 1px solid var(--kalend-control-border); border-radius: 8px; background: var(--kalend-surface); color: var(--kalend-text-primary); }
+
+.k-trial-notice { position: fixed; z-index: 60; bottom: 16px; right: 16px; width: min(420px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); overflow: auto; box-sizing: border-box; padding: 20px; border: 1px solid var(--kalend-border); border-radius: 16px; background: var(--kalend-surface); color: var(--kalend-text-primary); box-shadow: 0 8px 30px #0003; overflow-wrap: anywhere; }
+.k-trial-notice > button { float: right; min-width: 44px; min-height: 44px; }
+.k-trial-notice > div { display: flex; flex-wrap: wrap; gap: 12px; }
+.k-trial-notice button { cursor: pointer; min-height: 44px; padding: 8px 12px; }
+.k-trial-notice :focus-visible, .k-trial-notice:focus-visible { outline: 3px solid #6558f5; outline-offset: 3px; }
