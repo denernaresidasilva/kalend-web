@@ -7,7 +7,7 @@ const ts = require('typescript');
 const { webcrypto } = require('node:crypto');
 function load(file, mocks = {}, globals = {}) {
   const loaded = { exports: {} };
-  const js = ts.transpileModule(fs.readFileSync(file, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 } }).outputText;
+  const js = ts.transpileModule(fs.readFileSync(file, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, jsx: ts.JsxEmit.ReactJSX } }).outputText;
   vm.runInNewContext(js, { module: loaded, exports: loaded.exports, require: id => mocks[id] || require(id), Uint8Array, TextEncoder, crypto: webcrypto, atob, Date, ...globals });
   return loaded.exports;
 }
@@ -213,4 +213,29 @@ test('external notification uses internal fallback and never navigates externall
   const w = worker(); w.setWindows([{ url: 'https://dev.kalend.tech/conta', navigate: async url => { assert.equal(url, 'https://dev.kalend.tech/conta'); throw Error('fixture'); } }]);
   await w.emit('notificationclick', { notification: { close() {}, data: { url: 'https://exemplo.com/' } } });
   assert.deepEqual(w.opened, ['https://dev.kalend.tech/conta']);
+});
+
+test('malformed public key is rejected before asking browser permission', async () => {
+  for (const publicKey of ['not-a-key', Buffer.alloc(65, 1).toString('base64url')]) {
+    const f = fixture({ permission: 'default' });
+    await assert.rejects(f.client.enable(profile, { ...config, publicKey }));
+    assert.equal(f.stats().permissions, 0);
+    assert.equal(f.calls.length, 0);
+  }
+});
+test('session-ended cleanup used by logout and logout-all closes notifications and unsubscribes locally', async () => {
+  const listeners = {}, effects = []; let closed = 0, unsubscribed = 0;
+  const { PwaProvider } = load('components/pwa-provider.tsx', {
+    react: { useState: initial => [initial, () => {}], useEffect: fn => effects.push(fn) },
+    '@/lib/push/install': { watchInstall: () => () => {} },
+  }, {
+    window: { isSecureContext: false, addEventListener: (name, fn) => listeners[name] = fn, removeEventListener: name => delete listeners[name] },
+    navigator: { serviceWorker: { getRegistration: async () => ({ getNotifications: async () => [{ close: () => closed++ }], pushManager: { getSubscription: async () => ({ unsubscribe: async () => { unsubscribed++; return true; } }) } }) } },
+  });
+  PwaProvider(); const cleanup = effects[0]();
+  for (const operation of ['logout', 'logout-all']) {
+    assert.ok(operation); listeners['kalend:session-ended'](); await new Promise(r => setTimeout(r, 0));
+  }
+  assert.equal(closed, 2); assert.equal(unsubscribed, 2);
+  cleanup(); assert.equal(listeners['kalend:session-ended'], undefined);
 });

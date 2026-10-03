@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "./auth-provider";
-import { activeDevice, currentId, deviceLabel, eligible, enable, inContext, permissionState, pushApi, registration, removeDevice, supported, type Device, type PublicConfig, type PushState, type PushProfile } from "@/lib/push/client";
+import { activeDevice, currentId, eligible, inContext, permissionState, pushApi, registration, subscriptionMatchesVapid, supported, type PublicConfig, type PushState, type PushProfile } from "@/lib/push/client";
 export function PushSettings() {
   const { profile: authProfile } = useAuth();
   const userId = authProfile?.user.id;
@@ -12,8 +12,6 @@ export function PushSettings() {
     user: { id: userId }, selectedCompanyId: selectedCompanyId ?? null, systemRole,
   } : null, [userId, selectedCompanyId, systemRole]);
   const [state, setState] = useState<PushState>("unsupported");
-  const [devices, setDevices] = useState<Device[]>([]);
-  const [localId, setLocalId] = useState<string | null>(null);
   const [config, setConfig] = useState<PublicConfig | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
@@ -26,7 +24,7 @@ export function PushSettings() {
     const context = `${profile?.user.id}:${profile?.selectedCompanyId}`;
     if (testContext.current !== context) { testContext.current = context; testRequest.current = null; setTestMessage(""); }
     const current = ++version.current;
-    setMessage(""); setDevices([]); setLocalId(null); setConfig(null);
+    setMessage(""); setConfig(null);
     setState(permissionState());
     if (!supported() || !eligible(profile)) return;
     try {
@@ -35,8 +33,8 @@ export function PushSettings() {
       const id = sub ? await currentId(profile!, sub) : null;
       const result = await inContext(profile, async () => ({ config: await pushApi.config(), devices: await pushApi.list() }));
       if (current !== version.current) return;
-      setConfig(result.config); setDevices(result.devices); setLocalId(id);
-      if (Notification.permission === "granted") setState(sub && result.devices.some(row => row.id === id && activeDevice(row)) ? "subscribed" : "unsubscribed");
+      setConfig(result.config);
+      if (Notification.permission === "granted") setState(sub && (!sub.expirationTime || sub.expirationTime > Date.now()) && result.config.available && subscriptionMatchesVapid(sub, result.config) && result.devices.some(row => row.id === id && activeDevice(row) && row.registeredInCurrentSession === true) ? "subscribed" : "unsubscribed");
     } catch { if (current === version.current) { setState("error"); setMessage("Não foi possível consultar notificações. Atualize para tentar novamente."); } }
   }, [profile]);
   useEffect(() => {
@@ -46,54 +44,30 @@ export function PushSettings() {
     window.addEventListener("kalend:push-changed", load);
     return () => { clearTimeout(timer); requestVersion.current++; window.removeEventListener("focus", load); window.removeEventListener("kalend:push-changed", load); };
   }, [load]);
-  async function action(work: () => Promise<unknown>) {
-    if (flight.current) return;
-    flight.current = true; setBusy(true); setMessage("");
-    const current = version.current;
-    try { await work(); if (current === version.current) await load(); window.dispatchEvent(new Event("kalend:push-changed")); }
-    catch { if (current === version.current) { setState("error"); setMessage("Não foi possível concluir. Confira a sessão, a empresa e a permissão; atualize e tente novamente."); } }
-    finally { flight.current = false; setBusy(false); }
-  }
   async function sendTest() {
     if (flight.current || !profile) return;
     flight.current = true; setBusy(true); setTestMessage("");
     testRequest.current ??= crypto.randomUUID();
-    const current = version.current;
+    const context = `${profile.user.id}:${profile.selectedCompanyId}`;
     try {
-      await inContext(profile, () => pushApi.test(testRequest.current!));
+      const response = await inContext(profile, () => pushApi.test(testRequest.current!));
+      if (!response.queued) throw new Error("Test unavailable");
       testRequest.current = null;
-      if (current === version.current) setTestMessage("Teste colocado na fila. Aguarde o worker e confirme a notificação no navegador; enfileirar não confirma entrega.");
-    } catch { if (current === version.current) setTestMessage("Não foi possível confirmar o teste. Confira a configuração e a sessão; tentar novamente reutiliza a mesma solicitação."); }
+      if (context === testContext.current) setTestMessage("✓ Notificação enviada.");
+    } catch { if (context === testContext.current) setTestMessage("Não foi possível enviar a notificação. Tente novamente."); }
     finally { flight.current = false; setBusy(false); }
   }
   if (!profile) return null;
-  const canManage = eligible(profile);
   const denied = typeof Notification !== "undefined" && Notification.permission === "denied";
   return <section className="commercial-panel push-settings" aria-labelledby="push-title">
-    <h2 id="push-title">Push Web</h2>
-    <p>{profile.selectedCompanyId ? "Preferências para a empresa selecionada." : "Preferências da conta administrativa."}</p>
-    {!canManage ? <p>Selecione uma empresa para gerenciar notificações.</p> : <>
-      {state === "unsupported" ? <p>Push indisponível neste navegador. Use um navegador compatível em HTTPS. No iOS, instale o aplicativo na Tela de Início.</p> : <>
-        <p role="status">{config && !config.available ? "Push Web não configurado no servidor" : state === "error" ? "Erro ao consultar Push Web" : state === "subscribed" ? "✓ Notificações ativadas neste dispositivo" : denied ? "Notificações bloqueadas pelo navegador" : state === "permission-default" ? "Permissão de notificações pendente" : "Notificações não ativadas neste dispositivo"}</p>
-        <p>Dispositivo atual: {deviceLabel().label}</p>
-        {denied && <p>Altere a permissão de notificações nas configurações deste site no navegador e volte ao Kalend.</p>}
-        {config && !config.available && <p>O servidor ainda não disponibilizou Push.</p>}
-        {state !== "subscribed" && <button type="button" disabled={busy || denied || !config?.available} onClick={() => void action(async () => { await enable(profile, config!); })}>Ativar notificações</button>}
-        <button type="button" disabled={busy} onClick={() => void action(load)}>Atualizar estado</button>
-        <button type="button" disabled={busy || state !== "subscribed" || !config?.available} onClick={() => void sendTest()}>Enviar teste para meus dispositivos {profile.selectedCompanyId ? "desta empresa" : "da conta"}</button>
-        {devices.length > 0 && <><h3>Dispositivos registrados</h3><ul>{devices.map(row => <li key={row.id}>
-          <p>{row.label || row.platform}{row.id === localId ? " · Este dispositivo" : ""} · {activeDevice(row) ? "Ativo" : "Inativo"}</p>
-          {row.lastSeenAt && <p>Último acesso: <time dateTime={row.lastSeenAt}>{new Date(row.lastSeenAt).toLocaleString("pt-BR")}</time></p>}
-          {!row.revokedAt && <button type="button" disabled={busy || (!activeDevice(row) && denied)} onClick={() => void action(() => inContext(profile, () => pushApi.update(row.id, !activeDevice(row))))}>{activeDevice(row) ? "Desativar" : "Reativar"}{row.id === localId ? " neste dispositivo" : ""}{profile.selectedCompanyId ? " para esta empresa" : ""}</button>}
-          <button type="button" disabled={busy} onClick={() => {
-            if (!window.confirm("Remover este dispositivo revoga Push em todas as empresas. Continuar?")) return;
-            void action(() => removeDevice(profile, row.id, localId));
-          }}>Remover dispositivo em todas as empresas</button>
-        </li>)}</ul></>}
-        {!localId && state === "unsubscribed" && <p>Ativar reutiliza a inscrição válida deste navegador e vincula o registro à sessão atual.</p>}
-      </>}
+    <h2 id="push-title">Push Web</h2><p>Receba notificações do Kalend neste dispositivo.</p>
+    <p role="status">{state === "subscribed" ? "🟢 Notificações ativadas" : "🔴 Notificações desativadas"}</p>
+    {state === "subscribed" ? <><p>Você está recebendo notificações neste navegador.</p><button type="button" disabled={busy} onClick={() => void sendTest()}>{busy ? "Enviando…" : "Enviar notificação de teste"}</button></> : <>
+      {denied && <p>🔔 As notificações estão bloqueadas neste navegador. Para ativá-las, permita notificações nas configurações do navegador.</p>}
+      {state === "unsupported" && <p>As notificações não estão disponíveis neste navegador.</p>}
+      {config && !config.available && <p>Não foi possível ativar as notificações agora. Tente novamente mais tarde.</p>}
+      <button type="button" onClick={() => window.dispatchEvent(new Event("kalend:push-open"))}>Ativar notificações</button>
     </>}
-    {message && <p role="alert">{message}</p>}
-    {testMessage && <p role="status">{testMessage}</p>}
+    {message && <p role="alert">{message}</p>}{testMessage && <p role="status">{testMessage}</p>}
   </section>;
 }

@@ -87,12 +87,14 @@ export async function enable(profile: PushProfile, config: PublicConfig) {
   if (!eligible(profile)) throw new Error("Selecione uma empresa.");
   if (!config.available || !config.publicKey) throw new Error("Push indisponível no servidor.");
   if (Notification.permission === "denied") throw new Error("Permita notificações nas configurações do navegador.");
+  const validatedKey = Uint8Array.from(atob(config.publicKey.replace(/-/g, "+").replace(/_/g, "/")), c => c.charCodeAt(0));
+  if (validatedKey.length !== 65 || validatedKey[0] !== 4) throw new Error("Invalid public push key");
   // Called directly from a user click, before asynchronous network/worker operations.
   const permission = Notification.permission === "granted" ? "granted" : await Notification.requestPermission();
   if (permission !== "granted") return null;
   return inContext(profile, async () => {
     const reg = await registration();
-    const key = Uint8Array.from(atob(config.publicKey!.replace(/-/g, "+").replace(/_/g, "/")), c => c.charCodeAt(0));
+    const key = validatedKey;
     let sub = await reg.pushManager.getSubscription();
     if (sub?.expirationTime && sub.expirationTime <= Date.now()) {
       if (!await sub.unsubscribe()) throw new Error("Não foi possível remover a inscrição expirada. Tente novamente.");

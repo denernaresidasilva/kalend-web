@@ -16,7 +16,7 @@ function fixture(options = {}) {
   const notification = { permission: options.permission || 'default', requestPermission: async () => { calls.push('permission'); return notification.permission = options.choice || 'granted'; } };
   const sub = options.absent ? null : { expirationTime: options.expirationTime ?? null };
   const device = { id: 'device-a', active: true, registeredInCurrentSession: true, ...options.device };
-  const config = { available: options.available !== false };
+  const config = { available: options.available !== false, publicKey: "public-fixture" };
   const client = {
     supported: () => options.supported !== false, eligible: p => !!p.selectedCompanyId || p.systemRole === 'SUPER_ADMIN',
     inContext: async (p, work) => { calls.push(['context', p.user.id, p.selectedCompanyId]); return work(); },
@@ -25,7 +25,7 @@ function fixture(options = {}) {
     currentId: async () => options.unmapped ? null : 'device-a',
     activeDevice: d => d.active && !d.revokedAt && (!d.authorizations || d.authorizations.some(a => a.active && !a.revokedAt)),
     pushApi: { config: async () => { calls.push('config'); return config; }, list: async () => options.noBackend ? [] : [device] },
-    enable: async p => { calls.push(['enable', p.user.id, p.selectedCompanyId]); if (options.fail) throw Error('fixture'); },
+    enable: async p => { calls.push(['enable', p.user.id, p.selectedCompanyId]); if (options.fail) throw Error('fixture'); if (notification.permission === 'default') await notification.requestPermission(); return notification.permission === 'granted' ? device : null; },
   };
   const globals = { Notification: notification, navigator: {}, document: { visibilityState: 'visible', hasFocus: () => true }, window: { dispatchEvent: () => calls.push('changed') } };
   return { ...load('lib/push/prompt.ts', { './client': client }, globals), calls, globals };
@@ -36,8 +36,8 @@ for (const options of [{ absent: true }, { noBackend: true }, { device: { revoke
   const f = fixture({ permission: 'granted', ...options }); assert.equal(await f.inspectPushPrompt(profile), 'ready'); assert.deepEqual(f.calls.find(c => c[0] === 'enable'), ['enable', 'a', 'company-a']); assert.equal(f.calls.includes('permission'), false);
 });
 test('denied neither invites nor requests permission nor queries backend', async () => { const f = fixture({ permission: 'denied' }); assert.equal(await f.inspectPushPrompt(profile), 'hidden'); assert.equal(await f.activatePushPrompt(profile), 'hidden'); assert.deepEqual(f.calls, []); });
-test('explicit activation requests permission before API and registers existing identity', async () => { const f = fixture(); assert.equal(await f.activatePushPrompt(profile), 'ready'); assert.equal(f.calls[0], 'permission'); assert.equal(f.calls.at(-1), 'changed'); });
-test('declined permission does not register', async () => { const f = fixture({ choice: 'denied' }); assert.equal(await f.activatePushPrompt(profile), 'hidden'); assert.deepEqual(f.calls, ['permission']); });
+test('explicit activation validates configuration before permission and registers existing identity', async () => { const f = fixture(); assert.equal(await f.activatePushPrompt(profile), 'ready'); assert.ok(f.calls.indexOf('config') < f.calls.indexOf('permission')); assert.equal(f.calls.at(-1), 'changed'); });
+test('declined permission does not register', async () => { const f = fixture({ choice: 'denied' }); assert.equal(await f.activatePushPrompt(profile), 'hidden'); assert.equal(f.calls.includes('changed'), false); });
 test('failed granted repair rejects once without recursive retries', async () => { const f = fixture({ permission: 'granted', absent: true, fail: true }); await assert.rejects(f.inspectPushPrompt(profile)); assert.equal(f.calls.filter(c => c[0] === 'enable').length, 1); });
 test('changed VAPID is not treated as a valid registered subscription', async () => { const f = fixture({ permission: 'granted', matchingKey: false, fail: true }); await assert.rejects(f.inspectPushPrompt(profile)); assert.equal(f.calls.filter(c => c[0] === 'enable').length, 1); });
 test('expired subscription with active tenant consent is repaired, not treated as a pause', async () => { const f = fixture({ permission: 'granted', expirationTime: 1, device: { authorizations: [{ active: true, revokedAt: null }] } }); assert.equal(await f.inspectPushPrompt(profile), 'ready'); assert.equal(f.calls.filter(c => c[0] === 'enable').length, 1); });
@@ -54,7 +54,7 @@ test('origin lock prevents a second tab invitation and releases for next entry',
 test('fallback skips background/unfocused documents', async () => { const f = fixture(); f.globals.document.hasFocus = () => false; let shown = 0; await f.withPushPromptLock(async () => shown++); assert.equal(shown, 0); });
 test('dismissal closes the global popup, next route and fresh mount offer again', async () => {
   const React = require('react');
-  async function mount() {
+  async function mount(options = {}) {
     const slots = [], pending = []; let index = 0, pathname = '/super-admin', tree;
     const equal = (a, b) => a && b && a.length === b.length && a.every((v, i) => v === b[i]);
     const hooks = { ...React,
@@ -63,15 +63,18 @@ test('dismissal closes the global popup, next route and fresh mount offer again'
       useMemo: (fn, deps) => { const i = index++; if (!equal(slots[i]?.deps, deps)) slots[i] = { deps, value: fn() }; return slots[i].value; },
       useEffect: (fn, deps) => { const i = index++; if (!equal(slots[i]?.deps, deps)) { slots[i]?.cleanup?.(); slots[i] = { deps }; pending.push(() => slots[i].cleanup = fn()); } },
     };
-    const browser = { addEventListener() {}, removeEventListener() {} };
+    const events = {};
+    const notification = { permission: options.permission || 'default' };
+    const browser = { addEventListener: (name, fn) => events[name] = fn, removeEventListener: name => delete events[name], dispatchEvent: event => events[event.type]?.() };
     const { PushNotificationPrompt } = load('components/push-notification-prompt.tsx', {
       react: hooks, 'next/navigation': { usePathname: () => pathname }, 'next/link': () => null,
       './auth-provider': { useAuth: () => ({ profile, loading: false }) }, './ui/button': { Button: () => null },
-      '@/lib/push/prompt': { inspectPushPrompt: async () => 'invite', withPushPromptLock: async fn => fn(), activatePushPrompt: async () => 'ready' },
-    }, { Notification: { permission: 'default' }, document: { ...browser, visibilityState: 'visible', hasFocus: () => true }, window: browser, setTimeout, clearTimeout });
+      '@/lib/push/client': {},
+      '@/lib/push/prompt': { inspectPushPrompt: async () => options.status || 'invite', withPushPromptLock: async fn => fn(), activatePushPrompt: async () => { if (options.fail) throw Error('API'); notification.permission = options.choice || 'granted'; browser.dispatchEvent(new Event('kalend:push-changed')); return notification.permission === 'denied' ? 'hidden' : 'ready'; } },
+    }, { console: { warn() {} }, Notification: notification, document: { ...browser, visibilityState: 'visible', hasFocus: () => true }, window: browser, setTimeout, clearTimeout });
     const render = () => { index = 0; tree = PushNotificationPrompt(); while (pending.length) pending.shift()(); return tree; };
     const settle = async () => { render(); await new Promise(r => setTimeout(r, 5)); return render(); };
-    return { settle, navigate: path => pathname = path, cleanup: () => { for (const slot of slots) slot?.cleanup?.(); } };
+    return { settle, emit: name => events[name]?.(), navigate: path => pathname = path, cleanup: () => { for (const slot of slots) slot?.cleanup?.(); } };
   }
   const first = await mount();
   try {
@@ -84,7 +87,44 @@ test('dismissal closes the global popup, next route and fresh mount offer again'
     first.navigate('/super-admin'); tree = await first.settle(); assert.equal(tree.props.role, 'dialog');
     const nextActions = React.Children.toArray(React.Children.toArray(tree.props.children).at(-1).props.children);
     nextActions.find(n => n.props.children === 'Ativar notificações').props.onClick();
-    await new Promise(r => setTimeout(r, 5)); assert.equal(await first.settle(), null);
+    tree = await first.settle(); assert.equal(typeof tree.props.onActivate === "function", true);
+    await tree.props.onActivate({ available: true, publicKey: 'fixture' });
+    tree = await first.settle(); assert.equal(tree.props.result, 'success');
+    tree.props.onClose(); assert.equal(await first.settle(), null);
   } finally { first.cleanup(); }
+  const active = await mount({ status: 'ready', permission: 'granted' });
+  try { assert.equal(await active.settle(), null); } finally { active.cleanup(); }
+  for (const options of [{ choice: 'denied' }, { fail: true }]) {
+    const instance = await mount(options);
+    try {
+      let tree = await instance.settle();
+      const actions = React.Children.toArray(React.Children.toArray(tree.props.children).at(-1).props.children);
+      actions.find(n => n.props.children === 'Ativar notificações').props.onClick();
+      tree = await instance.settle();
+      await tree.props.onActivate({ available: true, publicKey: 'fixture' });
+      tree = await instance.settle(); assert.equal(tree.props.result, options.fail ? 'error' : 'denied');
+      tree.props.onClose(); assert.equal(await instance.settle(), null);
+    } finally { instance.cleanup(); }
+  }
+  const ended = await mount();
+  try {
+    await ended.settle(); ended.emit('kalend:push-open');
+    assert.ok((await ended.settle()).props.onActivate);
+    ended.emit('kalend:session-ended');
+    const tree = await ended.settle(); assert.equal(tree?.props.onActivate, undefined);
+  } finally { ended.cleanup(); }
   const reload = await mount(); try { assert.equal((await reload.settle()).props.role, 'dialog'); } finally { reload.cleanup(); }
+});
+
+test('unavailable configuration never requests permission or registers', async () => {
+  const f = fixture({ available: false });
+  assert.equal(await f.activatePushPrompt(profile), 'error');
+  assert.equal(f.calls.includes('permission'), false);
+  assert.equal(f.calls.some(call => call[0] === 'enable'), false);
+});
+test('prepared modal configuration requests permission without another config round trip', async () => {
+  const f = fixture();
+  assert.equal(await f.activatePushPrompt(profile, { available: true, publicKey: 'fixture' }), 'ready');
+  assert.equal(f.calls.includes('config'), false);
+  assert.equal(f.calls.includes('permission'), true);
 });

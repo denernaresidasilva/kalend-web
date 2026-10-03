@@ -133,3 +133,9 @@ body { background: var(--kalend-background); color: var(--kalend-text-primary); 
 .k-push-prompt { position: fixed; z-index: 65; bottom: 16px; right: 16px; width: min(420px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); overflow: auto; box-sizing: border-box; padding: 20px; border: 1px solid var(--kalend-border); border-radius: 16px; background: var(--kalend-surface); color: var(--kalend-text-primary); box-shadow: 0 8px 30px #0003; }
 .k-push-prompt h2 { display: flex; align-items: center; gap: 8px; font-size: 1.15rem; }
 .k-push-prompt > div { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.k-push-modal { width: min(460px, calc(100vw - 32px)); padding: 28px; border: 1px solid var(--kalend-border); border-radius: 20px; background: var(--kalend-surface); color: var(--kalend-text-primary); }
+.k-push-modal::backdrop { background: #0009; }
+.k-push-modal h2 { font-size: 1.3rem; margin-bottom: 12px; }
+.k-push-modal p { margin-bottom: 24px; }
+.k-push-modal > div { display: flex; flex-wrap: wrap; gap: 12px; }

@@ -1,4 +1,4 @@
-import { activeDevice, currentId, eligible, enable, inContext, pushApi, registration, subscriptionMatchesVapid, supported, type PushProfile } from "./client";
+import { activeDevice, currentId, eligible, enable, inContext, pushApi, registration, subscriptionMatchesVapid, supported, type PublicConfig, type PushProfile } from "./client";
 
 export type PromptStatus = "invite" | "ready" | "hidden" | "context" | "paused" | "error";
 // Called once per entry. Never asks permission; granted-only repair reuses the existing registration contract.
@@ -6,7 +6,7 @@ export async function inspectPushPrompt(profile: PushProfile): Promise<PromptSta
   if (!supported() || Notification.permission === "denied") return "hidden";
   if (!eligible(profile)) return "context";
   const config = await inContext(profile, () => pushApi.config());
-  if (!config.available) return "error";
+  if (!config.available || !config.publicKey) return "error";
   if (Notification.permission === "default") return "invite";
   const reg = await registration();
   const sub = await reg.pushManager.getSubscription();
@@ -20,13 +20,14 @@ export async function inspectPushPrompt(profile: PushProfile): Promise<PromptSta
   return "ready";
 }
 
-// Invoke directly from the button. Permission is requested before any asynchronous API call.
-export async function activatePushPrompt(profile: PushProfile): Promise<PromptStatus> {
+// The modal prepares config before the click, preserving the permission user gesture.
+export async function activatePushPrompt(profile: PushProfile, preparedConfig?: PublicConfig): Promise<PromptStatus> {
   if (!supported() || Notification.permission === "denied") return "hidden";
   if (!eligible(profile)) return "context";
-  if (Notification.permission === "default" && await Notification.requestPermission() !== "granted") return "hidden";
-  const config = await inContext(profile, () => pushApi.config());
-  await enable(profile, config);
+  const config = preparedConfig ?? await inContext(profile, () => pushApi.config());
+  if (!config.available || !config.publicKey) return "error";
+  const device = await enable(profile, config);
+  if (!device) return "hidden";
   window.dispatchEvent(new Event("kalend:push-changed"));
   return "ready";
 }
