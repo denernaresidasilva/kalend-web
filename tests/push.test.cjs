@@ -103,10 +103,10 @@ test('company grants, expired and revoked subscriptions affect active state', ()
   assert.equal(client.activeDevice({ active: true }), true);
   for (const row of [{ active: false }, { active: true, revokedAt: 'now' }, { active: true, expiresAt: '2000-01-01' }, { active: true, authorizations: [{ active: false, revokedAt: null }] }]) assert.equal(client.activeDevice(row), false);
 });
-function worker() {
+function worker(options = {}) {
   const handlers = {}; const shown = []; const opened = []; let windows = []; let claims = 0; let skips = 0;
-  const self = { location: { origin: 'https://dev.kalend.tech' }, addEventListener: (name, fn) => handlers[name] = fn, registration: { showNotification: async (...args) => shown.push(args) }, skipWaiting: () => skips++, clients: { claim: async () => claims++, matchAll: async () => windows, openWindow: async url => opened.push(url) } };
-  vm.runInNewContext(fs.readFileSync('public/sw.js', 'utf8'), { self, URL });
+  const self = { location: { origin: 'https://dev.kalend.tech' }, addEventListener: (name, fn) => handlers[name] = fn, registration: { showNotification: async (...args) => { if (options.rejectActions && args[1].actions) throw Error('Actions unsupported'); shown.push(args); } }, skipWaiting: () => skips++, clients: { claim: async () => claims++, matchAll: async () => windows, openWindow: async url => opened.push(url) } };
+  vm.runInNewContext(fs.readFileSync('public/sw.js', 'utf8'), { self, URL, Notification: { maxActions: options.maxActions ?? 0, prototype: {} } });
   async function emit(name, extras = {}) { let work; handlers[name]({ waitUntil: promise => work = promise, ...extras }); await work; }
   return { emit, handlers, shown, opened, setWindows: value => windows = value, stats: () => ({ claims, skips }) };
 }
@@ -122,7 +122,7 @@ test('push renders plain title/body and local images', async () => {
 test('empty/malformed push still displays generic notification', async () => {
   const w = worker(); await w.emit('push'); await w.emit('push', { data: { json() { throw Error(); } } }); assert.equal(w.shown.length, 2);
 });
-for (const url of ['https://evil.test/', '//evil.test/', 'javascript:alert(1)', '/auth/redirect', '/api/private', '/conta?token=fixture', '/conta#token', 'https://user:pass@dev.kalend.tech/conta']) test(`notification blocks URL ${url}`, async () => {
+for (const url of ['http://evil.test/', '//evil.test/', 'javascript:alert(1)', '/auth/redirect', '/api/private', '/conta?token=fixture', '/conta#token', 'https://user:pass@dev.kalend.tech/conta']) test(`notification blocks URL ${url}`, async () => {
   const w = worker(); await w.emit('notificationclick', { notification: { close() {}, data: { url } } }); assert.deepEqual(w.opened, ['https://dev.kalend.tech/conta']);
 });
 test('notification click navigates/focuses existing Kalend and closes notification', async () => {
@@ -164,7 +164,53 @@ test('expired local subscription is replaced only during explicit registration',
   const f = fixture({ existing: true }); f.sub.expirationTime = 1;
   await f.client.enable(profile, config); assert.equal(f.stats().unsubscribes, 1); assert.equal(f.stats().subscribes, 1);
 });
+test('failed expired subscription removal blocks replacement and server registration', async () => {
+  const f = fixture({ existing: true }); f.sub.expirationTime = 1; f.sub.unsubscribe = async () => false;
+  await assert.rejects(f.client.enable(profile, config), /inscrição expirada/);
+  assert.equal(f.stats().subscribes, 0);
+  assert.equal(f.calls.filter(([, init]) => init?.method === 'POST').length, 0);
+});
+test('queued self-test accepts only idempotency ID and uses authenticated tenant context', async () => {
+  const f = fixture();
+  await f.client.inContext(profile, () => f.client.pushApi.test('fixture-request-id'));
+  const post = f.calls.find(([path]) => path.endsWith('/test'));
+  assert.equal(post[1].method, 'POST');
+  assert.deepEqual(JSON.parse(post[1].body), { requestId: 'fixture-request-id' });
+  const changed = fixture({ me: { ...profile, selectedCompanyId: 'company-b' } });
+  await assert.rejects(changed.client.inContext(profile, () => changed.client.pushApi.test('fixture-request-id')));
+  assert.equal(changed.calls.some(([path]) => path.endsWith('/test')), false);
+});
 test('changed VAPID key does not silently replace existing browser subscription', async () => {
   const f = fixture({ existing: true }); f.sub.options.applicationServerKey = new Uint8Array([1,2,3]).buffer;
   await assert.rejects(f.client.enable(profile, config)); assert.equal(f.stats().unsubscribes, 0); assert.equal(f.stats().subscribes, 0);
+});
+test('public VAPID is checked against the browser subscription when available', () => {
+  const f = fixture({ existing: true });
+  f.sub.options.applicationServerKey = Uint8Array.from(Buffer.alloc(65, 4)).buffer;
+  assert.equal(f.client.subscriptionMatchesVapid(f.sub, config), true);
+  f.sub.options.applicationServerKey = new Uint8Array([1, 2, 3]).buffer;
+  assert.equal(f.client.subscriptionMatchesVapid(f.sub, config), false);
+  assert.equal(f.client.subscriptionMatchesVapid(f.sub, { ...config, publicKey: null }), false);
+});
+
+for (const url of ['/agenda/agendamento/123', '/conta/notificacoes']) test(`notification main click and action open safe destination ${url}`, async () => {
+  for (const action of ['', 'open']) {
+    const w = worker({ maxActions: 1 });
+    await w.emit('push', { data: { json: () => ({ title: 'Agendamento', body: 'Maria', url, actions: [{ action: 'open', title: 'VER AGENDAMENTO' }] }) } });
+    assert.deepEqual(JSON.parse(JSON.stringify(w.shown[0][1].actions)), [{ action: 'open', title: 'VER AGENDAMENTO' }]);
+    await w.emit('notificationclick', { action, notification: { close() {}, data: w.shown[0][1].data } });
+    assert.deepEqual(w.opened, [new URL(url, 'https://dev.kalend.tech').href]);
+  }
+});
+for (const options of [{ maxActions: 0 }, { maxActions: 1, rejectActions: true }]) test(`notification remains clickable without actions ${JSON.stringify(options)}`, async () => {
+  const w = worker(options);
+  await w.emit('push', { data: { json: () => ({ title: 'Kalend', body: 'Atualização', url: '/agenda/123', actions: [{ action: 'open', title: 'VER' }] }) } });
+  assert.equal(w.shown.length, 1); assert.equal(w.shown[0][1].actions, undefined);
+  await w.emit('notificationclick', { notification: { close() {}, data: w.shown[0][1].data } });
+  assert.deepEqual(w.opened, ['https://dev.kalend.tech/agenda/123']);
+});
+test('external notification uses internal fallback and never navigates externally', async () => {
+  const w = worker(); w.setWindows([{ url: 'https://dev.kalend.tech/conta', navigate: async url => { assert.equal(url, 'https://dev.kalend.tech/conta'); throw Error('fixture'); } }]);
+  await w.emit('notificationclick', { notification: { close() {}, data: { url: 'https://exemplo.com/' } } });
+  assert.deepEqual(w.opened, ['https://dev.kalend.tech/conta']);
 });

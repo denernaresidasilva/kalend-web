@@ -130,3 +130,6 @@ body { background: var(--kalend-background); color: var(--kalend-text-primary); 
 .k-account-page .commercial-form select { max-width: 100%; }
 .k-account-page .new-company-submit { width: auto; }
 @media (max-width: 414px) { .k-account-page .k-card { padding: 20px 16px; }.k-account-identity { gap: 12px; }.k-account-identity .k-avatar-large { width: 64px; height: 64px; font-size: 22px; } }
+.k-push-prompt { position: fixed; z-index: 65; bottom: 16px; right: 16px; width: min(420px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); overflow: auto; box-sizing: border-box; padding: 20px; border: 1px solid var(--kalend-border); border-radius: 16px; background: var(--kalend-surface); color: var(--kalend-text-primary); box-shadow: 0 8px 30px #0003; }
+.k-push-prompt h2 { display: flex; align-items: center; gap: 8px; font-size: 1.15rem; }
+.k-push-prompt > div { display: flex; flex-wrap: wrap; gap: 8px; }

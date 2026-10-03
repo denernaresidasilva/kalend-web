@@ -11,6 +11,7 @@ import { CommercialNotice } from "@/components/commercial-notice";
 import { PwaProvider } from "@/components/pwa-provider";
 import { CommercialEntry } from "@/components/commercial-entry";
 import { AuthProvider } from "@/components/auth-provider";
+import { PushNotificationPrompt } from "@/components/push-notification-prompt";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -40,7 +41,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <head><script dangerouslySetInnerHTML={{ __html: themeScript }} /></head>
-      <body className="min-h-full flex flex-col"><ThemeProvider><AuthProvider><PwaProvider /><CommercialNotice /><CommercialEntry>{children}</CommercialEntry></AuthProvider></ThemeProvider></body>
+      <body className="min-h-full flex flex-col"><ThemeProvider><AuthProvider><PwaProvider /><PushNotificationPrompt /><CommercialNotice /><CommercialEntry>{children}</CommercialEntry></AuthProvider></ThemeProvider></body>
     </html>
   );
 }

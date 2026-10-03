@@ -17,9 +17,14 @@ export function PushSettings() {
   const [config, setConfig] = useState<PublicConfig | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  const [testMessage, setTestMessage] = useState("");
+  const testRequest = useRef<string | null>(null);
+  const testContext = useRef<string | null>(null);
   const version = useRef(0);
   const flight = useRef(false);
   const load = useCallback(async () => {
+    const context = `${profile?.user.id}:${profile?.selectedCompanyId}`;
+    if (testContext.current !== context) { testContext.current = context; testRequest.current = null; setTestMessage(""); }
     const current = ++version.current;
     setMessage(""); setDevices([]); setLocalId(null); setConfig(null);
     setState(permissionState());
@@ -38,14 +43,27 @@ export function PushSettings() {
     const requestVersion = version;
     const timer = setTimeout(() => void load(), 0);
     window.addEventListener("focus", load);
-    return () => { clearTimeout(timer); requestVersion.current++; window.removeEventListener("focus", load); };
+    window.addEventListener("kalend:push-changed", load);
+    return () => { clearTimeout(timer); requestVersion.current++; window.removeEventListener("focus", load); window.removeEventListener("kalend:push-changed", load); };
   }, [load]);
   async function action(work: () => Promise<unknown>) {
     if (flight.current) return;
     flight.current = true; setBusy(true); setMessage("");
     const current = version.current;
-    try { await work(); if (current === version.current) await load(); }
+    try { await work(); if (current === version.current) await load(); window.dispatchEvent(new Event("kalend:push-changed")); }
     catch { if (current === version.current) { setState("error"); setMessage("Não foi possível concluir. Confira a sessão, a empresa e a permissão; atualize e tente novamente."); } }
+    finally { flight.current = false; setBusy(false); }
+  }
+  async function sendTest() {
+    if (flight.current || !profile) return;
+    flight.current = true; setBusy(true); setTestMessage("");
+    testRequest.current ??= crypto.randomUUID();
+    const current = version.current;
+    try {
+      await inContext(profile, () => pushApi.test(testRequest.current!));
+      testRequest.current = null;
+      if (current === version.current) setTestMessage("Teste colocado na fila. Aguarde o worker e confirme a notificação no navegador; enfileirar não confirma entrega.");
+    } catch { if (current === version.current) setTestMessage("Não foi possível confirmar o teste. Confira a configuração e a sessão; tentar novamente reutiliza a mesma solicitação."); }
     finally { flight.current = false; setBusy(false); }
   }
   if (!profile) return null;
@@ -62,6 +80,7 @@ export function PushSettings() {
         {config && !config.available && <p>O servidor ainda não disponibilizou Push.</p>}
         {state !== "subscribed" && <button type="button" disabled={busy || denied || !config?.available} onClick={() => void action(async () => { await enable(profile, config!); })}>Ativar notificações</button>}
         <button type="button" disabled={busy} onClick={() => void action(load)}>Atualizar estado</button>
+        <button type="button" disabled={busy || state !== "subscribed" || !config?.available} onClick={() => void sendTest()}>Enviar teste para meus dispositivos {profile.selectedCompanyId ? "desta empresa" : "da conta"}</button>
         {devices.length > 0 && <><h3>Dispositivos registrados</h3><ul>{devices.map(row => <li key={row.id}>
           <p>{row.label || row.platform}{row.id === localId ? " · Este dispositivo" : ""} · {activeDevice(row) ? "Ativo" : "Inativo"}</p>
           {row.lastSeenAt && <p>Último acesso: <time dateTime={row.lastSeenAt}>{new Date(row.lastSeenAt).toLocaleString("pt-BR")}</time></p>}
@@ -75,5 +94,6 @@ export function PushSettings() {
       </>}
     </>}
     {message && <p role="alert">{message}</p>}
+    {testMessage && <p role="status">{testMessage}</p>}
   </section>;
 }

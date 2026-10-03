@@ -1,45 +1,91 @@
 "use client";
 import { useState, type FormEvent } from "react";
-import { communication, providerNames, channelNames, providerChannels, availableProvider, previewText, metaParameters, type CommunicationEvent, type InternalTemplate, type Channel, type ProviderName, type MetaTemplate, type CommunicationProvider } from "@/lib/communication";
+import { communication, providerNames, channelNames, providerChannels, availableProvider, previewText, providerState, type CommunicationEvent, type InternalTemplate, type Channel, type ProviderName, type CommunicationProvider } from "@/lib/communication";
 import { useCommunicationMutation, useCommunicationPending } from "./communication-operations";
 import { Feedback, ResourceState, useCommunicationResource } from "./communication-resource";
 const loadTemplates = async (signal?: AbortSignal) => {
   const [events, templates, providers] = await Promise.all([communication.events(signal), communication.templates(signal), communication.providers(signal)]);
   return { events, templates, providers };
 };
-function MetaReferencePicker({ id, select }: { id: string; select: (row: MetaTemplate) => void }) {
-  const resource = useCommunicationResource(communication.metaTemplates);
-  return <ResourceState {...resource} retry={() => void resource.load()}><label>Template oficial sincronizado<select value={id} onChange={e => { const row = resource.data?.find(row => row.externalId === e.target.value); if (row) select(row); }}><option value="">Selecione</option>{id && !resource.data?.some(row => row.externalId === id) && <option value={id}>Referência salva: {id} (não encontrada nesta listagem)</option>}{resource.data?.map(row => <option key={row.id} value={row.externalId}>{row.name} · {row.language} · {row.status}</option>)}</select></label><p>Somente templates aprovados, com BODY de texto compatível, podem ser enviados. A validação final ocorre no backend/Meta.</p></ResourceState>;
-}
 export function InternalTemplateEditor({ event, channel, initial, providers, saved }: { event: CommunicationEvent; channel: Channel; initial?: InternalTemplate; providers: CommunicationProvider[]; saved: (row: InternalTemplate) => void }) {
+  const [row, setRow] = useState(initial);
   const [provider, setProvider] = useState<ProviderName>(initial?.provider ?? (channel === "EMAIL" ? "SMTP" : channel === "WHATSAPP" ? "EVOLUTION" : "PUSH_PENDING"));
   const [enabled, setEnabled] = useState(initial?.enabled ?? false);
-  const [text, setText] = useState(initial?.content.text ?? ""); const [subject, setSubject] = useState(initial?.content.subject ?? initial?.content.title ?? "");
-  const [meta, setMeta] = useState({ id: initial?.content.metaId ?? "", name: initial?.content.metaName ?? "", language: initial?.content.metaLanguage ?? "", parameters: metaParameters(initial?.content ?? {}) });
+  const [text, setText] = useState(initial?.content.text ?? "");
+  const [subject, setSubject] = useState(initial?.content.subject ?? initial?.content.title ?? "");
+  const [url, setUrl] = useState(initial?.content.url ?? "");
+  const [actionText, setActionText] = useState(initial?.content.actionText ?? "");
+  const [icon, setIcon] = useState(initial?.content.icon ?? "");
+  const [name, setName] = useState(initial?.content.name ?? event.event.toLowerCase());
+  const [language, setLanguage] = useState(initial?.content.language ?? "pt_BR");
+  const [category, setCategory] = useState(initial?.content.category ?? "UTILITY");
+  const [examples, setExamples] = useState<Record<string, string>>(() => {
+    try {
+      const keys = [...new Set([...(initial?.content.text ?? "").matchAll(/\{\{([a-z_]+)\}\}/g)].map(match => match[1]))];
+      const values: unknown = JSON.parse(initial?.content.examples ?? "[]");
+      return Object.fromEntries(keys.map((key, i) => [key, Array.isArray(values) && typeof values[i] === "string" ? values[i] : ""]));
+    } catch { return {}; }
+  });
+  const [dirty, setDirty] = useState(false);
   const { busy, setBusy, lockRef } = useCommunicationMutation();
   const [error, setError] = useState(""); const [message, setMessage] = useState("");
-  const canEnable = availableProvider(provider) && providers.some(row => row.provider === provider && row.adapterAvailable);
+  const canEnable = availableProvider(provider) && providers.some(p => p.provider === provider && p.adapterAvailable) && (provider !== "META" || row?.approvalStatus === "APPROVED" && !dirty);
+  const keys = [...new Set([...text.matchAll(/\{\{([a-z_]+)\}\}/g)].map(m => m[1]))].filter(k => event.variables.includes(k));
+  function accept(next: InternalTemplate) {
+    setRow(next); setEnabled(next.enabled);
+    if (next.content) {
+      setText(next.content.text); setSubject(next.content.subject ?? next.content.title ?? "");
+      setUrl(next.content.url ?? ""); setActionText(next.content.actionText ?? ""); setIcon(next.content.icon ?? "");
+    }
+    saved(next);
+  }
   async function submit(e: FormEvent) {
     e.preventDefault(); if (lockRef.current) return;
-    if (provider === "META" && (!meta.id || meta.parameters.some(key => !event.variables.includes(key)))) { setError("Selecione um template Meta e utilize apenas variáveis deste evento."); return; }
-    if (provider !== "META" && [text, subject].some(value => /[{}]/.test(value.replace(/\{\{([a-z_]+)\}\}/g, (match, key: string) => event.variables.includes(key) ? "" : match)))) { setError("Use apenas as variáveis disponíveis, no formato {{variavel}}."); return; }
+    if ([text, subject, url, actionText].some(value => /[{}]/.test(value.replace(/\{\{([a-z_]+)\}\}/g, (match, key: string) => event.variables.includes(key) ? "" : match)))) { setError("Use apenas as variáveis disponíveis, no formato {{variavel}}."); return; }
     lockRef.current = true; setBusy(true); setError(""); setMessage("");
     try {
-      const content = provider === "META" ? meta : { text, ...(channel === "EMAIL" ? { subject } : channel === "PUSH" ? { title: subject } : {}) };
-      const row = await communication.saveTemplate(event.event, channel, { provider, enabled: enabled && canEnable, content }); saved(row); setMessage("Template global salvo.");
+      const content = { text, ...(channel === "EMAIL" ? { subject } : channel === "PUSH" ? { title: subject, ...(url ? { url } : {}), ...(icon ? { icon } : {}), ...(actionText ? { actionText } : {}) } : {}),
+        ...(provider === "META" ? { name, language, category, examples: Object.fromEntries(keys.map(k => [k, examples[k] ?? ""])) } : {}) };
+      const next = await communication.saveTemplate(event.event, channel, { provider, enabled: provider === "EVOLUTION" || enabled && canEnable, content });
+      accept(next); setDirty(false); setMessage(provider === "EVOLUTION" ? "Template ATIVO. Envio depende da conexão e habilitação da Evolution." : provider === "META" ? "Template salvo. Consulte o estado de aprovação antes de enviar." : "Template global salvo.");
     } catch (err) { setError(err instanceof Error ? err.message : "Não foi possível salvar o template."); }
     finally { lockRef.current = false; setBusy(false); }
   }
-  return <form className="commercial-panel commercial-form" onSubmit={submit}><h2>{event.event} · {channelNames[channel]}</h2><p>Política interna global do Kalend. Não é um editor de aprovação da Meta.</p>
-    <fieldset disabled={busy}><label>Provedor<select value={provider} onChange={e => { setProvider(e.target.value as ProviderName); setEnabled(false); }}>{(Object.keys(providerNames) as ProviderName[]).filter(name => providerChannels[name] === channel).map(name => <option key={name} value={name}>{providerNames[name]}{!availableProvider(name) ? " · Em breve" : ""}</option>)}</select></label>
-      {provider === "META" ? <><MetaReferencePicker id={meta.id} select={row => setMeta({ ...meta, id: row.externalId, name: row.name, language: row.language })} /><p>Referência: {meta.name || "—"} · {meta.language || "—"}</p><label>Quantidade de parâmetros BODY (na ordem da Meta)<input type="number" min={0} max={20} value={meta.parameters.length} onChange={e => { const count = Math.min(20, Math.max(0, Number(e.target.value) || 0)); setMeta({ ...meta, parameters: Array.from({ length: count }, (_, i) => meta.parameters[i] ?? "") }); }} /></label>{meta.parameters.map((key, index) => <label key={index}>Parâmetro {index + 1}<select required value={key} onChange={e => setMeta({ ...meta, parameters: meta.parameters.map((old, i) => i === index ? e.target.value : old) })}><option value="">Selecione a variável</option>{event.variables.map(variable => <option key={variable} value={variable}>{variable}</option>)}</select></label>)}</> : <>
-        {channel !== "WHATSAPP" && <label>{channel === "EMAIL" ? "Assunto" : "Título"}<input required maxLength={200} value={subject} onChange={e => setSubject(e.target.value)} /></label>}
-        <label>Conteúdo em texto<textarea required rows={8} maxLength={8000} value={text} onChange={e => setText(e.target.value)} /></label>
-      </>}
-      <p>Variáveis disponíveis: {event.variables.map(key => `{{${key}}}`).join(", ") || "Nenhuma"}</p>
-      <label className="commercial-check"><input type="checkbox" disabled={!canEnable} checked={enabled && canEnable} onChange={e => setEnabled(e.target.checked)} />Template ativo</label>{!canEnable && <p>Ativação indisponível para este provedor. É possível salvar um rascunho inativo.</p>}
+  async function metaOperation(sync: boolean) {
+    if (lockRef.current || !row || dirty) return;
+    lockRef.current = true; setBusy(true); setError(""); setMessage("");
+    try {
+      if (sync) {
+        const result = await communication.syncMeta();
+        const current = (await communication.templates()).find(t => t.id === row.id);
+        if (current) accept(current);
+        setMessage(result.after ? "Página sincronizada. Há mais páginas no catálogo Meta; continue a sincronização na aba Meta." : "Status sincronizado com a Meta.");
+      } else {
+        const result = await communication.createMeta(row.id); accept(result.template);
+        setMessage(result.alreadySubmitted ? "Esta revisão já foi submetida ou tem resultado incerto. Sincronize antes de qualquer nova ação." : "Conteúdo salvo submetido. A aprovação depende da Meta.");
+      }
+    } catch (err) {
+      if (!sync) setRow({ ...row, metaSubmissionState: "UNCERTAIN" });
+      setError(err instanceof Error ? err.message : "Não foi possível consultar a Meta.");
+    } finally { lockRef.current = false; setBusy(false); }
+  }
+  async function copy(key: string) {
+    try { await navigator.clipboard.writeText(`{{${key}}}`); setMessage("Variável copiada"); }
+    catch { setError("Não foi possível copiar. Selecione a variável e copie manualmente."); }
+  }
+  const approval = row?.provider === provider ? row?.approvalStatus ?? "PENDING" : "PENDING";
+  return <form className="commercial-panel commercial-form" onSubmit={submit}><h2>{event.event} · {channelNames[channel]}</h2><p>Template GLOBAL, gerenciado pelo Super Admin. O conteúdo salvo é a fonte da mensagem e da submissão Meta.</p>
+    <fieldset disabled={busy}><label>Provedor<select value={provider} onChange={e => { setProvider(e.target.value as ProviderName); setEnabled(false); setDirty(true); }}>{(Object.keys(providerNames) as ProviderName[]).filter(p => providerChannels[p] === channel).map(p => <option key={p} value={p}>{providerNames[p]}{!availableProvider(p) ? " · Em breve" : ""}</option>)}</select></label>
+      {channel !== "WHATSAPP" && <label>{channel === "EMAIL" ? "Assunto" : "Título"}<input required maxLength={200} value={subject} onChange={e => { setSubject(e.target.value); setDirty(true); }} /></label>}
+      <label>{channel === "PUSH" ? "Mensagem" : "Conteúdo em texto"}<textarea required rows={8} maxLength={provider === "META" ? 1024 : 8000} value={text} onChange={e => { setText(e.target.value); setDirty(true); }} /></label>
+      {channel === "WHATSAPP" && <p>{text.length}/{provider === "META" ? 1024 : 8000} caracteres</p>}
+      {channel === "PUSH" && <><label>Link<input maxLength={2048} value={url} placeholder="/conta/notificacoes" onChange={e => { setUrl(e.target.value); setDirty(true); }} /></label><p>Somente rota interna do Kalend, sem parâmetros de consulta ou fragmentos. Em branco: central de notificações.</p><label>Texto do botão<input maxLength={60} value={actionText} onChange={e => { setActionText(e.target.value); setDirty(true); }} /></label><label>Ícone<select value={icon} onChange={e => { setIcon(e.target.value); setDirty(true); }}><option value="">Ícone padrão Kalend</option>{[192, 512, 180].map(size => <option key={size} value={`/icons/kalend-${size}.png`}>Kalend {size}</option>)}</select></label></>}
+      {provider === "META" && <><label>Nome<input required pattern="[a-z0-9_]+" maxLength={400} value={name} onChange={e => { setName(e.target.value); setDirty(true); }} /></label><label>Idioma<input required value={language} onChange={e => { setLanguage(e.target.value); setDirty(true); }} /></label><label>Categoria<select value={category} onChange={e => { setCategory(e.target.value); setDirty(true); }}><option value="UTILITY">Utilidade</option><option value="MARKETING">Marketing</option></select></label>{keys.map(key => <label key={key}>Exemplo para {`{{${key}}}`}<input required maxLength={200} value={examples[key] ?? ""} onChange={e => { setExamples({ ...examples, [key]: e.target.value }); setDirty(true); }} /></label>)}<p>Somente BODY de texto. Variáveis são convertidas em parâmetros posicionais na integração. Não coloque variáveis no início/fim ou lado a lado. Informe exemplos fictícios; não inclua dados pessoais reais.</p></>}
+      <div aria-label="Variáveis disponíveis">{event.variables.map(key => <button type="button" key={key} onClick={() => void copy(key)}>{`{{${key}}}`}</button>)}</div>
+      {provider === "EVOLUTION" ? <p role="status">ATIVO ao salvar. Canal: {providerState(providers.find(p => p.provider === provider))}. Sem aprovação Meta.</p> : <label className="commercial-check"><input type="checkbox" disabled={!canEnable} checked={enabled && canEnable} onChange={e => setEnabled(e.target.checked)} />Template ativo</label>}
       <button className="commercial-primary">Salvar template</button>
-    </fieldset><section aria-label="Prévia do template"><h3>Prévia ilustrativa</h3>{provider === "META" ? <p>Template oficial: {meta.name || "não selecionado"} · {meta.language}. Parâmetros: {meta.parameters.join(", ") || "nenhum"}.</p> : <><p>{previewText(subject, event.variables)}</p><pre className="communication-preview">{previewText(text, event.variables)}</pre></>}<p>Valores entre colchetes representam variáveis. A prévia não realiza envios.</p></section><Feedback busy={busy} error={error} message={message} />
+      {provider === "META" && <section aria-label="Aprovação Meta"><p role="status">{approval === "APPROVED" && !dirty ? "🟢 APROVADO" : approval === "REJECTED" && !dirty ? "🔴 REJEITADO" : "🟡 PENDENTE — Aguardando aprovação da Meta."}</p>{dirty && <p>Salve a alteração; mudanças no conteúdo exigem nova aprovação.</p>}<p>Revisão: {row?.revision ?? "—"} · Nome Meta: {row?.metaSubmittedName ?? "—"} · ID Meta: {row?.metaTemplateId ?? "—"} · Status Meta: {row?.metaStatus ?? "Não recebido"}</p><p>Submissão: {row?.metaSubmittedAt ?? "—"} · Última sincronização: {row?.metaSyncedAt ?? "—"}</p>{row?.metaRejectionReason && <p>Motivo: {row.metaRejectionReason} · Data do evento Meta: {row.metaStatusAt ?? "Não fornecida"}</p>}<button type="button" disabled={!row || dirty || !!row.metaSubmissionState} onClick={() => void metaOperation(false)}>Enviar conteúdo salvo para aprovação</button><button type="button" disabled={!row || dirty} onClick={() => void metaOperation(true)}>Sincronizar aprovação</button>{row?.metaSubmissionState === "UNCERTAIN" && <p>Resultado incerto. Sincronize; não repita a submissão desta revisão.</p>}</section>}
+    </fieldset><section aria-label="Prévia do template"><h3>Prévia ilustrativa{channel === "PUSH" ? " — KALEND" : ""}</h3><p>{previewText(subject, event.variables)}</p><pre className="communication-preview">{previewText(text, event.variables)}</pre>{channel === "PUSH" && <><p>Destino: {url ? previewText(url, event.variables) : "/conta/notificacoes"}</p>{actionText && <button type="button" disabled>{previewText(actionText, event.variables)}</button>}<p>O clique na notificação abre o destino. O botão aparece somente em navegadores com suporte a actions; a prévia não garante esse suporte.</p></>}<p>Valores entre colchetes representam variáveis. A prévia não realiza envios.</p></section><Feedback busy={busy} error={error} message={message} />
   </form>;
 }
 export function CommunicationTemplates() {

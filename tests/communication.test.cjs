@@ -48,7 +48,7 @@ test('communication API uses only confirmed global endpoints and exact bodies', 
   await api.test('SMTP'); await api.sendTest('SMTP'); await api.pair();
   await api.sendTest('META', { id: '123', name: 'hello', language: 'pt_BR', parameters: [] });
   await api.saveTemplate('TRIAL_STARTED', 'EMAIL', { provider: 'SMTP', enabled: false, content: { subject: 'Olá', text: '{{nome}}' } });
-  await api.syncMeta(); await api.syncMeta('cursor'); await api.createMeta({ name: 'hello', language: 'pt_BR', category: 'UTILITY', text: 'Olá' }); await api.reprocess('delivery');
+  await api.syncMeta(); await api.syncMeta('cursor'); await api.createMeta('local-template-id'); await api.reprocess('delivery');
   assert.deepEqual(calls.slice(0, 8).map(call => call[0]), ['/communication/providers', '/communication/events', '/communication/templates', '/communication/meta/templates', '/communication/outbox', '/communication/deliveries', '/communication/failures', '/communication/logs']);
   assert.deepEqual(calls[10], ['/communication/providers/SMTP/send-test', 'POST', {}]);
   assert.deepEqual(calls[12][2], { template: { id: '123', name: 'hello', language: 'pt_BR', parameters: [] } });
@@ -63,10 +63,11 @@ test('provider patch keeps string TLS contract, omits blank secrets and refuses 
   assert.equal(changed.secrets.accessToken, 'test-only'); assert.equal('password' in changed.secrets, false);
   assert.throws(() => contract.providerPatch('SMTP', { ...config, host: 'smtp.gmail.com' }, {}, 'SANDBOX'), /OAuth/);
 });
-test('providers show real pending/connected/failed states and unavailable Gmail/Push', () => {
+test('providers show real states, configurable Web Push and unavailable Gmail', () => {
   const { ProviderCards } = load('components/communication-providers.tsx');
   const html = renderToStaticMarkup(React.createElement(ProviderCards, { providers: [provider(), provider('META', { status: 'CONNECTED' }), provider('EVOLUTION', { status: 'FAILED' }), provider('GMAIL', { adapterAvailable: false }), provider('PUSH_PENDING', { adapterAvailable: false })], select() {} }));
-  assert.match(html, /Validação pendente/); assert.match(html, /Conectado/); assert.match(html, /Falha/); assert.match(html, /OAuth ainda não configurado/); assert.equal((html.match(/>Configurar</g) ?? []).length, 3);
+  assert.match(html, /Validação pendente/); assert.match(html, /Conectado/); assert.match(html, /Falha/); assert.match(html, /OAuth ainda não configurado/); assert.equal((html.match(/>Configurar</g) ?? []).length, 4);
+  assert.match(html, /Push Web/);
   assert.match(contract.providerState(), /não retornado/);
 });
 test('SMTP editor starts secrets empty, submits replacement once and clears after failed save', async () => {
@@ -80,6 +81,22 @@ test('SMTP editor starts secrets empty, submits replacement once and clears afte
   form.props.onSubmit({ preventDefault() {}, currentTarget: domForm }); form.props.onSubmit({ preventDefault() {}, currentTarget: domForm });
   assert.equal(calls.length, 1); assert.equal(calls[0][1].secrets.password, 'replacement-test-only'); assert.equal(input.value, ''); assert.doesNotMatch(JSON.stringify(h.states), /replacement-test-only/);
   resolve(); await tick(); assert.equal(labelInput(h.render(), 'Nova senha SMTP').props.value, undefined); assert.match(h.html(), /Confira os campos/); assert.doesNotMatch(h.html(), /replacement-test-only/);
+});
+test('Web Push initial VAPID generation sends only contact and never returns private key to editor', async () => {
+  const calls = [];
+  const row = provider('PUSH_PENDING', { configured: false });
+  const saved = provider('PUSH_PENDING', { config: { subject: 'mailto:dev@example.test', publicKey: 'fixture-public-key' } });
+  const h = harness('components/communication-providers.tsx', 'ProviderEditor', { name: 'PUSH_PENDING', initial: row, close() {} }, {
+    '@/lib/communication': { ...contract, communication: { generateVapid: async contact => { calls.push(contact); return saved; } } },
+  });
+  const button = 'Gerar e salvar VAPID no servidor';
+  assert.equal(nodes(h.render(), node => node.type === 'button' && node.props.children === button)[0].props.disabled, true);
+  labelInput(h.render(), 'Contato VAPID (mailto:email)').props.onChange({ target: { value: 'mailto:dev@example.test' } });
+  click(h.render(), button); click(h.render(), button); await tick();
+  assert.deepEqual(calls, ['mailto:dev@example.test']);
+  assert.equal(nodes(h.render(), node => node.type === 'button' && node.props.children === button).length, 0);
+  assert.equal(labelInput(h.render(), 'Nova chave privada VAPID (somente escrita)').props.value, undefined);
+  assert.doesNotMatch(JSON.stringify(h.states), /privateKey/);
 });
 test('SMTP test does not imply sent or delivered and enabling requires CONNECTED', async () => {
   const row = provider(); const calls = [];
@@ -117,11 +134,14 @@ test('internal template validates event variables, persists exact text contract 
   assert.deepEqual(JSON.parse(JSON.stringify(calls[0])), ['TRIAL_STARTED', 'EMAIL', { provider: 'SMTP', enabled: false, content: { subject: 'Olá {{nome}}', text: '<img src=x onerror=alert(1)> {{nome}}' } }]);
   labelInput(h.render(), 'Conteúdo em texto').props.onChange({ target: { value: '{{token}}' } }); await h.render().props.onSubmit({ preventDefault() {} }); assert.equal(calls.length, 1); assert.match(h.html(), /Use apenas as variáveis/);
 });
-test('internal Meta persisted content converts to exact reference contract', async () => {
+test('Meta saves one local source with examples and pending status, without independent official content', async () => {
   const calls = [];
-  const initial = { provider: 'META', enabled: false, content: { text: '', metaId: '123', metaName: 'hello', metaLanguage: 'pt_BR', metaParameters: '["nome"]' } };
-  const h = harness('components/communication-templates.tsx', 'InternalTemplateEditor', { event: { event: 'OWNER_WELCOME', variables: ['nome'] }, channel: 'WHATSAPP', providers: [provider('META')], initial, saved() {} }, { './communication-resource': resourceMock([]), '@/lib/communication': { ...contract, communication: { saveTemplate: async (...args) => { calls.push(args); return {}; } } } });
-  await h.render().props.onSubmit({ preventDefault() {} }); assert.deepEqual(JSON.parse(JSON.stringify(calls[0][2].content)), { id: '123', name: 'hello', language: 'pt_BR', parameters: ['nome'] });
+  const initial = { id: 'local-id', provider: 'META', enabled: false, approvalStatus: 'PENDING', content: { text: 'Olá {{nome}}, tudo bem?', name: 'hello', language: 'pt_BR', category: 'UTILITY', examples: '["Maria"]' } };
+  const h = harness('components/communication-templates.tsx', 'InternalTemplateEditor', { event: { event: 'OWNER_WELCOME', variables: ['nome'] }, channel: 'WHATSAPP', providers: [provider('META')], initial, saved() {} }, { '@/lib/communication': { ...contract, communication: { saveTemplate: async (...args) => { calls.push(args); return initial; } } } });
+  assert.match(h.html(), /PENDENTE/); assert.match(h.html(), /Aguardando aprovação/);
+  await h.render().props.onSubmit({ preventDefault() {} });
+  assert.deepEqual(JSON.parse(JSON.stringify(calls[0][2].content)), { text: 'Olá {{nome}}, tudo bem?', name: 'hello', language: 'pt_BR', category: 'UTILITY', examples: { nome: 'Maria' } });
+  assert.equal(nodes(h.render(), n => n.type === 'input' && n.props.type === 'checkbox')[0].props.disabled, true);
 });
 test('Gmail and Push templates cannot activate an unavailable provider', () => {
   const h = harness('components/communication-templates.tsx', 'InternalTemplateEditor', { event: { event: 'OWNER_WELCOME', variables: ['nome'] }, channel: 'PUSH', providers: [provider('PUSH_PENDING', { adapterAvailable: false })], saved() {} });
@@ -134,15 +154,13 @@ test('events come from API and templates handle an empty event catalog', () => {
   }
   const h = harness('components/communication-templates.tsx', 'CommunicationTemplates', {}, { './communication-resource': resourceMock({ events: [], templates: [], providers: [] }) }); assert.match(h.html(), /Nenhum evento/);
 });
-test('Meta creation submits static UTILITY then requires sync; sync cursor uses response', async () => {
+test('Meta catalog is read-only and synchronization retains cursor pagination', async () => {
   const calls = []; const templates = [{ id: 'id', externalId: '123', name: 'hello', language: 'pt_BR', category: 'UTILITY', status: 'PENDING', components: [{ type: 'BODY', text: 'Olá' }], syncedAt: null }];
-  const h = harness('components/communication-meta.tsx', 'CommunicationMeta', {}, { './communication-resource': resourceMock(templates), '@/lib/communication': { ...contract, communication: { createMeta: async body => { calls.push(body); return { externalId: '123', syncRequired: true }; }, syncMeta: async after => { calls.push(after); return { synced: 1, after: after ? null : 'next-page' }; } } } });
-  labelInput(h.render(), 'Nome').props.onChange({ target: { value: 'hello' } }); labelInput(h.render(), 'Idioma (ex.: pt_BR)').props.onChange({ target: { value: 'pt_BR' } }); labelInput(h.render(), 'Corpo estático').props.onChange({ target: { value: 'Olá' } });
-  const form = nodes(h.render(), n => n.type === 'form')[0]; await form.props.onSubmit({ preventDefault() {} });
-  assert.deepEqual(JSON.parse(JSON.stringify(calls[0])), { name: 'hello', language: 'pt_BR', category: 'UTILITY', text: 'Olá' });
-  assert.match(h.html(), /Sincronize para consultar/); assert.doesNotMatch(h.html(), />Aprovado</);
-  assert.equal(nodes(h.render(), n => n.type === 'fieldset')[0].props.disabled, true);
-  click(h.render(), 'Sincronizar desde o início'); await tick(); click(h.render(), 'Sincronizar próxima página'); await tick(); assert.equal(calls[2], 'next-page');
+  const h = harness('components/communication-meta.tsx', 'CommunicationMeta', {}, { './communication-resource': resourceMock(templates), '@/lib/communication': { ...contract, communication: { syncMeta: async after => { calls.push(after); return { synced: 1, after: after ? null : 'next-page' }; } } } });
+  assert.equal(nodes(h.render(), n => n.type === 'form').length, 0);
+  assert.match(h.html(), /fonte única/);
+  click(h.render(), 'Sincronizar desde o início'); await tick(); click(h.render(), 'Sincronizar próxima página'); await tick();
+  assert.deepEqual(calls, [undefined, 'next-page']);
 });
 test('reprocess confirms before execution, prevents double click and never offers UNCERTAIN retry', async () => {
   const row = { id: 'id', status: 'RETRY', attempts: 1 }; let confirm = false; let calls = 0; let refreshes = 0; let done;
@@ -241,20 +259,26 @@ test('all provider secrets stay out of React state and clear before the asynchro
     assert.equal(calls[0].secrets[key], `private-test-${key}`); assert.doesNotMatch(JSON.stringify(h.states), /private-test-/); assert.doesNotMatch(h.html(), /private-test-/);
   }
 });
-test('Meta retry guard survives remount and only clears after all sync pages and a successful list reload', async () => {
-  let guard = false; let next = 'next-page'; let loaded = true; let creates = 0;
-  const mocks = {
-    __context: () => ({ pending: 0, change() {}, metaSyncNeeded: guard, setMetaSyncNeeded: value => { guard = value; } }),
-    './communication-resource': { ...resourceMock([]), useCommunicationResource: () => fixture([], { load: async () => loaded }) },
-    '@/lib/communication': { ...contract, communication: { createMeta: async () => { creates++; throw new Error('Serviço indisponível.'); }, syncMeta: async () => ({ synced: 1, after: next }) } },
-  };
-  let h = harness('components/communication-meta.tsx', 'CommunicationMeta', {}, mocks);
-  await nodes(h.render(), node => node.type === 'form')[0].props.onSubmit({ preventDefault() {} }); assert.equal(creates, 1); assert.equal(guard, true);
-  h = harness('components/communication-meta.tsx', 'CommunicationMeta', {}, mocks); // Return to Meta section.
-  await nodes(h.render(), node => node.type === 'form')[0].props.onSubmit({ preventDefault() {} }); assert.equal(creates, 1);
-  click(h.render(), 'Sincronizar desde o início'); await tick(); assert.equal(guard, true);
-  next = null; loaded = false; click(h.render(), 'Sincronizar próxima página'); await tick(); assert.equal(guard, true);
-  loaded = true; click(h.render(), 'Sincronizar desde o início'); await tick(); assert.equal(guard, false);
+test('Meta uncertain submission blocks repeat and persisted state survives editor remount', async () => {
+  let creates = 0;
+  const initial = { id: 'local-id', provider: 'META', enabled: false, approvalStatus: 'PENDING', content: { text: 'Olá', name: 'hello', language: 'pt_BR', category: 'UTILITY', examples: '[]' } };
+  const mocks = { '@/lib/communication': { ...contract, communication: { createMeta: async id => { assert.equal(id, 'local-id'); creates++; throw new Error('Resultado incerto.'); } } } };
+  const props = { event: { event: 'OWNER_WELCOME', variables: ['nome'] }, channel: 'WHATSAPP', providers: [provider('META')], initial, saved() {} };
+  let h = harness('components/communication-templates.tsx', 'InternalTemplateEditor', props, mocks);
+  click(h.render(), 'Enviar conteúdo salvo para aprovação'); await tick();
+  assert.equal(creates, 1); assert.match(h.html(), /Resultado incerto/);
+  assert.equal(nodes(h.render(), n => n.type === 'button' && n.props.children === 'Enviar conteúdo salvo para aprovação')[0].props.disabled, true);
+  h = harness('components/communication-templates.tsx', 'InternalTemplateEditor', { ...props, initial: { ...initial, metaSubmissionState: 'UNCERTAIN' } }, mocks);
+  assert.equal(nodes(h.render(), n => n.type === 'button' && n.props.children === 'Enviar conteúdo salvo para aprovação')[0].props.disabled, true);
+});
+test('Push editor saves URL/action/icon through existing template and previews fallback', async () => {
+  const calls = [];
+  const h = harness('components/communication-templates.tsx', 'InternalTemplateEditor', { event: { event: 'OWNER_WELCOME', variables: ['nome', 'link'] }, channel: 'PUSH', providers: [provider('PUSH_PENDING')], saved() {} }, { '@/lib/communication': { ...contract, communication: { saveTemplate: async (...args) => { calls.push(args); return {}; } } } });
+  for (const [label, value] of [['Título', 'Atualização'], ['Mensagem', 'Olá {{nome}}'], ['Link', '/agenda/agendamento/123'], ['Texto do botão', 'VER AGENDAMENTO']]) labelInput(h.render(), label).props.onChange({ target: { value } });
+  labelInput(h.render(), 'Ícone').props.onChange({ target: { value: '/icons/kalend-192.png' } });
+  await h.render().props.onSubmit({ preventDefault() {} });
+  assert.deepEqual(JSON.parse(JSON.stringify(calls[0][2].content)), { title: 'Atualização', text: 'Olá {{nome}}', url: '/agenda/agendamento/123', actionText: 'VER AGENDAMENTO', icon: '/icons/kalend-192.png' });
+  assert.match(h.html(), /somente em navegadores com suporte/); assert.match(h.html(), /VER AGENDAMENTO/);
 });
 test('resource retry inside a form is explicitly a non-submit button', () => {
   const { ResourceState } = load('components/communication-resource.tsx'); let retries = 0;
@@ -266,7 +290,7 @@ test('frontend provider/template payloads execute the real local backend validat
   // Mock only DI/network infrastructure: actual configuration, template and common validators execute.
   const decorator = () => () => {};
   const nest = { BadRequestException: Error, ConflictException: Error, ServiceUnavailableException: Error, Inject: decorator, Injectable: decorator };
-  const mocks = { '@nestjs/common': nest, '../prisma/prisma.service.js': {}, '../billing/secret-vault.js': {}, './transports.js': {}, './push.js': { validateVapid() { throw new Error('Push outside this SMTP/Meta fixture'); } }, './network.js': { allowedHost() {} } };
+  const mocks = { 'web-push': {}, '@nestjs/common': nest, '../prisma/prisma.service.js': {}, '../billing/secret-vault.js': {}, './transports.js': {}, './push.js': { validateVapid() { throw new Error('Push outside this SMTP/Meta fixture'); } }, './network.js': { allowedHost() {} } };
   const globals = { process: { env: { COMMUNICATION_META_GRAPH_VERSION: 'v25.0' } } };
   const backendConfig = load(path.join(backendRoot, 'communication/configuration.ts'), mocks, globals);
   const backendContracts = load(path.join(backendRoot, 'communication/contracts.ts'), mocks, globals);

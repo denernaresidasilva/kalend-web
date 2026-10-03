@@ -13,6 +13,10 @@ export interface CommunicationEvent { event: string; variables: string[] }
 export interface InternalTemplate {
   id: string; event: string; channel: Channel; provider: ProviderName; enabled: boolean;
   content: Record<string, string>; revision: number;
+  approvalStatus?: string | null; metaStatus?: string | null; metaTemplateId?: string | null;
+  metaSubmissionState?: string | null; metaSubmittedName?: string | null;
+  metaSubmittedAt?: string | null; metaSyncedAt?: string | null; metaStatusAt?: string | null;
+  metaRejectionReason?: string | null;
 }
 export interface MetaTemplate {
   id: string; externalId: string; name: string; language: string; category: string; status: string;
@@ -30,9 +34,9 @@ export interface CommunicationLog {
   code: string | null; attempt: number | null; createdAt: string;
 }
 export const providerNames: Record<ProviderName, string> = {
-  SMTP: "E-mail SMTP", META: "WhatsApp — Meta Cloud API", EVOLUTION: "WhatsApp — Evolution API", GMAIL: "Gmail", PUSH_PENDING: "Push",
+  SMTP: "E-mail SMTP", META: "WhatsApp — Meta Cloud API", EVOLUTION: "WhatsApp — Evolution API", GMAIL: "Gmail", PUSH_PENDING: "Push Web",
 };
-export const channelNames: Record<Channel, string> = { EMAIL: "E-mail", WHATSAPP: "WhatsApp", PUSH: "Push" };
+export const channelNames: Record<Channel, string> = { EMAIL: "E-mail", WHATSAPP: "WhatsApp", PUSH: "Push Web" };
 export const providerChannels: Record<ProviderName, Channel> = { SMTP: "EMAIL", GMAIL: "EMAIL", META: "WHATSAPP", EVOLUTION: "WHATSAPP", PUSH_PENDING: "PUSH" };
 const states: Record<string, string> = {
   NOT_CONFIGURED: "Não configurado", PENDING_VALIDATION: "Validação pendente", CONNECTED: "Conectado", FAILED: "Falha",
@@ -46,15 +50,15 @@ export function providerState(row?: CommunicationProvider) {
 
   return stateLabel(row.status);
 }
-export const availableProvider = (p: ProviderName) => p !== "GMAIL" && p !== "PUSH_PENDING";
+export const availableProvider = (p: ProviderName) => p !== "GMAIL";
 export const providerFields: Record<ProviderName, [string, string][]> = {
   SMTP: [["host", "Host"], ["username", "Usuário"], ["fromName", "Nome do remetente"], ["fromEmail", "E-mail do remetente"], ["replyTo", "Responder para (opcional)"]],
   META: [["phoneNumberId", "ID do número de telefone"], ["businessAccountId", "ID da conta empresarial"], ["graphVersion", "Versão Graph autorizada no backend"]],
-  EVOLUTION: [["baseUrl", "URL base HTTPS"], ["instance", "Instância"], ["version", "Versão (2.3.7)"]], GMAIL: [], PUSH_PENDING: [],
+  EVOLUTION: [["baseUrl", "URL base HTTPS"], ["instance", "Instância"], ["version", "Versão (2.3.7)"]], GMAIL: [], PUSH_PENDING: [["subject", "Contato VAPID (mailto:email)"], ["publicKey", "Chave pública VAPID"]],
 };
 export const secretFields: Record<ProviderName, [string, string][]> = {
   SMTP: [["password", "Nova senha SMTP"]], META: [["accessToken", "Novo access token"], ["appSecret", "Novo app secret"], ["verifyToken", "Novo verify token"]],
-  EVOLUTION: [["apiKey", "Nova API key"]], GMAIL: [], PUSH_PENDING: [],
+  EVOLUTION: [["apiKey", "Nova API key"]], GMAIL: [], PUSH_PENDING: [["privateKey", "Nova chave privada VAPID (somente escrita)"]],
 };
 export function providerPatch(provider: ProviderName, config: Record<string, string>, secrets: Record<string, string>, environment: Environment) {
   const cleanConfig = Object.fromEntries([...providerFields[provider].map(([key]) => key), ...(provider === "SMTP" ? ["port", "secure"] : [])].map(key => [key, config[key] ?? ""]));
@@ -72,8 +76,9 @@ export function metaParameters(content: Record<string, string>): string[] {
   try { const parsed: unknown = JSON.parse(content.metaParameters || "[]"); return Array.isArray(parsed) && parsed.every(item => typeof item === "string") ? parsed : []; } catch { return []; }
 }
 export type MetaReference = { id: string; name: string; language: string; parameters: string[] };
-export type TemplatePatch = { provider: ProviderName; enabled: boolean; content: { text: string; subject?: string; title?: string } | MetaReference };
+export type TemplatePatch = { provider: ProviderName; enabled: boolean; content: { text: string; subject?: string; title?: string; url?: string; icon?: string; actionText?: string; name?: string; language?: string; category?: string; examples?: Record<string, string> } | MetaReference };
 export const communication = {
+  generateVapid: (subject: string) => api<CommunicationProvider>("/communication/push/vapid", { method: "POST", ...jsonBody({ subject }) }),
   providers: (signal?: AbortSignal) => api<CommunicationProvider[]>("/communication/providers", { signal }),
   events: (signal?: AbortSignal) => api<CommunicationEvent[]>("/communication/events", { signal }),
   templates: (signal?: AbortSignal) => api<InternalTemplate[]>("/communication/templates", { signal }),
@@ -88,6 +93,6 @@ export const communication = {
   pair: () => api<{ connected: true } | { connected: false; qrCode: string }>("/communication/providers/EVOLUTION/pair", { method: "POST" }),
   saveTemplate: (event: string, channel: Channel, body: TemplatePatch) => api<InternalTemplate>(`/communication/templates/${encodeURIComponent(event)}/${channel}`, { method: "PATCH", ...jsonBody(body) }),
   syncMeta: (after?: string) => api<{ synced: number; after: string | null }>("/communication/meta/templates/sync", { method: "POST", ...jsonBody(after ? { after } : {}) }),
-  createMeta: (body: { name: string; language: string; category: "UTILITY"; text: string }) => api<{ externalId: string; syncRequired: true }>("/communication/meta/templates", { method: "POST", ...jsonBody(body) }),
+  createMeta: (templateId: string) => api<{ template: InternalTemplate; alreadySubmitted: boolean; syncRequired: true }>("/communication/meta/templates", { method: "POST", ...jsonBody({ templateId }) }),
   reprocess: (id: string) => api<{ queued: true }>(`/communication/deliveries/${encodeURIComponent(id)}/reprocess`, { method: "POST" }),
 };

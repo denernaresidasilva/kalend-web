@@ -31,7 +31,7 @@ function NotificationPreferencesPanel({ profile }: { profile: AuthMe }) {
     finally { flight.current = false; if (mounted.current) setSaving(false); }
   }
   return <section id="preferencias" className="k-account-stack" aria-labelledby="notification-preferences-title">
-    <Card><h2 id="notification-preferences-title">Preferências de notificações</h2><p>Notificações no sistema e Push Web são independentes. O histórico fica disponível por 7 dias a partir do evento.</p>
+    <Card><h2 id="notification-preferences-title">Preferências de notificações</h2><p>Notificações no sistema e Push Web são independentes. O histórico fica disponível por 7 dias após sua criação na central.</p>
       <p>Desativar as notificações no sistema impede a criação de novas notificações para sua conta. O histórico existente permanece até expirar. Esta preferência vale para todas as suas empresas.</p>
       {data ? <><p>Notificações no sistema: <strong>{data.inSystemEnabled ? "Ativadas" : "Desativadas"}</strong></p><Button loading={saving} variant={data.inSystemEnabled ? "secondary" : "primary"} onClick={() => void toggle()}>{data.inSystemEnabled ? "Desativar notificações no sistema" : "Ativar notificações no sistema"}</Button></> : !error && <Loading>Carregando preferências…</Loading>}
       {error && <><Alert tone="danger">{error}</Alert>{!data && <Button variant="secondary" onClick={() => void load()}>Tentar novamente</Button>}</>}{success && <Alert>{success}</Alert>}

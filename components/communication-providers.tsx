@@ -11,7 +11,7 @@ export function ProviderCards({ providers, select }: { providers: CommunicationP
     const row = providers.find(item => item.provider === name);
     return <section className="gateway-card" key={name}><h2>{providerNames[name]}</h2><p>{name === "GMAIL" ? "Em breve · OAuth ainda não configurado" : name === "PUSH_PENDING" ? providerState(row) : providerState(row)}</p>
       {row && <><div className="commercial-badges"><span>Credencial: {row.configured ? "salva" : "não configurada"}</span><span>{row.enabled ? "Habilitado" : "Desabilitado"}</span><span>{row.environment === "SANDBOX" ? "Sandbox" : "Produção"}</span></div><p>Adapter: {row.adapterAvailable ? "disponível" : "indisponível"}</p></>}
-      {name === "PUSH_PENDING" && <Link href="/conta">Gerenciar notificações e dispositivos</Link>}
+      {name === "PUSH_PENDING" && <Link href="/conta/notificacoes#preferencias">Gerenciar notificações e dispositivos</Link>}
       {select && availableProvider(name) && <button onClick={() => select(name)}>Configurar</button>}
     </section>;
   })}</div>;
@@ -32,8 +32,8 @@ export function ProviderEditor({ initial, name, close }: { initial?: Communicati
   const [qr, setQr] = useState<string | null>(null);
   const [metaTest, setMetaTest] = useState<MetaTemplate>();
   const dirty = environment !== (row?.environment ?? "SANDBOX") || Object.entries(config).some(([key, value]) => value !== (row?.config[key] ?? "")) || hasSecretInput;
-  async function run(action: "save" | "test" | "send-test" | "pair" | "enable", form?: HTMLFormElement) {
-    if (lockRef.current || stale || (action !== "save" && dirty)) return;
+  async function run(action: "save" | "test" | "send-test" | "pair" | "enable" | "generate-vapid", form?: HTMLFormElement) {
+    if (lockRef.current || stale || (action !== "save" && action !== "generate-vapid" && dirty)) return;
     let body: ReturnType<typeof providerPatch> | undefined;
     if (action === "save") {
       if (!form) return;
@@ -49,7 +49,11 @@ export function ProviderEditor({ initial, name, close }: { initial?: Communicati
     }
     lockRef.current = true; setBusy(true); setError(""); setMessage(""); setQr(null);
     try {
-      if (action === "save") {
+      if (action === "generate-vapid") {
+        const saved = await communication.generateVapid(config.subject ?? "");
+        setRow(saved); setConfig(saved.config); setEnvironment(saved.environment);
+        setMessage("VAPID gerado e salvo no servidor. A chave privada não é retornada. Valide o par e habilite Push Web.");
+      } else if (action === "save") {
         const saved = await communication.patchProvider(name, body!); setRow(saved); setConfig(saved.config); setEnvironment(saved.environment); setMetaTest(undefined);
         setMessage("Configuração salva. Alterações exigem nova validação antes de habilitar o canal.");
       } else if (action === "test") {
@@ -84,6 +88,8 @@ export function ProviderEditor({ initial, name, close }: { initial?: Communicati
       <div className="communication-form-grid">{secretFields[name].map(([key, label]) => <label key={key}>{label}<input type="password" autoComplete="new-password" maxLength={16384} name={key} onChange={e => { setQr(null); const form = e.currentTarget.form; setHasSecretInput(!!form && secretFields[name].some(([field]) => !!(form.elements.namedItem(field) as HTMLInputElement | null)?.value)); }} /></label>)}</div>
       <p>Secrets são somente de escrita. Campos vazios preservam os valores salvos no mesmo ambiente. A API informa apenas se há credencial armazenada, sem detalhar cada secret.</p>
       {name === "EVOLUTION" && <p>URL e versão serão validadas pelo backend. Evolution não possui confirmação completa de entrega.</p>}
+      {name === "PUSH_PENDING" && <p>A chave privada é somente de escrita e fica cifrada no servidor. Testar conexão valida o par VAPID; para comprovar entrega, ative um dispositivo na central e envie um teste. Trocar a chave exige novo registro dos navegadores.</p>}
+      {name === "PUSH_PENDING" && !row?.config.publicKey && !row?.configured && <button type="button" disabled={!config.subject?.trim() || hasSecretInput} onClick={() => void run("generate-vapid")}>Gerar e salvar VAPID no servidor</button>}
       <button className="commercial-primary" disabled={!dirty}>Salvar configuração</button>
     </fieldset></form>
     {name === "META" && row?.configured && <div className="commercial-form"><MetaTest key={`${row.revision}:${row.environment}`} choose={setMetaTest} /></div>}

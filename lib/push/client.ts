@@ -3,6 +3,7 @@ import type { AuthMe } from "../contracts";
 export type PushProfile = Pick<AuthMe, "systemRole" | "selectedCompanyId"> & { user: Pick<AuthMe["user"], "id"> };
 export type PushState = "unsupported" | "permission-default" | "permission-granted" | "permission-denied" | "subscribed" | "unsubscribed" | "error";
 export type Device = {
+  registeredInCurrentSession?: boolean;
   id: string; label: string | null; platform: "WEB" | "ANDROID" | "IOS"; active: boolean;
   revokedAt: string | null; expiresAt: string | null; lastSeenAt?: string | null; lastUsedAt?: string | null;
   authorizations?: { active: boolean; revokedAt: string | null }[];
@@ -75,6 +76,7 @@ export async function inContext<T>(profile: PushProfile | null, work: () => Prom
   });
 }
 export const pushApi = {
+  test: (requestId: string) => api<{ queued: boolean; outboxId: string }>(`${ROOT}/test`, { method: "POST", ...jsonBody({ requestId }) }),
   config: () => api<PublicConfig>(`${ROOT}/public-config`),
   list: () => api<Device[]>(`${ROOT}/subscriptions`),
   update: (id: string, active: boolean) => api(`${ROOT}/subscriptions/${encodeURIComponent(id)}`, { method: "PUT", ...jsonBody({ active }) }),
@@ -92,7 +94,10 @@ export async function enable(profile: PushProfile, config: PublicConfig) {
     const reg = await registration();
     const key = Uint8Array.from(atob(config.publicKey!.replace(/-/g, "+").replace(/_/g, "/")), c => c.charCodeAt(0));
     let sub = await reg.pushManager.getSubscription();
-    if (sub?.expirationTime && sub.expirationTime <= Date.now()) { await sub.unsubscribe(); sub = null; }
+    if (sub?.expirationTime && sub.expirationTime <= Date.now()) {
+      if (!await sub.unsubscribe()) throw new Error("Não foi possível remover a inscrição expirada. Tente novamente.");
+      sub = null;
+    }
     if (sub?.options.applicationServerKey && !equalKey(new Uint8Array(sub.options.applicationServerKey), key)) throw new Error("A chave pública mudou. Remova o registro deste dispositivo antes de ativar novamente.");
     sub ??= await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key });
     const serialized = sub.toJSON();
@@ -104,6 +109,14 @@ export async function enable(profile: PushProfile, config: PublicConfig) {
   });
 }
 function equalKey(a: Uint8Array, b: Uint8Array) { return a.length === b.length && a.every((value, index) => value === b[index]); }
+export function subscriptionMatchesVapid(sub: PushSubscription, config: PublicConfig) {
+  if (!config.publicKey) return false;
+  if (!sub.options.applicationServerKey) return true;
+  try {
+    const key = Uint8Array.from(atob(config.publicKey.replace(/-/g, "+").replace(/_/g, "/")), c => c.charCodeAt(0));
+    return equalKey(new Uint8Array(sub.options.applicationServerKey), key);
+  } catch { return false; }
+}
 
 export async function removeDevice(profile: PushProfile, id: string, localId: string | null) {
   return inContext(profile, async () => {
