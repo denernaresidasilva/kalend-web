@@ -70,6 +70,32 @@ test('providers show real states, configurable Web Push and SMTP-only email mana
   assert.match(html, /Push Web/);
   assert.match(contract.providerState(), /não retornado/);
 });
+test('Web Push always displays production without changing other provider environments', () => {
+  const { ProviderCards } = load('components/communication-providers.tsx');
+  for (const environment of ['SANDBOX', 'PRODUCTION']) {
+    const row = provider('PUSH_PENDING', { environment, enabled: true, status: 'CONNECTED' });
+    const tree = ProviderCards({ providers: [row, provider('SMTP'), provider('META'), provider('EVOLUTION')] });
+    const cards = nodes(tree, node => node.type === 'section');
+    const cardFor = name => cards.find(card => nodes(card, node => node.type === 'h2' && node.props.children === contract.providerNames[name]).length);
+    const push = renderToStaticMarkup(cardFor('PUSH_PENDING'));
+    assert.match(push, /Credencial: salva/); assert.match(push, /Habilitado/); assert.match(push, /Conectado/);
+    assert.match(push, /Produção/); assert.doesNotMatch(push, /Sandbox/);
+    assert.match(push, /Adapter: disponível/); assert.match(push, /Gerenciar notificações e dispositivos/);
+    for (const name of ['SMTP', 'META', 'EVOLUTION']) {
+      assert.match(renderToStaticMarkup(cardFor(name)), /Sandbox/);
+    }
+    assert.equal(row.environment, environment);
+    const editor = harness('components/communication-providers.tsx', 'ProviderEditor', { name: 'PUSH_PENDING', initial: row, close() {} });
+    assert.equal(labelInput(editor.render(), 'Ambiente'), undefined);
+    assert.match(editor.html(), /Produção/); assert.doesNotMatch(editor.html(), /Sandbox/);
+    assert.equal(nodes(editor.render(), node => node.type === 'button' && node.props.children === 'Testar conexão')[0].props.disabled, false);
+  }
+  for (const name of ['SMTP', 'META', 'EVOLUTION']) {
+    const editor = harness('components/communication-providers.tsx', 'ProviderEditor', { name, initial: provider(name), close() {} });
+    assert.equal(labelInput(editor.render(), 'Ambiente').props.value, 'SANDBOX');
+    assert.match(editor.html(), /Sandbox/); assert.match(editor.html(), /Produção/);
+  }
+});
 test('SMTP editor starts secrets empty, submits replacement once and clears after failed save', async () => {
   const calls = []; let resolve; const gate = new Promise(done => { resolve = done; });
   const row = provider();
