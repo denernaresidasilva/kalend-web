@@ -82,21 +82,12 @@ test('SMTP editor starts secrets empty, submits replacement once and clears afte
   assert.equal(calls.length, 1); assert.equal(calls[0][1].secrets.password, 'replacement-test-only'); assert.equal(input.value, ''); assert.doesNotMatch(JSON.stringify(h.states), /replacement-test-only/);
   resolve(); await tick(); assert.equal(labelInput(h.render(), 'Nova senha SMTP').props.value, undefined); assert.match(h.html(), /Confira os campos/); assert.doesNotMatch(h.html(), /replacement-test-only/);
 });
-test('Web Push initial VAPID generation sends only contact and never returns private key to editor', async () => {
-  const calls = [];
+test('Web Push editor does not offer an unimplemented VAPID generation route', () => {
   const row = provider('PUSH_PENDING', { configured: false });
-  const saved = provider('PUSH_PENDING', { config: { subject: 'mailto:dev@example.test', publicKey: 'fixture-public-key' } });
-  const h = harness('components/communication-providers.tsx', 'ProviderEditor', { name: 'PUSH_PENDING', initial: row, close() {} }, {
-    '@/lib/communication': { ...contract, communication: { generateVapid: async contact => { calls.push(contact); return saved; } } },
-  });
-  const button = 'Gerar e salvar VAPID no servidor';
-  assert.equal(nodes(h.render(), node => node.type === 'button' && node.props.children === button)[0].props.disabled, true);
-  labelInput(h.render(), 'Contato VAPID (mailto:email)').props.onChange({ target: { value: 'mailto:dev@example.test' } });
-  click(h.render(), button); click(h.render(), button); await tick();
-  assert.deepEqual(calls, ['mailto:dev@example.test']);
-  assert.equal(nodes(h.render(), node => node.type === 'button' && node.props.children === button).length, 0);
+  const h = harness('components/communication-providers.tsx', 'ProviderEditor', { name: 'PUSH_PENDING', initial: row, close() {} });
+  assert.doesNotMatch(h.html(), /Gerar e salvar VAPID/);
+  assert.equal(contract.communication.generateVapid, undefined);
   assert.equal(labelInput(h.render(), 'Nova chave privada VAPID (somente escrita)').props.value, undefined);
-  assert.doesNotMatch(JSON.stringify(h.states), /privateKey/);
 });
 test('SMTP test does not imply sent or delivered and enabling requires CONNECTED', async () => {
   const row = provider(); const calls = [];

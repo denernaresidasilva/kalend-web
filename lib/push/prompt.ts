@@ -1,36 +1,37 @@
-import { activeDevice, currentId, eligible, enable, inContext, pushApi, registration, subscriptionMatchesVapid, supported, type PublicConfig, type PushProfile } from "./client";
+import { eligible, enable, evaluatePush, inContext, pushApi, supported, type PublicConfig, type PushProfile, type PushStatus } from "./client";
+import { notifyPushChanged } from "./events";
 
 export type PromptStatus = "invite" | "ready" | "hidden" | "context" | "paused" | "error";
-// Called once per entry. Never asks permission; granted-only repair reuses the existing registration contract.
+function promptStatus(status: PushStatus): PromptStatus {
+  switch (status) {
+    case "activated": return "ready";
+    case "needs_registration": return "invite";
+    case "paused": return "paused";
+    case "context": return "context";
+    case "blocked": return "hidden";
+    default: return "error";
+  }
+}
+// Probing never grants or restores consent. Registration requires a user action.
 export async function inspectPushPrompt(profile: PushProfile): Promise<PromptStatus> {
-  if (!supported() || Notification.permission === "denied") return "hidden";
-  if (!eligible(profile)) return "context";
-  if (Notification.permission === "default") return "invite";
-  const config = await inContext(profile, () => pushApi.config());
-  if (!config.available || !config.publicKey) return "error";
-  const reg = await registration();
-  const sub = await reg.pushManager.getSubscription();
-  const id = sub ? await currentId(profile, sub) : null;
-  const devices = await inContext(profile, () => pushApi.list());
-  const device = devices.find(row => row.id === id);
-  // A deliberate pause is a preference, not a missing/revoked subscription. Do not undo it automatically.
-  if (device?.active && !device.revokedAt && device.authorizations?.length && !device.authorizations.some(grant => grant.active && !grant.revokedAt)) return "paused";
-  if (sub && (!sub.expirationTime || sub.expirationTime > Date.now()) && subscriptionMatchesVapid(sub, config) && device && activeDevice(device) && device.registeredInCurrentSession === true) return "ready";
-  await enable(profile, config);
-  return "ready";
+  return promptStatus((await evaluatePush(profile)).status);
 }
 
-// The modal prepares config before the click, preserving the permission user gesture.
+// Prepared configuration preserves the permission request's user gesture.
 export async function activatePushPrompt(profile: PushProfile, preparedConfig?: PublicConfig): Promise<PromptStatus> {
   if (!supported() || Notification.permission === "denied") return "hidden";
   if (!eligible(profile)) return "context";
-  if (!preparedConfig) await registration();
+  if (Notification.permission === "granted") {
+    const before = await evaluatePush(profile);
+    if (before.status === "activated") return "ready";
+    if (["error", "unavailable", "context", "blocked"].includes(before.status)) return promptStatus(before.status);
+  }
   const config = preparedConfig ?? await inContext(profile, () => pushApi.config());
   if (!config.available || !config.publicKey) return "error";
-  const device = await enable(profile, config);
-  if (!device) return "hidden";
-  window.dispatchEvent(new Event("kalend:push-changed"));
-  return "ready";
+  if (!await enable(profile, config)) return "hidden";
+  const final = await evaluatePush(profile);
+  if (final.status === "activated") notifyPushChanged(profile);
+  return promptStatus(final.status);
 }
 
 // Origin-wide lock: one invitation/repair across tabs, no storage, cooldown or attempt limit.

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "./auth-provider";
 import { Button } from "./ui/button";
 import { inContext, pushApi, registration, supported, type PublicConfig, type PushProfile } from "@/lib/push/client";
+import { watchPushChanges } from "@/lib/push/events";
 import { pushPromptAllowed } from "@/lib/push/routes";
 import { activatePushPrompt, inspectPushPrompt, withPushPromptLock, type PromptStatus } from "@/lib/push/prompt";
 
@@ -32,9 +33,10 @@ export function PushNotificationPrompt() {
   const key = `${userId}:${companyId}:${pathname}:${revision}`;
   useEffect(() => { activeKey.current = key; }, [key]);
   useEffect(() => {
+    watchPushChanges();
     const attentionChanged = () => { if (!busyRef.current && !modalOpen.current) setAttention(value => value + 1); };
     const open = () => {
-      if (!allowedRef.current || inspected.current?.status === "ready" || modalOpen.current) return;
+      if (!allowedRef.current || modalOpen.current) return;
       const show = () => { modalOpen.current = true; setModal(activeKey.current); setResult(""); };
       if (release.current) { show(); return; }
       void withPushPromptLock(async () => {
@@ -69,10 +71,10 @@ export function PushNotificationPrompt() {
         if (!alive) return;
         let status: PromptStatus;
         try {
-          status = inspected.current?.key === key && inspected.current.permission === permission ? inspected.current.status : await inspectPushPrompt(identity);
+          status = await inspectPushPrompt(identity);
           if (!alive) return;
           if (typeof Notification !== "undefined" && Notification.permission === "denied") status = "hidden";
-          if (status === "invite" && Notification.permission !== "default") { inspected.current = null; status = await inspectPushPrompt(identity); }
+          if (status === "invite" && permission === "default" && Notification.permission !== "default") { inspected.current = null; status = await inspectPushPrompt(identity); }
           if (!alive) return;
         } catch {
           status = "error";
@@ -80,7 +82,7 @@ export function PushNotificationPrompt() {
         if (!alive) return;
         if (status === "error" && inspected.current?.key !== key) console.warn("KALEND_PUSH_PROMPT_CONFIGURATION_FAILED");
         inspected.current = { key, status, permission };
-        if (status !== "invite" && status !== "error" && status !== "context" && status !== "paused") return;
+        if (status !== "invite") return;
         const closed = new Promise<void>(resolve => { unlock = resolve; release.current = resolve; });
         setView({ key, status, attention });
         await closed;

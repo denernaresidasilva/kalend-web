@@ -1,14 +1,55 @@
 import { api, jsonBody, withTenantLock } from "../api";
+import { withPushLifecycle } from "./lifecycle";
+import { notifyPushChanged } from "./events";
 import type { AuthMe } from "../contracts";
 export type PushProfile = Pick<AuthMe, "systemRole" | "selectedCompanyId"> & { user: Pick<AuthMe["user"], "id"> };
 export type PushState = "unsupported" | "permission-default" | "permission-granted" | "permission-denied" | "subscribed" | "unsubscribed" | "error";
 export type Device = {
-  registeredInCurrentSession?: boolean;
+  endpointHash: string; vapidPublicKey: string; environment: string;
   id: string; label: string | null; platform: "WEB" | "ANDROID" | "IOS"; active: boolean;
   revokedAt: string | null; expiresAt: string | null; lastSeenAt?: string | null; lastUsedAt?: string | null;
   authorizations?: { active: boolean; revokedAt: string | null }[];
 };
 export type PublicConfig = { available: boolean; publicKey: string | null; environment: string | null };
+export type PushStatus = "loading" | "activated" | "paused" | "blocked" | "unavailable" | "context" | "error" | "needs_registration";
+export type PushEvaluation = { status: PushStatus; config?: PublicConfig; device?: Device; reason?: string };
+
+// Read-only inspection. Membership and ownership are validated by the API,
+// under the same tenant lock as /auth/me. No consent is granted by a probe.
+export async function evaluatePush(profile: PushProfile | null): Promise<PushEvaluation> {
+  if (!supported()) return { status: "unavailable" };
+  if (Notification.permission === "denied") return { status: "blocked" };
+  if (!eligible(profile)) return { status: "context" };
+  if (Notification.permission === "default") return { status: "needs_registration", reason: "permission" };
+  try {
+    return await withPushLifecycle(() => inContext(profile, async () => {
+      const config = await pushApi.config();
+      if (!config.available || !config.publicKey || !config.environment) return { status: "unavailable", config };
+      const reg = await registration();
+      const sub = await reg.pushManager.getSubscription();
+      if (!sub) return { status: "needs_registration", config };
+      const hash = await subscriptionHash(sub);
+      const devices = await pushApi.list(hash);
+      // The server hash, rather than an IndexedDB hint, proves correspondence.
+      const device = devices.find(row => row.endpointHash === hash);
+      if (device) await remember(profile!, sub, device.id);
+      if (device && (!device.active || device.revokedAt || device.authorizations?.some(grant => !grant.active || !!grant.revokedAt))) {
+        return { status: "paused", config, device };
+      }
+      if (sub.expirationTime != null && sub.expirationTime <= Date.now()) return { status: "needs_registration", config, device };
+      if (!subscriptionMatchesVapid(sub, config)) return { status: "error", config, device, reason: "vapid" };
+      if (!device) return { status: "needs_registration", config };
+      if (device.environment !== config.environment) return { status: "unavailable", config, device, reason: "environment" };
+      if (device.vapidPublicKey !== config.publicKey) return { status: "needs_registration", config, device };
+      if (profile!.selectedCompanyId && !device.authorizations?.some(grant => grant.active && !grant.revokedAt)) {
+        return { status: "needs_registration", config, device };
+      }
+      if (!activeDevice(device)) return { status: "needs_registration", config, device };
+      if (Notification.permission !== "granted") return { status: Notification.permission === "denied" ? "blocked" : "needs_registration", config };
+      return { status: "activated", config, device };
+    }));
+  } catch { return { status: "error" }; }
+}
 const ROOT = "/communication/push";
 export function supported() {
   return typeof window !== "undefined" && window.isSecureContext && typeof Notification !== "undefined" &&
@@ -37,10 +78,13 @@ export async function registration() {
 }
 // Persist only a public record ID. Hash the endpoint to identify this browser subscription;
 // never persist the subscription, endpoint or encryption keys in application storage.
-async function mappingKey(profile: PushProfile, sub: PushSubscription) {
+export async function subscriptionHash(sub: PushSubscription) {
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(sub.endpoint));
   const hash = Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, "0")).join("");
-  return `kalend:push:${profile.user.id}:${hash}`;
+  return hash;
+}
+async function mappingKey(profile: PushProfile, sub: PushSubscription) {
+  return `kalend:push:${profile.user.id}:${await subscriptionHash(sub)}`;
 }
 async function deviceMapping(key: string, value?: string): Promise<string | null> {
   return new Promise((resolve, reject) => {
@@ -64,7 +108,7 @@ async function deviceMapping(key: string, value?: string): Promise<string | null
 export async function currentId(profile: PushProfile, sub: PushSubscription) {
   try { return await deviceMapping(await mappingKey(profile, sub)); } catch { return null; }
 }
-async function remember(profile: PushProfile, sub: PushSubscription, id: string) {
+export async function remember(profile: PushProfile, sub: PushSubscription, id: string) {
   try { await deviceMapping(await mappingKey(profile, sub), id); } catch { /* Explicit registration still works without storage. */ }
 }
 export async function inContext<T>(profile: PushProfile | null, work: () => Promise<T>): Promise<T> {
@@ -76,11 +120,16 @@ export async function inContext<T>(profile: PushProfile | null, work: () => Prom
   });
 }
 export const pushApi = {
-  test: (requestId: string) => api<{ queued: boolean; outboxId: string }>(`${ROOT}/test`, { method: "POST", ...jsonBody({ requestId }) }),
   config: () => api<PublicConfig>(`${ROOT}/public-config`),
-  list: () => api<Device[]>(`${ROOT}/subscriptions`),
-  update: (id: string, active: boolean) => api(`${ROOT}/subscriptions/${encodeURIComponent(id)}`, { method: "PUT", ...jsonBody({ active }) }),
-  remove: (id: string) => api(`${ROOT}/subscriptions/${encodeURIComponent(id)}`, { method: "DELETE" }),
+  list: (hash?: string) => api<Device[]>(`${ROOT}/subscriptions${hash ? `?endpointHash=${encodeURIComponent(hash)}` : ""}`),
+  update: async (id: string, active: boolean) => {
+    const result = await api(`${ROOT}/subscriptions/${encodeURIComponent(id)}`, { method: "PUT", ...jsonBody({ active }) });
+    notifyPushChanged(); return result;
+  },
+  remove: async (id: string) => {
+    const result = await api(`${ROOT}/subscriptions/${encodeURIComponent(id)}`, { method: "DELETE" });
+    notifyPushChanged(); return result;
+  },
 };
 export async function enable(profile: PushProfile, config: PublicConfig) {
   if (!supported()) throw new Error("Este navegador não oferece suporte a Push em conexão segura.");
@@ -92,11 +141,11 @@ export async function enable(profile: PushProfile, config: PublicConfig) {
   // Called directly from a user click, before asynchronous network/worker operations.
   const permission = Notification.permission === "granted" ? "granted" : await Notification.requestPermission();
   if (permission !== "granted") return null;
-  return inContext(profile, async () => {
+  return withPushLifecycle(() => inContext(profile, async () => {
     const reg = await registration();
     const key = validatedKey;
     let sub = await reg.pushManager.getSubscription();
-    if (sub?.expirationTime && sub.expirationTime <= Date.now()) {
+    if (sub?.expirationTime != null && sub.expirationTime <= Date.now()) {
       if (!await sub.unsubscribe()) throw new Error("Não foi possível remover a inscrição expirada. Tente novamente.");
       sub = null;
     }
@@ -108,12 +157,12 @@ export async function enable(profile: PushProfile, config: PublicConfig) {
     }) });
     await remember(profile, sub, device.id);
     return device;
-  });
+  }));
 }
 function equalKey(a: Uint8Array, b: Uint8Array) { return a.length === b.length && a.every((value, index) => value === b[index]); }
 export function subscriptionMatchesVapid(sub: PushSubscription, config: PublicConfig) {
   if (!config.publicKey) return false;
-  if (!sub.options.applicationServerKey) return true;
+  if (!sub.options.applicationServerKey) return false;
   try {
     const key = Uint8Array.from(atob(config.publicKey.replace(/-/g, "+").replace(/_/g, "/")), c => c.charCodeAt(0));
     return equalKey(new Uint8Array(sub.options.applicationServerKey), key);
@@ -121,12 +170,12 @@ export function subscriptionMatchesVapid(sub: PushSubscription, config: PublicCo
 }
 
 export async function removeDevice(profile: PushProfile, id: string, localId: string | null) {
-  return inContext(profile, async () => {
+  return withPushLifecycle(() => inContext(profile, async () => {
     await pushApi.remove(id);
     if (id === localId) {
       const reg = await registration();
       const sub = await reg.pushManager.getSubscription();
       if (sub && !await sub.unsubscribe()) throw new Error("Não foi possível remover a subscription do navegador.");
     }
-  });
+  }));
 }

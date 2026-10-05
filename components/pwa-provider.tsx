@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { clearLocalPush } from "@/lib/push/lifecycle";
 import { watchInstall, type InstallEvent } from "@/lib/push/install";
 export function PwaProvider() {
   const [install, setInstall] = useState<InstallEvent | null>(null);
@@ -15,12 +16,9 @@ export function PwaProvider() {
     const state = () => { if (worker?.state === "installed") inspect(); };
     const update = () => { worker?.removeEventListener("statechange", state); worker = reg?.installing ?? null; worker?.addEventListener("statechange", state); };
     const check = () => { if (reg) void reg.update().catch(() => {}); };
-    const sessionEnd = () => { void navigator.serviceWorker?.getRegistration("/").then(async r => {
-      if (!r) return;
-      for (const notification of await r.getNotifications()) notification.close();
-      const sub = await r.pushManager?.getSubscription();
-      if (sub && !await sub.unsubscribe()) throw new Error("PUSH_LOCAL_CLEANUP_FAILED");
-    }).catch(() => { if (alive) setError("A sessão foi encerrada e o servidor revogou Push. Não foi possível limpar a inscrição local; confira as permissões deste navegador."); }); };
+    const sessionEnd = () => { void clearLocalPush().catch(() => {
+      if (alive) setError("A sessão foi encerrada. Não foi possível limpar a inscrição local; confira as permissões deste navegador.");
+    }); };
     if (window.isSecureContext && navigator.serviceWorker) {
       void navigator.serviceWorker.register("/sw.js", { scope: "/", updateViaCache: "none" }).then(value => {
         if (!alive) return;

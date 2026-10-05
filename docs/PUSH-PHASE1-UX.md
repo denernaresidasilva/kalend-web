@@ -14,7 +14,7 @@ Não foi obtida a resposta de public-config na sessão da homologação. Não é
 
 O backend local confirma que public-config exige AuthGuard. Quando disponível, retorna a chave pública. Retorna `available: false`, `publicKey: null`, `environment: null` se o provider `PUSH_PENDING` estiver ausente, desabilitado, fora de GLOBAL ou sem status CONNECTED. A resposta não diferencia essas condições. Uma configuração VAPID inválida também pode falhar na validação do backend.
 
-`POST /communication/push/vapid` é uma operação administrativa de geração e persistência de chaves, com AdminGuard. Não deve ser chamada na ativação de um navegador. Nenhuma chave foi gerada nesta entrega.
+A API atual não implementa `POST /communication/push/vapid`. A ação de geração foi retirada do frontend. A configuração administrativa existente permanece; nenhuma chave foi gerada ou alterada nesta correção.
 
 ## Correção e dependências
 
@@ -24,7 +24,9 @@ Se a preparação estiver pronta, a ativação mantém a solicitação nativa di
 
 Suporte e contexto autenticado são necessários para ativação. A permissão nativa, isoladamente, não necessita VAPID; a criação da subscription necessita uma chave válida. Mantivemos a validação antes da permissão para não pedir autorização quando não é possível concluir o registro. A configuração pronta é validada em enable antes de requestPermission, incluindo formato da chave.
 
-Permissão granted não é solicitada novamente. A recuperação de inscrição ausente, expirada, revogada ou sem vínculo da sessão reutiliza o fluxo existente. Estado ativo exige subscription compatível com VAPID, registro ativo e `registeredInCurrentSession === true`. Uma pausa explícita continua preservada. Denied não gera convite recorrente e o modal manual explica as configurações do navegador, sem chamar requestPermission.
+Permissão granted não é solicitada novamente. Popup e PushSettings usam `evaluatePush()`, que consulta configuração e device no contexto autorizado e valida permissão, subscription, VAPID, ambiente, atividade, expiração e consentimento empresarial. Não existe requisito de registro por sessão. A inspeção não realiza POST nem restaura consentimento. Registro/reconciliação e reativação exigem ação explícita; sucesso depende de uma nova avaliação real após o POST.
+
+A consulta exata `GET /communication/push/subscriptions?endpointHash=<SHA-256>` recupera a associação do navegador mesmo sem IndexedDB. A resposta autenticada inclui endpointHash, vapidPublicKey e environment, sem endpoint ou chaves de criptografia. Pausas e revogações são preservadas na inspeção. Eventos locais e BroadcastChannel invalidam o estado sem retransmitir mensagens recebidas. O lock de ciclo Push coordena limpeza local e novas operações.
 
 ## Autenticação, rotas e painéis
 
@@ -51,11 +53,11 @@ A conta ganhou link para retornar ao painel. Configuração e diagnóstico técn
 
 Web e PWA usam o mesmo layout, AuthProvider, popup e Service Worker, sem duplicação. O manifest inicia em `/conta`; uma sessão ausente mostra o acesso ao login, sem popup. Após login os destinos são os mesmos da Web. O SW não possui cache de páginas autenticadas/API e não foi modificado.
 
-Mantidos tenant lock, confirmação de usuário/empresa em `/auth/me`, mapeamento local por usuário e hash do endpoint, POST subscriptions e session binding realizado pelo backend. GET subscriptions usa usuário, sessão e empresa derivados da autenticação. Nenhum ID de usuário/sessão/empresa é inventado ou enviado como substituto da sessão. Logout e logout-all existentes continuam acionando revogação no servidor e limpeza local do PwaProvider após sucesso. Esses comportamentos têm cobertura local, mas não foram executados com usuário real no DEV nesta entrega.
+Mantidos tenant lock, confirmação de usuário/empresa em `/auth/me`, ownership e membership na API. O device é global por usuário/endpoint e o consentimento é por device/empresa; não existe vínculo Push–AuthSession. Logout revoga sessão no servidor e solicita limpeza local, sem afirmar revogação de Push na API. Prisma, migrations, autenticação, tenant, ambiente configurado e chaves foram preservados.
 
 safeUrl, safeImage, notificationclick, actions e KALEND_NOTIFICATION_RECEIVED foram preservados. Testes existentes verificam URLs internas, rejeição de destinos externos/API/credenciais/query/hash, clique no corpo e action. Recebimento, clique e action reais no DEV **não foram comprovados**.
 
-`/conta/notificacoes` conserva a central existente e as preferências, com PushSettings simples: status, ativação pelo modal compartilhado e teste. O teste real usa POST `/communication/push/test`, requestId idempotente e exige `queued: true`. “✓ Notificação enviada.” indica aceite na fila; não comprova entrega pelo worker nem recebimento no navegador. Não houve envio de teste com sessão real nesta entrega.
+`/conta/notificacoes` conserva inbox e preferências independentes. PushSettings distingue verificação, ativação, pausa, bloqueio, indisponibilidade, contexto e erro. O botão de teste do usuário foi removido porque `POST /communication/push/test` não existe. O teste administrativo já implementado em `/communication/providers/PUSH_PENDING/send-test` foi preservado; não é oferecido como substituto a usuários comuns.
 
 ## Arquivos
 
@@ -63,9 +65,9 @@ safeUrl, safeImage, notificationclick, actions e KALEND_NOTIFICATION_RECEIVED fo
 - lib/company-selection.ts; components/commercial-entry.tsx; components/account-content.tsx.
 - novo app/painel/layout.tsx e páginas proprietario, profissional, recepcionista, cliente.
 - tests/push-routes.test.cjs e atualização de push-prompt, company-selection, account e design-system.
-- Este relatório. PushSettings, AuthProvider, PwaProvider, contratos de API e public/sw.js não foram alterados.
+- Este documento foi atualizado na correção de consistência. PushSettings, PwaProvider e o contrato público de device foram ajustados; AuthProvider e public/sw.js permanecem preservados.
 
-## Validação
+## Validação histórica da Fase 1
 
 `npm test`: passou, 11 arquivos de teste. A cobertura inclui visitor/loading/public routes, papéis/empresa, modal sem erro prematuro, tentativa/retry, permission granted/denied, recuperação, ausência de inscrição, logout/logout-all, lock contra duplicação, teste idempotente e segurança do SW. Fixtures dos testes são isoladas; nenhuma resposta de teste foi usada para diagnosticar o DEV.
 

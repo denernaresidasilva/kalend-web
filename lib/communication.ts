@@ -78,7 +78,6 @@ export function metaParameters(content: Record<string, string>): string[] {
 export type MetaReference = { id: string; name: string; language: string; parameters: string[] };
 export type TemplatePatch = { provider: ProviderName; enabled: boolean; content: { text: string; subject?: string; title?: string; url?: string; icon?: string; actionText?: string; name?: string; language?: string; category?: string; examples?: Record<string, string> } | MetaReference };
 export const communication = {
-  generateVapid: (subject: string) => api<CommunicationProvider>("/communication/push/vapid", { method: "POST", ...jsonBody({ subject }) }),
   providers: (signal?: AbortSignal) => api<CommunicationProvider[]>("/communication/providers", { signal }),
   events: (signal?: AbortSignal) => api<CommunicationEvent[]>("/communication/events", { signal }),
   templates: (signal?: AbortSignal) => api<InternalTemplate[]>("/communication/templates", { signal }),

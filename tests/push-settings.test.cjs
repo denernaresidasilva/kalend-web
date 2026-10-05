@@ -16,51 +16,36 @@ function fixture(options = {}) {
     useCallback: (fn, deps) => hooks.useMemo(() => fn, deps),
     useEffect: (fn, deps) => { const i = cursor++; if (!same(slots[i]?.deps, deps)) { slots[i]?.cleanup?.(); slots[i] = { deps }; effects.push(() => slots[i].cleanup = fn()); } },
   };
-  let fail = options.fail;
   const profile = { user: { id: 'a' }, selectedCompanyId: 'company-a', systemRole: 'USER' };
   const client = {
-    activeDevice: row => row.active, currentId: async () => 'device', eligible: () => true,
-    supported: () => true, permissionState: () => 'permission-granted', subscriptionMatchesVapid: () => true,
-    registration: async () => ({ pushManager: { getSubscription: async () => ({ expirationTime: null }) } }),
-    inContext: async (_, work) => work(),
-    pushApi: {
-      config: async () => ({ available: !options.unavailable, publicKey: 'fixture' }),
-      list: async () => [{ id: 'device', active: true, registeredInCurrentSession: options.bound !== false }],
-      test: async id => { calls.push(id); if (fail) throw Error('Internal technical failure'); return { queued: true }; },
-    },
+    evaluatePush: async () => ({ status: options.status || 'activated' }),
   };
   const mod = { exports: {} };
   const window = { addEventListener: (name, fn) => listeners[name] = fn, removeEventListener: name => delete listeners[name], dispatchEvent: event => calls.push(event.type) };
   vm.runInNewContext(ts.transpileModule(fs.readFileSync('components/push-settings.tsx', 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, jsx: ts.JsxEmit.ReactJSX } }).outputText,
-    { module: mod, exports: mod.exports, require: id => ({ react: hooks, './auth-provider': { useAuth: () => ({ profile }) }, '@/lib/push/client': client }[id] || require(id)), window, Notification: { permission: 'granted' }, crypto: { randomUUID: () => 'request-id' }, setTimeout, clearTimeout, Date, Event });
+    { module: mod, exports: mod.exports, require: id => ({ react: hooks, './auth-provider': { useAuth: () => ({ profile }) }, '@/lib/push/client': client, '@/lib/push/events': { watchPushChanges() {} } }[id] || require(id)), window, document: { visibilityState: 'visible', addEventListener() {}, removeEventListener() {} }, Notification: { permission: 'granted' }, crypto: { randomUUID: () => 'request-id' }, setTimeout, clearTimeout, Date, Event });
   const render = () => { cursor = 0; const tree = mod.exports.PushSettings(); while (effects.length) effects.shift()(); return tree; };
-  return { render, calls, retry: () => fail = false, settle: async () => { render(); await new Promise(r => setTimeout(r, 10)); return render(); }, cleanup: () => slots.forEach(slot => slot?.cleanup?.()) };
+  return { render, calls, settle: async () => { render(); await new Promise(r => setTimeout(r, 10)); return render(); }, cleanup: () => slots.forEach(slot => slot?.cleanup?.()) };
 }
 function nodes(tree) { return !tree || typeof tree !== 'object' ? [] : [tree, ...React.Children.toArray(tree.props?.children).flatMap(nodes)]; }
 function content(tree) { return nodes(tree).flatMap(node => React.Children.toArray(node.props?.children).filter(child => typeof child === 'string')).join(' '); }
-test('active settings shows simple status and test loading/success', async () => {
+test('active settings does not call a missing self-test route', async () => {
   const f = fixture();
   try {
-    let tree = await f.settle(); assert.match(content(tree), /🟢 Notificações ativadas/);
-    assert.doesNotMatch(content(tree), /VAPID|endpoint|subscription|servidor|Dispositivo atual|sessão|worker/);
-    const send = nodes(tree).find(node => node.type === 'button');
-    const pending = send.props.onClick(); tree = f.render(); assert.match(content(tree), /Enviando/);
-    await pending; await new Promise(r => setTimeout(r, 0)); tree = f.render(); assert.match(content(tree), /✓ Notificação enviada\./);
+    const tree = await f.settle(); assert.match(content(tree), /Notificações ativadas/);
+    assert.equal(nodes(tree).filter(node => node.type === 'button').length, 0);
   } finally { f.cleanup(); }
 });
-test('failed test is friendly and retries the same idempotency ID', async () => {
-  const f = fixture({ fail: true });
-  try {
-    let tree = await f.settle(); await nodes(tree).find(node => node.type === 'button').props.onClick();
-    await new Promise(r => setTimeout(r, 0)); tree = f.render(); assert.match(content(tree), /Não foi possível enviar/); assert.doesNotMatch(content(tree), /Internal technical failure/);
-    f.retry(); await nodes(tree).find(node => node.type === 'button').props.onClick(); await new Promise(r => setTimeout(r, 0));
-    assert.deepEqual(f.calls, ['request-id', 'request-id']);
-  } finally { f.cleanup(); }
-});
-for (const options of [{ unavailable: true }, { bound: false }]) test(`unavailable or unbound settings never claims active ${JSON.stringify(options)}`, async () => {
-  const f = fixture(options);
-  try {
-    const tree = await f.settle(); assert.match(content(tree), /🔴 Notificações desativadas/);
-    const activate = nodes(tree).find(node => node.type === 'button'); assert.equal(activate.props.children, 'Ativar notificações'); activate.props.onClick(); assert.deepEqual(f.calls, ['kalend:push-open']);
-  } finally { f.cleanup(); }
-});
+for (const [status, label] of Object.entries({ loading: 'Verificando notificações', paused: 'Notificações pausadas', blocked: 'Notificações bloqueadas no navegador', unavailable: 'Notificações indisponíveis', context: 'Selecione uma empresa', error: 'Não foi possível verificar', needs_registration: 'Notificações ainda não ativadas' })) {
+  test(`settings displays ${status} without claiming disabled`, async () => {
+    const f = fixture({ status });
+    try {
+      const tree = await f.settle(); assert.ok(content(tree).includes(label));
+      assert.doesNotMatch(content(tree), /Notificações desativadas/);
+      if (status === 'paused' || status === 'needs_registration') {
+        nodes(tree).find(node => node.type === 'button').props.onClick();
+        assert.deepEqual(f.calls, ['kalend:push-open']);
+      }
+    } finally { f.cleanup(); }
+  });
+}

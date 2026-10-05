@@ -16,12 +16,13 @@ const config = { available: true, publicKey: Buffer.alloc(65, 4).toString('base6
 function fixture(options = {}) {
   const calls = []; let permissions = 0; let subscribes = 0; let unsubscribes = 0;
   const storage = new Map();
-  const sub = { endpoint: 'https://push.example.test/fixture-device', expirationTime: null, options: {}, toJSON: () => ({ endpoint: 'https://push.example.test/fixture-device', keys: { p256dh: 'fixture-key', auth: 'fixture-auth' } }), unsubscribe: async () => { unsubscribes++; return true; } };
+  const sub = { endpoint: 'https://push.example.test/fixture-device', expirationTime: null, options: { applicationServerKey: Uint8Array.from(Buffer.alloc(65, 4)).buffer }, toJSON: () => ({ endpoint: 'https://push.example.test/fixture-device', keys: { p256dh: 'fixture-key', auth: 'fixture-auth' } }), unsubscribe: async () => { unsubscribes++; return true; } };
   let local = options.existing ? sub : null;
   const reg = { pushManager: { getSubscription: async () => local, subscribe: async () => { subscribes++; return local = sub; } } };
   const notification = { permission: options.permission || 'granted', requestPermission: async () => { permissions++; notification.permission = options.choice || 'granted'; return notification.permission; } };
   const globals = {
-    window: { isSecureContext: true }, Notification: notification,
+    Event,
+    window: { isSecureContext: true, dispatchEvent() {} }, Notification: notification,
     PushManager: class { subscribe() {} }, navigator: { userAgent: 'Chrome/130 Linux', serviceWorker: { ready: Promise.resolve(reg), register: async (...args) => { calls.push(['worker', ...args]); return reg; } } },
     indexedDB: { open: () => {
       const request = {};
@@ -44,7 +45,7 @@ function fixture(options = {}) {
     if (path.endsWith('/subscriptions') && !init) return [{ id: 'other-device', active: true }];
     return { id: 'current-device', active: true };
   };
-  const client = load('lib/push/client.ts', { '../api': { api, jsonBody: body => ({ body: JSON.stringify(body) }), withTenantLock: async fn => fn() } }, globals);
+  const client = load('lib/push/client.ts', { './lifecycle': { withPushLifecycle: async fn => fn() }, './events': { notifyPushChanged() {} }, '../api': { api, jsonBody: body => ({ body: JSON.stringify(body) }), withTenantLock: async fn => fn() } }, globals);
   return { client, sub, storage, calls, notification, stats: () => ({ permissions, subscribes, unsubscribes }) };
 }
 for (const [name, globals] of [ ['PushManager', { PushManager: undefined }], ['Notification', { Notification: undefined }], ['ServiceWorker', { navigator: {} }], ['subscribe', { PushManager: class {} }], ['secure context', { window: { isSecureContext: false } }], ['ready', { navigator: { serviceWorker: {} } }] ]) {
@@ -170,15 +171,8 @@ test('failed expired subscription removal blocks replacement and server registra
   assert.equal(f.stats().subscribes, 0);
   assert.equal(f.calls.filter(([, init]) => init?.method === 'POST').length, 0);
 });
-test('queued self-test accepts only idempotency ID and uses authenticated tenant context', async () => {
-  const f = fixture();
-  await f.client.inContext(profile, () => f.client.pushApi.test('fixture-request-id'));
-  const post = f.calls.find(([path]) => path.endsWith('/test'));
-  assert.equal(post[1].method, 'POST');
-  assert.deepEqual(JSON.parse(post[1].body), { requestId: 'fixture-request-id' });
-  const changed = fixture({ me: { ...profile, selectedCompanyId: 'company-b' } });
-  await assert.rejects(changed.client.inContext(profile, () => changed.client.pushApi.test('fixture-request-id')));
-  assert.equal(changed.calls.some(([path]) => path.endsWith('/test')), false);
+test('user test action is absent because the API has no self-test route', () => {
+  assert.equal(fixture().client.pushApi.test, undefined);
 });
 test('changed VAPID key does not silently replace existing browser subscription', async () => {
   const f = fixture({ existing: true }); f.sub.options.applicationServerKey = new Uint8Array([1,2,3]).buffer;
@@ -228,6 +222,7 @@ test('session-ended cleanup used by logout and logout-all closes notifications a
   const { PwaProvider } = load('components/pwa-provider.tsx', {
     react: { useState: initial => [initial, () => {}], useEffect: fn => effects.push(fn) },
     '@/lib/push/install': { watchInstall: () => () => {} },
+    '@/lib/push/lifecycle': { clearLocalPush: async () => { closed++; unsubscribed++; } },
   }, {
     window: { isSecureContext: false, addEventListener: (name, fn) => listeners[name] = fn, removeEventListener: name => delete listeners[name] },
     navigator: { serviceWorker: { getRegistration: async () => ({ getNotifications: async () => [{ close: () => closed++ }], pushManager: { getSubscription: async () => ({ unsubscribe: async () => { unsubscribed++; return true; } }) } }) } },
