@@ -1,4 +1,5 @@
 "use client";
+import { EvolutionSettings } from "./evolution-settings";
 import { EmailSettings } from "./email-settings";
 import Link from "next/link";
 import { useState, type FormEvent } from "react";
@@ -11,7 +12,7 @@ export function ProviderCards({ providers, select }: { providers: CommunicationP
   return <div className="gateway-grid">{(Object.keys(providerNames) as ProviderName[]).filter(name => name !== "GMAIL").map(name => {
     const row = providers.find(item => item.provider === name);
     return <section className="gateway-card" key={name}><h2>{providerNames[name]}</h2><p>{providerState(row)}</p>
-      {row && <><div className="commercial-badges"><span>Credencial: {row.configured ? "salva" : "não configurada"}</span><span>{row.enabled ? "Habilitado" : "Desabilitado"}</span><span>{name !== "PUSH_PENDING" && row.environment === "SANDBOX" ? "Sandbox" : "Produção"}</span></div><p>Adapter: {row.adapterAvailable ? "disponível" : "indisponível"}</p></>}
+      {row && <><div className="commercial-badges"><span>Credencial: {row.configured ? "salva" : "não configurada"}</span><span>{row.enabled ? "Habilitado" : "Desabilitado"}</span><span>{name !== "PUSH_PENDING" && name !== "EVOLUTION" && row.environment === "SANDBOX" ? "Sandbox" : "Produção"}</span></div><p>Adapter: {row.adapterAvailable ? "disponível" : "indisponível"}</p></>}
       {name === "PUSH_PENDING" && <Link href="/conta/notificacoes#preferencias">Gerenciar notificações e dispositivos</Link>}
       {select && availableProvider(name) && <button onClick={() => select(name)}>Configurar</button>}
     </section>;
@@ -78,16 +79,16 @@ export function ProviderEditor({ initial, name, close }: { initial?: Communicati
   return <section className="commercial-panel"><div className="commercial-heading"><h2>{providerNames[name]}</h2><button disabled={busy} onClick={close}>Voltar aos canais</button></div>
     <div className="commercial-badges"><span>{providerState(row)}</span><span>{row?.enabled ? "Habilitado" : "Desabilitado"}</span></div>
     <dl className="commercial-details"><div><dt>Credencial</dt><dd>{row?.configured ? "Credencial salva (não recuperável)" : "Não configurada"}</dd></div><div><dt>Última verificação</dt><dd>{date(row?.lastVerifiedAt ?? null)}</dd></div><div><dt>Último envio aceito</dt><dd>{date(row?.lastSentAt ?? null)}</dd></div></dl>
-    <form className="commercial-form" onSubmit={save} autoComplete="off"><fieldset disabled={busy || stale}>
+    {name !== "EVOLUTION" && <form className="commercial-form" onSubmit={save} autoComplete="off"><fieldset disabled={busy || stale}>
       {name === "PUSH_PENDING" ? <div className="commercial-badges"><span>Produção</span></div> : <label>Ambiente<select value={environment} onChange={e => { setQr(null); setMetaTest(undefined); setEnvironment(e.target.value as Environment); }}><option value="SANDBOX">Sandbox</option><option value="PRODUCTION">Produção</option></select></label>}
       <div className="communication-form-grid">{providerFields[name].map(([key, label]) => <label key={key}>{label}<input required={key !== "replyTo"} maxLength={500} type={key === "fromEmail" || key === "replyTo" ? "email" : "text"} value={config[key] ?? ""} onChange={e => { setQr(null); setConfig({ ...config, [key]: e.target.value }); }} /></label>)}</div>
       {name === "SMTP" && <><label>Porta e TLS<select value={config.port ?? "587"} onChange={e => setConfig({ ...config, port: e.target.value, secure: e.target.value === "465" ? "true" : "false" })}><option value="587">587 · STARTTLS obrigatório (secure: false)</option><option value="465">465 · TLS (secure: true)</option></select></label><p>smtp.gmail.com não é permitido. Gmail exige OAuth, ainda indisponível neste módulo.</p></>}
       <div className="communication-form-grid">{secretFields[name].map(([key, label]) => <label key={key}>{label}<input type="password" autoComplete="new-password" maxLength={16384} name={key} onChange={e => { setQr(null); const form = e.currentTarget.form; setHasSecretInput(!!form && secretFields[name].some(([field]) => !!(form.elements.namedItem(field) as HTMLInputElement | null)?.value)); }} /></label>)}</div>
       <p>Secrets são somente de escrita. Campos vazios preservam os valores salvos no mesmo ambiente. A API informa apenas se há credencial armazenada, sem detalhar cada secret.</p>
-      {name === "EVOLUTION" && <p>URL e versão serão validadas pelo backend. Evolution não possui confirmação completa de entrega.</p>}
       {name === "PUSH_PENDING" && <p>A chave privada é somente de escrita e fica cifrada no servidor. Testar conexão valida o par VAPID; para comprovar entrega, ative um dispositivo na central e use o teste administrativo deste canal. Trocar a chave exige novo registro dos navegadores.</p>}
       <button className="commercial-primary" disabled={!dirty}>Salvar configuração</button>
-    </fieldset></form>
+    </fieldset></form>}
+    {name === "EVOLUTION" && <p>A instância e a credencial deste canal global são gerenciadas pelo servidor. Para conectar o WhatsApp de uma empresa, acesse <Link href="/conta/comunicacao">Canais da empresa</Link>.</p>}
     {name === "META" && row?.configured && <div className="commercial-form"><MetaTest key={`${row.revision}:${row.environment}`} choose={setMetaTest} /></div>}
     <div className="commercial-actions"><button disabled={busy || stale || dirty || !row?.configured || !row.adapterAvailable} onClick={() => void run("test")}>Testar conexão</button>
       <button disabled={busy || stale || dirty || !row?.configured || !row.adapterAvailable || (name === "META" && !metaTest)} onClick={() => void run("send-test")}>Enviar teste para mim</button>
@@ -104,6 +105,40 @@ export function CommunicationProviders() {
   const resource = useCommunicationResource(communication.providers);
   const [selected, setSelected] = useState<ProviderName | null>(null);
   return <><button disabled={resource.loading || !!selected} onClick={() => void resource.load()}>Atualizar canais</button>
-    {selected === "SMTP" ? <><button onClick={() => setSelected(null)}>Voltar aos canais</button><EmailSettings scope="SYSTEM" /></> : selected ? <ProviderEditor key={selected} name={selected} initial={resource.data?.find(row => row.provider === selected)} close={() => { setSelected(null); void resource.load(); }} /> : <ResourceState {...resource} retry={() => void resource.load()}><ProviderCards providers={resource.data ?? []} select={setSelected} /></ResourceState>}
+    {selected === "EVOLUTION" ? <><button onClick={() => { setSelected(null); void resource.load(); }}>Voltar aos canais</button><EvolutionSettings scope="GLOBAL" initiallyOpen onConnectionChange={() => void resource.load()} /><GlobalEvolutionSending /></> : selected === "SMTP" ? <><button onClick={() => setSelected(null)}>Voltar aos canais</button><EmailSettings scope="SYSTEM" /></> : selected ? <ProviderEditor key={selected} name={selected} initial={resource.data?.find(row => row.provider === selected)} close={() => { setSelected(null); void resource.load(); }} /> : <ResourceState {...resource} retry={() => void resource.load()}><ProviderCards providers={resource.data ?? []} select={setSelected} /></ResourceState>}
   </>;
+}
+
+export function GlobalEvolutionSending() {
+  const resource = useCommunicationResource(communication.providers);
+  const row = resource.data?.find(item => item.provider === "EVOLUTION");
+  const { busy, setBusy, lockRef } = useCommunicationMutation();
+  const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
+  async function run(action: "test" | "send" | "toggle") {
+    if (lockRef.current) return;
+    if (action === "toggle" && !window.confirm(row?.enabled ? "Desabilitar as comunicações do Kalend neste canal?" : "Habilitar as comunicações do Kalend neste canal?")) return;
+    lockRef.current = true; setBusy(true); setError(""); setMessage("");
+    try {
+      if (action === "test") {
+        const result = await communication.test("EVOLUTION");
+        setMessage(result.connected ? "WhatsApp conectado." : "WhatsApp desconectado.");
+      } else if (action === "send") {
+        await communication.sendTest("EVOLUTION"); setMessage("Mensagem de teste aceita pelo WhatsApp. Entrega não confirmada.");
+      } else {
+        await communication.patchProvider("EVOLUTION", { enabled: !row?.enabled });
+        setMessage("Preferência de envio atualizada.");
+      }
+      await resource.load();
+    } catch { setError("Não foi possível atualizar o envio global. Atualize o estado e tente novamente."); }
+    finally { lockRef.current = false; setBusy(false); }
+  }
+  return <section className="commercial-panel"><h3>Comunicações do Kalend</h3><p>Este canal envia mensagens do sistema a seus proprietários e ao administrador. Não envia campanhas aos clientes das empresas.</p>
+    <p>{row?.enabled ? "Envio habilitado" : "Envio desabilitado"}</p><div className="commercial-actions">
+      <button disabled={busy} onClick={() => void resource.load()}>Atualizar preferência de envio</button>
+      <button disabled={busy} onClick={() => void run("test")}>Testar conexão</button>
+      <button disabled={busy} onClick={() => void run("send")}>Enviar teste para mim</button>
+      <button disabled={busy} onClick={() => void run("toggle")}>{row?.enabled ? "Desabilitar envio" : "Habilitar envio"}</button>
+    </div><Feedback busy={busy} error={error} message={message} />
+  </section>;
 }

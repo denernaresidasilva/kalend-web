@@ -81,7 +81,7 @@ test('Web Push always displays production without changing other provider enviro
     assert.match(push, /Credencial: salva/); assert.match(push, /Habilitado/); assert.match(push, /Conectado/);
     assert.match(push, /Produção/); assert.doesNotMatch(push, /Sandbox/);
     assert.match(push, /Adapter: disponível/); assert.match(push, /Gerenciar notificações e dispositivos/);
-    for (const name of ['SMTP', 'META', 'EVOLUTION']) {
+    for (const name of ['SMTP', 'META']) {
       assert.match(renderToStaticMarkup(cardFor(name)), /Sandbox/);
     }
     assert.equal(row.environment, environment);
@@ -90,7 +90,7 @@ test('Web Push always displays production without changing other provider enviro
     assert.match(editor.html(), /Produção/); assert.doesNotMatch(editor.html(), /Sandbox/);
     assert.equal(nodes(editor.render(), node => node.type === 'button' && node.props.children === 'Testar conexão')[0].props.disabled, false);
   }
-  for (const name of ['SMTP', 'META', 'EVOLUTION']) {
+  for (const name of ['SMTP', 'META']) {
     const editor = harness('components/communication-providers.tsx', 'ProviderEditor', { name, initial: provider(name), close() {} });
     assert.equal(labelInput(editor.render(), 'Ambiente').props.value, 'SANDBOX');
     assert.match(editor.html(), /Sandbox/); assert.match(editor.html(), /Produção/);
@@ -263,7 +263,7 @@ test('Evolution already-connected response requires no QR and never marks delive
   assert.equal(contract.safeQr(undefined), null);
 });
 test('all provider secrets stay out of React state and clear before the asynchronous request', async () => {
-  for (const name of ['SMTP', 'META', 'EVOLUTION']) {
+  for (const name of ['SMTP', 'META']) {
     const row = provider(name); const calls = [];
     const fields = Object.fromEntries(contract.secretFields[name].map(([key]) => [key, { value: `private-test-${key}` }]));
     const domForm = { elements: { namedItem: key => fields[key] } };
@@ -311,7 +311,7 @@ test('frontend provider/template payloads execute the real local backend validat
   const globals = { process: { env: { COMMUNICATION_META_GRAPH_VERSION: 'v25.0' } } };
   const backendConfig = load(path.join(backendRoot, 'communication/configuration.ts'), mocks, globals);
   const backendContracts = load(path.join(backendRoot, 'communication/contracts.ts'), mocks, globals);
-  const configs = { SMTP: { ...provider().config, replyTo: '' }, META: { phoneNumberId: '123', businessAccountId: '456', graphVersion: 'v25.0' }, EVOLUTION: { baseUrl: 'https://evo.example.test', instance: 'kalend', version: '2.3.7' } };
+  const configs = { SMTP: { ...provider().config, replyTo: '' }, META: { phoneNumberId: '123', businessAccountId: '456', graphVersion: 'v25.0' } };
   for (const name of Object.keys(configs)) {
     const body = contract.providerPatch(name, configs[name], {}, 'SANDBOX');
     assert.doesNotThrow(() => backendConfig.validateConfig(name, body.config));
@@ -327,14 +327,21 @@ test('frontend provider/template payloads execute the real local backend validat
 });
 test('real Evolution transport response variants are consumed by the frontend pairing handler', { skip: !fs.existsSync(path.join(backendRoot, 'communication/transports.ts')) }, async () => {
   let remote;
-  const mocks = { '@nestjs/common': { Injectable: () => () => {}, Inject: () => () => {}, BadRequestException: Error }, './gmail.js': { GmailTransport: class {} }, './push.js': { GlobalPush: class {} }, nodemailer: {}, './meta.js': { MetaTransport: class {} }, './network.js': { allowedHost() {}, jsonRequest: async () => remote } };
+  const mocks = { '@nestjs/common': { Injectable: () => () => {}, Inject: () => () => {}, BadRequestException: Error }, './gmail.js': { GmailTransport: class {} }, './push.js': { GlobalPush: class {} }, nodemailer: {}, './meta.js': { MetaTransport: class {} }, './evolution.js': { EvolutionService: class {}, GLOBAL_EVOLUTION: { scope: 'GLOBAL' } }, './network.js': { allowedHost() {}, jsonRequest: async () => remote }, './evolution-client.js': { EvolutionClient: class { async connectInstance() { return remote; } }, record: value => value ?? {}, evolutionQr: value => contract.safeQr(value), EvolutionFailure: class extends Error {} } };
   const backend = load(path.join(backendRoot, 'communication/transports.ts'), mocks);
   for (const value of [{ instance: { state: 'open' } }, { qrcode: { base64: 'data:image/png;base64,iVBORw0KGgo=' } }]) {
     remote = value;
-    const transport = new backend.EvolutionTransport();
+    const transport = new backend.EvolutionTransport({ prepare: async () => value.instance?.state === 'open' ? { status: 'CONNECTED' } : { status: 'QR_AVAILABLE', qrCode: value.qrcode.base64 } });
     const result = await transport.pair({ baseUrl: 'https://evo.example.test', instance: 'kalend' }, { apiKey: 'test-only' });
     const h = harness('components/communication-providers.tsx', 'ProviderEditor', { name: 'EVOLUTION', initial: provider('EVOLUTION'), close() {} }, { '@/lib/communication': { ...contract, communication: { pair: async () => result, providers: async () => [provider('EVOLUTION')] } } });
     click(h.render(), 'Parear / atualizar QR Code'); await tick();
     assert.equal(nodes(h.render(), node => node.type === 'img').length, result.connected ? 0 : 1); assert.doesNotMatch(h.html(), /QR Code inválido|Cannot read/);
   }
+});
+
+test('global Evolution UI contains no credential or instance editor', () => {
+  const h = harness('components/communication-providers.tsx', 'ProviderEditor', { name: 'EVOLUTION', initial: provider('EVOLUTION'), close() {} });
+  assert.equal(nodes(h.render(), n => n.type === 'input').length, 0);
+  assert.doesNotMatch(h.html(), /Nova API key|URL base HTTPS|Salvar configuração/);
+  assert.match(h.html(), /Canais da empresa/);
 });

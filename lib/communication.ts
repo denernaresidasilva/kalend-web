@@ -54,13 +54,14 @@ export const availableProvider = (p: ProviderName) => p !== "GMAIL";
 export const providerFields: Record<ProviderName, [string, string][]> = {
   SMTP: [["host", "Host"], ["username", "Usuário"], ["fromName", "Nome do remetente"], ["fromEmail", "E-mail do remetente"], ["replyTo", "Responder para (opcional)"]],
   META: [["phoneNumberId", "ID do número de telefone"], ["businessAccountId", "ID da conta empresarial"], ["graphVersion", "Versão Graph autorizada no backend"]],
-  EVOLUTION: [["baseUrl", "URL base HTTPS"], ["instance", "Instância"], ["version", "Versão (2.3.7)"]], GMAIL: [], PUSH_PENDING: [["subject", "Contato VAPID (mailto:email)"], ["publicKey", "Chave pública VAPID"]],
+  EVOLUTION: [], GMAIL: [], PUSH_PENDING: [["subject", "Contato VAPID (mailto:email)"], ["publicKey", "Chave pública VAPID"]],
 };
 export const secretFields: Record<ProviderName, [string, string][]> = {
   SMTP: [["password", "Nova senha SMTP"]], META: [["accessToken", "Novo access token"], ["appSecret", "Novo app secret"], ["verifyToken", "Novo verify token"]],
-  EVOLUTION: [["apiKey", "Nova API key"]], GMAIL: [], PUSH_PENDING: [["privateKey", "Nova chave privada VAPID (somente escrita)"]],
+  EVOLUTION: [], GMAIL: [], PUSH_PENDING: [["privateKey", "Nova chave privada VAPID (somente escrita)"]],
 };
 export function providerPatch(provider: ProviderName, config: Record<string, string>, secrets: Record<string, string>, environment: Environment) {
+  if (provider === "EVOLUTION") throw new Error("A configuração Evolution é gerenciada pelo servidor.");
   const cleanConfig = Object.fromEntries([...providerFields[provider].map(([key]) => key), ...(provider === "SMTP" ? ["port", "secure"] : [])].map(key => [key, config[key] ?? ""]));
   if (provider === "SMTP" && !cleanConfig.replyTo.trim()) delete cleanConfig.replyTo;
   const cleanSecrets = Object.fromEntries(secretFields[provider].filter(([key]) => !!secrets[key]).map(([key]) => [key, secrets[key]]));
