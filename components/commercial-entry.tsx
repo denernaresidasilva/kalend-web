@@ -17,7 +17,7 @@ export function CommercialEntry({ children }: { children: React.ReactNode }) {
   const [attempt, setAttempt] = useState(0);
   const lastRedirect = useRef("");
   const key = profile ? `${profile.user.id}:${profile.selectedCompanyId}` : "";
-  const protectedRoute = pathname === "/planos" || pathname === "/conta" || pathname.startsWith("/conta/");
+  const protectedRoute = pathname === "/planos" || pathname === "/conta" || pathname.startsWith("/conta/") || pathname.startsWith("/painel/");
   const required = protectedRoute && profile?.systemRole !== "SUPER_ADMIN" && !!profile?.selectedCompanyId;
   useEffect(() => {
     const invalidate = () => { clearCommercialState(); setState(null); setAttempt(value => value + 1); };

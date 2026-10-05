@@ -152,7 +152,7 @@ test('login destinations honor every role and keep Super Admin separate', async 
   const calls = []; let result = regularization();
   const { loginDestination } = load('lib/commercial-navigation.ts', { './api': {}, './commercial-state': { getCommercialState: async (company,user) => { calls.push([company,user]); return result; } } });
   assert.equal(await loginDestination({ ...profile('OWNER'),systemRole:'SUPER_ADMIN' }),'/super-admin'); assert.equal(calls.length,0);
-  for (const role of ['OWNER','ADMIN','PROFESSIONAL','RECEPTIONIST','CLIENT']) assert.equal(await loginDestination(profile(role)),'/conta');
+  for (const role of ['OWNER','ADMIN','PROFESSIONAL','RECEPTIONIST','CLIENT']) assert.equal(await loginDestination(profile(role)),({OWNER:'/painel/proprietario',ADMIN:'/painel/proprietario',PROFESSIONAL:'/painel/profissional',RECEPTIONIST:'/painel/recepcionista',CLIENT:'/painel/cliente'})[role]);
   assert.equal(calls.length,5);
   result = regularization({trial:{expired:true}}); assert.equal(await loginDestination(profile('OWNER')),'/planos');
   result = regularization({financial:{requiresAction:true},trial:{expired:true}}); assert.equal(await loginDestination(profile('OWNER')),'/conta/regularizar');

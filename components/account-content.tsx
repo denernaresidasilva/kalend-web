@@ -8,7 +8,7 @@ import type { useAuth } from "@/components/auth-provider";
 import { PushSettings } from "@/components/push-settings";
 import { RegularizationPanel } from "@/components/regularization-panel";
 import { CompanySelector } from "@/components/company-selector";
-import { linkedCompanies, selectCompany } from "@/lib/company-selection";
+import { accountDestination, linkedCompanies, selectCompany } from "@/lib/company-selection";
 import { accountMembership, accountSection } from "@/lib/account";
 import { logoutAllSessions } from "@/lib/account-session";
 import { AdminShell } from "@/components/super-admin/admin-shell";
@@ -61,7 +61,7 @@ export function AccountContent({ profile, reload, logout, notifications = false 
   const membership = accountMembership(profile);
   const admin = profile.systemRole === "SUPER_ADMIN";
   const accountItems = [...sections, { label: "Notificações", href: "/conta/notificacoes", icon: Bell }];
-  const navItems = admin ? [...accountItems, { label: "Super Admin", href: "/super-admin", icon: LayoutDashboard }] : accountItems;
+  const navItems = admin ? [...accountItems, { label: "Super Admin", href: "/super-admin", icon: LayoutDashboard }] : [{ label: "Painel", href: accountDestination(profile), icon: LayoutDashboard }, ...accountItems];
   return <AdminShell profile={profile} logout={() => void leave()} leaving={leaving || busy} error={message}
     navigationConfig={{ groups: [{ label: "MINHA CONTA", items: navItems }], label: "Navegação de Minha conta", brandHref: "/conta#perfil", brandLabel: "Kalend · Minha conta", activeHref: notifications ? "/conta/notificacoes" : `/conta#${section}` }}
     headerContext={{ title: notifications ? "Notificações" : "Minha conta", settingsHref: notifications ? "/conta/notificacoes#preferencias" : "/conta#preferencias" }}>

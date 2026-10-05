@@ -3,14 +3,18 @@ import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "./auth-provider";
 import { Button } from "./ui/button";
-import { inContext, pushApi, supported, type PublicConfig, type PushProfile } from "@/lib/push/client";
+import { inContext, pushApi, registration, supported, type PublicConfig, type PushProfile } from "@/lib/push/client";
+import { pushPromptAllowed } from "@/lib/push/routes";
 import { activatePushPrompt, inspectPushPrompt, withPushPromptLock, type PromptStatus } from "@/lib/push/prompt";
 
 export function PushNotificationPrompt() {
-  const { profile, loading } = useAuth();
+  const { profile, loading, error } = useAuth();
   const pathname = usePathname();
   const userId = profile?.user.id, companyId = profile?.selectedCompanyId, role = profile?.systemRole;
   const identity = useMemo(() => userId && role ? { user: { id: userId }, selectedCompanyId: companyId ?? null, systemRole: role } : null, [userId, companyId, role]);
+  const allowed = !loading && !error && pushPromptAllowed(profile, pathname);
+  const allowedRef = useRef(allowed);
+  useEffect(() => { allowedRef.current = allowed; }, [allowed]);
   const [revision, setRevision] = useState(0);
   const [view, setView] = useState<{ key: string; status: PromptStatus; attention: number } | null>(null);
   const [modal, setModal] = useState("");
@@ -30,7 +34,7 @@ export function PushNotificationPrompt() {
   useEffect(() => {
     const attentionChanged = () => { if (!busyRef.current && !modalOpen.current) setAttention(value => value + 1); };
     const open = () => {
-      if (modalOpen.current) return;
+      if (!allowedRef.current || inspected.current?.status === "ready" || modalOpen.current) return;
       const show = () => { modalOpen.current = true; setModal(activeKey.current); setResult(""); };
       if (release.current) { show(); return; }
       void withPushPromptLock(async () => {
@@ -60,7 +64,7 @@ export function PushNotificationPrompt() {
     let alive = true;
     let unlock: (() => void) | undefined;
     const timer = setTimeout(() => {
-      if (!identity || loading || busyRef.current || document.visibilityState !== "visible" || !document.hasFocus() || dismissed.current === key) return;
+      if (!allowed || !identity || busyRef.current || document.visibilityState !== "visible" || !document.hasFocus() || dismissed.current === key) return;
       void withPushPromptLock(async () => {
         if (!alive) return;
         let status: PromptStatus;
@@ -83,10 +87,10 @@ export function PushNotificationPrompt() {
       }).catch(() => { if (alive) setView({ key, status: "error", attention }); });
     }, 0);
     return () => { alive = false; clearTimeout(timer); unlock?.(); if (release.current === unlock) release.current = null; };
-  }, [identity, loading, pathname, key, attention, permission]);
-  const visible = !!identity && !loading && view?.key === key && view.attention === attention && permission !== "denied" && document.visibilityState === "visible" && document.hasFocus();
+  }, [identity, allowed, pathname, key, attention, permission]);
+  const visible = allowed && !!identity && view?.key === key && view.attention === attention && permission !== "denied" && document.visibilityState === "visible" && document.hasFocus();
   function close(force = false) { if (busyRef.current && !force) return; modalOpen.current = false; setModal(""); setResult(""); dismissed.current = key; setView(null); release.current?.(); release.current = null; }
-  async function activate(config: PublicConfig) {
+  async function activate(config?: PublicConfig) {
     if (!identity || busyRef.current) return;
     busyRef.current = true; setBusy(true); setResultKey(key);
     try {
@@ -95,17 +99,17 @@ export function PushNotificationPrompt() {
     } catch { if (key === activeKey.current) { console.warn("KALEND_PUSH_PROMPT_ACTIVATION_FAILED"); inspected.current = { key, status: "error", permission: typeof Notification === "undefined" ? "unsupported" : Notification.permission }; setResult("error"); setView({ key, status: "error", attention }); } }
     finally { busyRef.current = false; setBusy(false); }
   }
-  if (!identity || loading) return null;
+  if (!allowed || !identity) return null;
   if (modal === key || result && resultKey === key) return <PushActivationModal profile={identity} busy={busy} result={result || (permission === "denied" ? "denied" : "")} onClose={() => close()} onActivate={config => void activate(config)} />;
   if (!visible) return null;
   return <section className="kalend-ui k-push-prompt" role="dialog" aria-modal="false" aria-labelledby="push-prompt-title" aria-describedby="push-prompt-description" onKeyDown={event => { if (event.key === "Escape") close(); }}>
     <h2 id="push-prompt-title">🔔 Ative as notificações</h2>
-    <p id="push-prompt-description">{view.status === "invite" ? "Receba avisos importantes do Kalend mesmo quando não estiver com a página aberta." : view.status === "context" ? "Escolha uma empresa no Kalend para ativar suas notificações." : view.status === "paused" ? "Você pausou as notificações. Pode ativá-las novamente quando quiser." : "Não foi possível ativar as notificações agora. Tente novamente mais tarde."}</p>
+    <p id="push-prompt-description">Receba avisos importantes do Kalend mesmo quando não estiver com a página aberta.</p>
     <div><Button onClick={() => { modalOpen.current = true; setResult(""); setModal(activeKey.current); }}>Ativar notificações</Button><Button variant="ghost" onClick={() => close()}>Agora não</Button></div>
   </section>;
 }
 
-function PushActivationModal({ profile, busy, result, onClose, onActivate }: { profile: PushProfile; busy: boolean; result: string; onClose: () => void; onActivate: (config: PublicConfig) => void }) {
+function PushActivationModal({ profile, busy, result, onClose, onActivate }: { profile: PushProfile; busy: boolean; result: string; onClose: () => void; onActivate: (config?: PublicConfig) => void }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [prepared, setPrepared] = useState<{ config?: PublicConfig; failed?: boolean } | null>(null);
   useEffect(() => {
@@ -113,6 +117,7 @@ function PushActivationModal({ profile, busy, result, onClose, onActivate }: { p
     void (async () => {
       try {
         if (!supported() || typeof Notification !== "undefined" && Notification.permission === "denied") throw new Error("Unavailable");
+        await registration();
         const config = await inContext(profile, () => pushApi.config());
         if (!config.available || !config.publicKey) throw new Error("Unavailable");
         if (alive) setPrepared({ config });
@@ -122,9 +127,9 @@ function PushActivationModal({ profile, busy, result, onClose, onActivate }: { p
   }, [profile]);
   useEffect(() => { const element = dialog.current; element?.showModal(); return () => element?.close(); }, []);
   const title = result === "success" ? "✓ Notificações ativadas com sucesso!" : result === "denied" ? "🔔 As notificações estão bloqueadas neste navegador." : "Permitir notificações do Kalend?";
-  const text = result === "success" ? "Você receberá avisos importantes do Kalend neste dispositivo." : result === "denied" ? "Para ativá-las, permita notificações nas configurações do navegador." : (result === "error" || prepared?.failed) ? "Não foi possível ativar as notificações agora. Tente novamente mais tarde." : "Você receberá avisos de agendamentos, mensagens, pagamentos e outras informações importantes.";
+  const text = result === "success" ? "Você receberá avisos importantes do Kalend neste dispositivo." : result === "denied" ? "Para ativá-las, permita notificações nas configurações do navegador." : result === "error" ? "Não foi possível ativar as notificações agora. Tente novamente mais tarde." : "Você receberá avisos de agendamentos, mensagens, pagamentos e outras informações importantes.";
   return <dialog ref={dialog} className="kalend-ui k-push-modal" aria-labelledby="push-modal-title" aria-describedby="push-modal-description" onCancel={event => { event.preventDefault(); if (!busy) onClose(); }}>
     <h2 id="push-modal-title">{title}</h2><p id="push-modal-description" role="status">{text}</p>
-    <div>{result === "success" || result === "denied" ? <Button onClick={onClose}>Entendi</Button> : <><Button loading={busy || !prepared && !result} disabled={!prepared?.config || busy} onClick={() => { if (prepared?.config) onActivate(prepared.config); }}>Ativar agora</Button><Button variant="ghost" disabled={busy} onClick={onClose}>Agora não</Button></>}</div>
+    <div>{result === "success" || result === "denied" ? <Button onClick={onClose}>Entendi</Button> : <><Button loading={busy || !prepared && !result} disabled={!prepared || busy} onClick={() => onActivate(prepared?.config)}>Ativar agora</Button><Button variant="ghost" disabled={busy} onClick={onClose}>Agora não</Button></>}</div>
   </dialog>;
 }

@@ -6,7 +6,7 @@ const vm = require('node:vm');
 const ts = require('typescript');
 function load(file, mocks, globals) {
   const mod = { exports: {} };
-  vm.runInNewContext(ts.transpileModule(fs.readFileSync(file, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, jsx: ts.JsxEmit.ReactJSX } }).outputText,
+  vm.runInNewContext(ts.transpileModule(fs.readFileSync(file, 'utf8') + (file === 'components/push-notification-prompt.tsx' ? '\nexport { PushActivationModal };' : ''), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, jsx: ts.JsxEmit.ReactJSX } }).outputText,
     { module: mod, exports: mod.exports, require: id => mocks[id] || require(id), Date, Event, ...globals });
   return mod.exports;
 }
@@ -55,7 +55,7 @@ test('fallback skips background/unfocused documents', async () => { const f = fi
 test('dismissal closes the global popup, next route and fresh mount offer again', async () => {
   const React = require('react');
   async function mount(options = {}) {
-    const slots = [], pending = []; let index = 0, pathname = '/super-admin', tree;
+    const slots = [], pending = []; let index = 0, pathname = options.pathname || '/super-admin', tree;
     const equal = (a, b) => a && b && a.length === b.length && a.every((v, i) => v === b[i]);
     const hooks = { ...React,
       useState: initial => { const i = index++; if (!(i in slots)) slots[i] = initial; return [slots[i], value => slots[i] = typeof value === 'function' ? value(slots[i]) : value]; },
@@ -68,13 +68,19 @@ test('dismissal closes the global popup, next route and fresh mount offer again'
     const browser = { addEventListener: (name, fn) => events[name] = fn, removeEventListener: name => delete events[name], dispatchEvent: event => events[event.type]?.() };
     const { PushNotificationPrompt } = load('components/push-notification-prompt.tsx', {
       react: hooks, 'next/navigation': { usePathname: () => pathname }, 'next/link': () => null,
-      './auth-provider': { useAuth: () => ({ profile, loading: false }) }, './ui/button': { Button: () => null },
+      './auth-provider': { useAuth: () => ({ profile: options.visitor ? null : profile, loading: !!options.loading }) }, './ui/button': { Button: () => null },
       '@/lib/push/client': {},
+      '@/lib/push/routes': { pushPromptAllowed: (p, path) => !!p && path !== '/' && path !== '/planos' },
       '@/lib/push/prompt': { inspectPushPrompt: async () => options.status || 'invite', withPushPromptLock: async fn => fn(), activatePushPrompt: async () => { if (options.fail) throw Error('API'); notification.permission = options.choice || 'granted'; browser.dispatchEvent(new Event('kalend:push-changed')); return notification.permission === 'denied' ? 'hidden' : 'ready'; } },
     }, { console: { warn() {} }, Notification: notification, document: { ...browser, visibilityState: 'visible', hasFocus: () => true }, window: browser, setTimeout, clearTimeout });
     const render = () => { index = 0; tree = PushNotificationPrompt(); while (pending.length) pending.shift()(); return tree; };
     const settle = async () => { render(); await new Promise(r => setTimeout(r, 5)); return render(); };
     return { settle, emit: name => events[name]?.(), navigate: path => pathname = path, cleanup: () => { for (const slot of slots) slot?.cleanup?.(); } };
+  }
+  for (const options of [{visitor:true},{loading:true},{pathname:'/'},{pathname:'/planos'}]) {
+    const instance = await mount(options);
+    try { assert.equal(await instance.settle(), null); instance.emit('kalend:push-open'); assert.equal(await instance.settle(), null); }
+    finally { instance.cleanup(); }
   }
   const first = await mount();
   try {
@@ -127,4 +133,30 @@ test('prepared modal configuration requests permission without another config ro
   assert.equal(await f.activatePushPrompt(profile, { available: true, publicKey: 'fixture' }), 'ready');
   assert.equal(f.calls.includes('config'), false);
   assert.equal(f.calls.includes('permission'), true);
+});
+
+
+test('modal hides preparation failure until a real click and preserves retry', async () => {
+  const React = require('react');
+  const slots = [], effects = []; let cursor = 0; let activated = 0;
+  const hooks = { ...React,
+    useState: initial => { const i = cursor++; if (!(i in slots)) slots[i] = initial; return [slots[i], value => slots[i] = value]; },
+    useRef: () => ({ current: { showModal() {}, close() {} } }),
+    useEffect: fn => effects.push(fn),
+  };
+  const { PushActivationModal } = load('components/push-notification-prompt.tsx', {
+    react: hooks, 'next/navigation': {}, './auth-provider': {}, './ui/button': { Button: () => null },
+    '@/lib/push/routes': {}, '@/lib/push/prompt': {},
+    '@/lib/push/client': { supported: () => true, registration: async () => {}, inContext: async (_, fn) => fn(), pushApi: { config: async () => { throw Error('unavailable'); } } },
+  }, { Notification: { permission: 'default' } });
+  const props = { profile, busy: false, result: '', onClose() {}, onActivate: () => activated++ };
+  const render = () => { cursor = 0; return PushActivationModal(props); };
+  render(); for (const effect of effects.splice(0)) effect(); await new Promise(r => setTimeout(r, 0));
+  const tree = render();
+  const children = React.Children.toArray(tree.props.children);
+  assert.match(children[1].props.children, /Você receberá avisos/);
+  assert.doesNotMatch(children[1].props.children, /Não foi possível/);
+  const button = React.Children.toArray(children[2].props.children)[0].props.children[0];
+  assert.equal(button.props.disabled, false); button.props.onClick(); assert.equal(activated, 1);
+  props.result = 'error'; assert.match(React.Children.toArray(render().props.children)[1].props.children, /Não foi possível/);
 });

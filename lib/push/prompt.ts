@@ -5,9 +5,9 @@ export type PromptStatus = "invite" | "ready" | "hidden" | "context" | "paused" 
 export async function inspectPushPrompt(profile: PushProfile): Promise<PromptStatus> {
   if (!supported() || Notification.permission === "denied") return "hidden";
   if (!eligible(profile)) return "context";
+  if (Notification.permission === "default") return "invite";
   const config = await inContext(profile, () => pushApi.config());
   if (!config.available || !config.publicKey) return "error";
-  if (Notification.permission === "default") return "invite";
   const reg = await registration();
   const sub = await reg.pushManager.getSubscription();
   const id = sub ? await currentId(profile, sub) : null;
@@ -24,6 +24,7 @@ export async function inspectPushPrompt(profile: PushProfile): Promise<PromptSta
 export async function activatePushPrompt(profile: PushProfile, preparedConfig?: PublicConfig): Promise<PromptStatus> {
   if (!supported() || Notification.permission === "denied") return "hidden";
   if (!eligible(profile)) return "context";
+  if (!preparedConfig) await registration();
   const config = preparedConfig ?? await inContext(profile, () => pushApi.config());
   if (!config.available || !config.publicKey) return "error";
   const device = await enable(profile, config);

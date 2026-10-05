@@ -45,7 +45,7 @@ function harness(options={}) {
     '@/components/theme/theme-control':{ThemeControl:()=>null},
     '@/components/ui/drawer':{Drawer:()=>null},
     '@/lib/account-session':{logoutAllSessions:options.logoutAll||async function(){calls.push('logout-all');}},
-    '@/lib/company-selection':{linkedCompanies:p=>p.memberships,selectCompany:async(_p,id)=>{calls.push(['tenant',id]);if(options.selectError)throw Error('Não foi possível selecionar a empresa.');auth.profile={...auth.profile,selectedCompanyId:id};}},
+    '@/lib/company-selection':{accountDestination:()=>'/painel/proprietario',linkedCompanies:p=>p.memberships,selectCompany:async(_p,id)=>{calls.push(['tenant',id]);if(options.selectError)throw Error('Não foi possível selecionar a empresa.');auth.profile={...auth.profile,selectedCompanyId:id};}},
   };
   const exported={...load('app/conta/page.tsx',mocks),...load('components/account-content.tsx',mocks)};
   return {auth,redirects,calls,section(value){currentSection=value;},render(outer=false){cursor=0;return outer?exported.default():exported.AccountContent({profile:auth.profile,reload:auth.reload,logout:auth.logout});},effects(){return effects.splice(0).map(fn=>fn());}};

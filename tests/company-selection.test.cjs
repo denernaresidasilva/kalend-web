@@ -120,8 +120,8 @@ for (const count of [0,1,2,5]) test(`login UI with ${count} memberships follows 
   const next = h.render('default');
   const selectors = nodes(next, node => typeof node.type === 'function' && node.type.name === 'CompanySelector');
   assert.equal(selectors.length, count > 1 ? 1 : 0);
-  assert.deepEqual(redirects, count > 1 ? [] : ['/conta']);
-  if (count > 1) { await selectors[0].props.select('company-1'); assert.deepEqual(redirects, ['/conta']); assert.equal(f.me().selectedCompanyId, 'company-1'); }
+  assert.deepEqual(redirects, count > 1 ? [] : [count === 0 ? '/conta' : '/painel/proprietario']);
+  if (count > 1) { await selectors[0].props.select('company-1'); assert.deepEqual(redirects, ['/painel/proprietario']); assert.equal(f.me().selectedCompanyId, 'company-1'); }
 });
 for (const count of [0,1,2,5]) test(`account UI exposes existing selector for explicit selection, including a sole unselected company (${count})`, () => {
   const f = fixture(count);
