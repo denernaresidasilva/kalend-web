@@ -27,7 +27,7 @@ function nodes(tree, predicate) {
 }
 function harness(file, name, props, mocks = {}, globals = {}) {
   const states = []; const refs = []; let cursor = 0; let refCursor = 0;
-  const hooks = { ...React, useContext: () => mocks.__context?.() ?? null, useState(initial) { const index = cursor++; if (!(index in states)) states[index] = typeof initial === 'function' ? initial() : initial; return [states[index], value => { states[index] = typeof value === 'function' ? value(states[index]) : value; }]; }, useRef(initial) { const index = refCursor++; return refs[index] ??= { current: initial }; } };
+  const hooks = { ...React, useCallback: fn => fn, useContext: () => mocks.__context?.() ?? null, useState(initial) { const index = cursor++; if (!(index in states)) states[index] = typeof initial === 'function' ? initial() : initial; return [states[index], value => { states[index] = typeof value === 'function' ? value(states[index]) : value; }]; }, useRef(initial) { const index = refCursor++; return refs[index] ??= { current: initial }; } };
   const Component = load(file, { react: hooks, ...mocks }, { window: { confirm: () => true }, ...globals })[name];
   const render = () => { cursor = 0; refCursor = 0; return Component(props); };
   return { render, states, html: () => renderToStaticMarkup(render()) };

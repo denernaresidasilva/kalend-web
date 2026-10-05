@@ -1,11 +1,12 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { guardEmailRouter } from "@/lib/email-leave-guard";
 const seen = new Set<string>();
 export function TrialNotice({ preferenceKey, message }: { preferenceKey: string; message: string }) {
   const [open, setOpen] = useState(false);
   const panel = useRef<HTMLElement>(null);
-  const router = useRouter();
+  const router = guardEmailRouter(useRouter());
   useEffect(() => {
     const storageKey = `kalend:trial:${preferenceKey}`;
     let dismissed = seen.has(storageKey);

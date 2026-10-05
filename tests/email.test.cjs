@@ -27,12 +27,12 @@ function nodes(tree, predicate) {
 }
 function harness(file, name, props, mocks = {}, globals = {}) {
   const states = []; const refs = []; let cursor = 0; let refCursor = 0;
-  const hooks = { ...React, useContext: () => mocks.__context?.() ?? null, useState(initial) { const index = cursor++; if (!(index in states)) states[index] = typeof initial === 'function' ? initial() : initial; return [states[index], value => { states[index] = typeof value === 'function' ? value(states[index]) : value; }]; }, useRef(initial) { const index = refCursor++; return refs[index] ??= { current: initial }; } };
+  const hooks = { ...React, useEffect() {}, useContext: () => mocks.__context?.() ?? null, useState(initial) { const index = cursor++; if (!(index in states)) states[index] = typeof initial === 'function' ? initial() : initial; return [states[index], value => { states[index] = typeof value === 'function' ? value(states[index]) : value; }]; }, useRef(initial) { const index = refCursor++; return refs[index] ??= { current: initial }; } };
   const Component = load(file, { react: hooks, ...mocks }, { window: { confirm: () => true }, ...globals })[name];
   const render = () => { cursor = 0; refCursor = 0; return Component(props); };
   return { render, states, refs, html: () => renderToStaticMarkup(render()) };
 }
-const row = (extra = {}) => ({ scope: 'COMPANY', configured: true, provider: 'GOOGLE', email: 'sender@gmail.com', username: 'sender@gmail.com', smtpHost: 'smtp.gmail.com', smtpPort: 587, security: 'TLS', enabled: false, verified: false, status: 'UNTESTED', lastTestAt: null, lastTestRecipient: null, lastTestStatus: null, ...extra });
+const row = (extra = {}) => ({ scope: 'COMPANY', configured: true, hasPassword: true, provider: 'GOOGLE', email: 'sender@gmail.com', username: 'sender@gmail.com', smtpHost: 'smtp.gmail.com', smtpPort: 587, security: 'TLS', enabled: false, verified: false, status: 'UNTESTED', lastTestAt: null, lastTestRecipient: null, lastTestStatus: null, ...extra });
 const contract = load('lib/email.ts', { './api': { api() {}, jsonBody: body => ({ body: JSON.stringify(body) }) } });
 const find = (h, text) => nodes(h.render(), n => typeof n.type === 'function' && n.props.children === text)[0];
 const click = (h, text) => find(h, text).props.onClick();
@@ -51,10 +51,10 @@ test('SMTP client contracts use exact isolated routes and never send scope or co
   assert.deepEqual(calls[2][2], { recipient: 'test@example.test' });
   assert.ok(calls.every(c => !c[0].includes('password') && !c[2]?.companyId && !c[2]?.scope));
 });
-test('Gerenciar opens providers and existing configuration with an empty password', () => {
+test('Gerenciar opens providers and existing configuration with a visual credential placeholder', () => {
   const h = editor(); assert.equal(nodes(h.render(), n => n.type === 'input').length, 0); click(h, 'Gerenciar');
   assert.equal(input(h, 'E-mail').props.value, 'sender@gmail.com');
-  assert.equal(input(h, 'Senha de app').props.type, 'password'); assert.equal(input(h, 'Senha de app').props.value, undefined); assert.equal(input(h, 'Senha de app').props.defaultValue, undefined);
+  assert.equal(input(h, 'Senha de app').props.type, 'password'); assert.equal(input(h, 'Senha de app').props.value, undefined); assert.equal(input(h, 'Senha de app').props.defaultValue, undefined); assert.equal(input(h, 'Senha de app').props.placeholder, '••••••••••••');
   assert.match(h.html(), /Configurado, não testado/);
 });
 for (const [provider, preset] of Object.entries(contract.emailProviders)) test(`select ${provider} applies centralized SMTP defaults and manual changes`, () => {
@@ -70,20 +70,20 @@ test('Gmail has the exact app-password instructions and safe new-tab link below 
   const link = nodes(h.render(), n => n.type === 'a')[0]; assert.equal(link.props.href, 'https://myaccount.google.com/apppasswords'); assert.equal(link.props.children, 'aqui'); assert.equal(link.props.target, '_blank'); assert.equal(link.props.rel, 'noopener noreferrer');
   assert.doesNotMatch(html, /OAuth|Graph|Gmail API/);
 });
-test('save collects the password once, clears before request, blocks duplicates and waits for API confirmation', async () => {
+test('save collects the password once, retains until confirmation, blocks duplicates and waits for API confirmation', async () => {
   let resolve; const gate = new Promise(done => { resolve = done; }); const calls = [];
   const h = editor({ configured: false, status: 'NOT_CONFIGURED' }, { save: async (scope, body) => { calls.push([scope, body]); await gate; return row(); } }); click(h, 'Gerenciar');
   input(h, 'E-mail').props.onChange({ target: { value: 'new@gmail.com' } });
   input(h, 'Senha de app').props.ref.current = { value: 'private-app-password' };
   const form = nodes(h.render(), n => n.type === 'form')[0]; form.props.onSubmit({ preventDefault() {} }); form.props.onSubmit({ preventDefault() {} });
-  assert.equal(calls.length, 1); assert.equal(calls[0][1].password, 'private-app-password'); assert.equal(input(h, 'Senha de app').props.ref.current.value, '');
+  assert.equal(calls.length, 1); assert.equal(calls[0][1].password, 'private-app-password'); assert.equal(input(h, 'Senha de app').props.ref.current.value, 'private-app-password');
   assert.match(h.html(), /Não configurado/); assert.match(h.html(), /Salvando/); assert.doesNotMatch(JSON.stringify(h.states), /private-app-password/);
-  resolve(); await tick(); assert.match(h.html(), /Salvo com sucesso/); assert.match(h.html(), /Configurado, não testado/);
+  resolve(); await tick(); assert.match(h.html(), /Configuração salva com sucesso/); assert.match(h.html(), /Configurado, não testado/);
 });
 test('existing password is omitted on update; failed saves stay unconfirmed and sanitize errors', async () => {
   const calls = []; const h = editor({}, { save: async (_scope, body) => { calls.push(body); throw new Error('password=private internal'); } }); click(h, 'Gerenciar');
   input(h, 'Porta').props.onChange({ target: { value: '465' } }); nodes(h.render(), n => n.type === 'form')[0].props.onSubmit({ preventDefault() {} }); await tick();
-  assert.equal('password' in calls[0], false); assert.match(h.html(), /Não foi possível salvar/); assert.doesNotMatch(h.html(), /private internal|Salvo com sucesso/);
+  assert.equal('password' in calls[0], false); assert.match(h.html(), /Não foi possível salvar/); assert.doesNotMatch(h.html(), /private internal|Configuração salva com sucesso/);
 });
 test('real test UI shows testing, returned recipient/server/TLS and last-test metadata', async () => {
   let resolve; const gate = new Promise(done => { resolve = done; });
@@ -210,4 +210,61 @@ test('global SMTP UI save/test/enable preserves actual backend legacy fromName, 
   input(h, 'E-mail para teste').props.onChange({ target: { value: 'test@example.test' } }); nodes(h.render(), n => n.type === 'form')[1].props.onSubmit({ preventDefault() {} }); await tick();
   click(h, 'Habilitar envio'); await tick();
   assert.equal(stored.enabled, true); assert.equal(stored.config.fromName, 'Minha marca'); assert.equal(stored.config.replyTo, 'reply@example.test'); assert.equal(stored.config.emailProvider, 'GOOGLE'); assert.match(h.html(), /Testado com sucesso/);
+});
+
+test('SMTP snapshot detects real changes, reverting fields and new password input', () => {
+  const { emailFields, emailDirty } = load('lib/email-form.ts');
+  const saved = row();
+  assert.equal(emailDirty(emailFields(saved), saved, false), false);
+  assert.equal(emailDirty({ ...emailFields(saved), smtpHost: 'changed.test' }, saved, false), true);
+  assert.equal(emailDirty(emailFields(saved), saved, true), true);
+  assert.equal(emailDirty(emailFields(saved), saved, false), false);
+});
+test('successful PUT replaces snapshot, omits visual password, and reopening uses persisted GET data', async () => {
+  let persisted = row(); const calls = [];
+  const save = async (_ctx, body) => { calls.push(body); persisted = row({ ...body, hasPassword: true }); return persisted; };
+  const h = editor({}, { save }); click(h, 'Gerenciar');
+  input(h, 'Servidor SMTP').props.onChange({ target: { value: 'updated.example.test' } });
+  assert.match(h.html(), /Salve as alterações/);
+  nodes(h.render(), n => n.type === 'form')[0].props.onSubmit({ preventDefault() {} }); await tick();
+  assert.equal('password' in calls[0], false);
+  assert.doesNotMatch(h.html(), /Salve as alterações/);
+  assert.match(h.html(), /Configuração salva com sucesso/);
+  // A successful save also permits the editor's close action without confirmation.
+  click(h, 'Fechar'); assert.equal(nodes(h.render(), n => n.type === 'input').length, 0);
+  const client = load('lib/email.ts', { './api': { api: async () => persisted } });
+  const reloaded = await client.emailApi.get({ scope: 'SYSTEM' });
+  const reopened = editor(reloaded); click(reopened, 'Gerenciar');
+  assert.equal(input(reopened, 'Servidor SMTP').props.value, 'updated.example.test');
+  assert.equal(input(reopened, 'Senha de app').props.placeholder, '••••••••••••');
+});
+test('password replacement is real input; failed PUT retains secret and dirty until retry succeeds', async () => {
+  let fails = true; const bodies = [];
+  const h = editor({}, { save: async (_ctx, body) => { bodies.push(body); if (fails) throw new Error('private'); return row(); } }); click(h, 'Gerenciar');
+  const field = input(h, 'Senha de app'); field.props.ref.current = { value: 'replacement-test-only' };
+  field.props.onChange({ target: field.props.ref.current });
+  nodes(h.render(), n => n.type === 'form')[0].props.onSubmit({ preventDefault() {} }); await tick();
+  assert.equal(bodies[0].password, 'replacement-test-only');
+  assert.equal(input(h, 'Senha de app').props.ref.current.value, 'replacement-test-only');
+  assert.match(h.html(), /Salve as alterações/); assert.doesNotMatch(h.html(), /Configuração salva com sucesso/);
+  fails = false; nodes(h.render(), n => n.type === 'form')[0].props.onSubmit({ preventDefault() {} }); await tick();
+  assert.equal(input(h, 'Senha de app').props.ref.current.value, '');
+  assert.doesNotMatch(h.html(), /Salve as alterações/);
+});
+test('empty GET yields empty fields without a saved password indicator', () => {
+  const h = editor({ configured: false, hasPassword: false, email: '', username: '', smtpHost: '', provider: 'CUSTOM' }); click(h, 'Gerenciar');
+  assert.equal(input(h, 'E-mail').props.value, ''); assert.equal(input(h, 'Servidor SMTP').props.value, '');
+  assert.equal(input(h, 'Senha').props.placeholder, undefined); assert.equal(input(h, 'Senha').props.required, true);
+});
+test('leave guard blocks only pending drafts and removes its listeners', () => {
+  const windowEvents = new Map(); const documentEvents = new Map(); const navigationEvents = new Map();
+  let pending = false; let prompts = 0;
+  const fakeWindow = { addEventListener: (name, fn) => windowEvents.set(name, fn), removeEventListener: name => windowEvents.delete(name), confirm: () => { prompts++; return false; }, navigation: { addEventListener: (name, fn) => navigationEvents.set(name, fn), removeEventListener: name => navigationEvents.delete(name) } };
+  const { installEmailLeaveGuard } = load('lib/email-leave-guard.ts', {}, { window: fakeWindow, document: { addEventListener: (name, fn) => documentEvents.set(name, fn), removeEventListener: name => documentEvents.delete(name) }, location: { href: 'https://web.test/communication' }, history: { state: null } });
+  const cleanup = installEmailLeaveGuard(() => pending);
+  let prevented = 0; const event = { cancelable: true, destination: { url: 'https://web.test/other' }, navigationType: 'traverse', preventDefault() { prevented++; } };
+  navigationEvents.get('navigate')(event); windowEvents.get('beforeunload')(event); assert.equal(prevented, 0); assert.equal(prompts, 0);
+  pending = true; navigationEvents.get('navigate')(event); windowEvents.get('beforeunload')(event); assert.equal(prevented, 2); assert.equal(prompts, 1);
+  pending = false; navigationEvents.get('navigate')(event); assert.equal(prompts, 1);
+  cleanup(); assert.equal(windowEvents.size + documentEvents.size + navigationEvents.size, 0);
 });

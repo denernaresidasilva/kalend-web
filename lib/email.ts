@@ -9,7 +9,7 @@ export type EmailProvider = keyof typeof emailProviders;
 export type EmailScope = 'SYSTEM' | 'COMPANY';
 export type EmailContext = { scope: 'SYSTEM' } | { scope: 'COMPANY'; companyId: string; userId: string };
 export type EmailConfiguration = {
-  scope: EmailScope; configured: boolean; provider: EmailProvider; email: string; username: string;
+  scope: EmailScope; configured: boolean; hasPassword: boolean; provider: EmailProvider; email: string; username: string;
   smtpHost: string; smtpPort: number; security: 'TLS' | 'SSL'; enabled: boolean; verified: boolean;
   status: 'NOT_CONFIGURED' | 'UNTESTED' | 'VERIFIED' | 'ERROR';
   lastTestAt: string | null; lastTestRecipient: string | null; lastTestStatus: 'SUCCESS' | 'ERROR' | null;
