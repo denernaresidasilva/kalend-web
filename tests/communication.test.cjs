@@ -55,18 +55,18 @@ test('communication API uses only confirmed global endpoints and exact bodies', 
   assert.deepEqual(calls[15][2], { after: 'cursor' });
   assert.ok(calls.every(call => call[0].startsWith('/communication/') && !call[0].includes('?')));
 });
-test('provider patch keeps string TLS contract, omits blank secrets and refuses Gmail SMTP', () => {
+test('provider patch keeps string TLS contract, omits blank secrets and accepts Gmail SMTP', () => {
   const config = provider().config;
   const empty = contract.providerPatch('SMTP', { ...config, unexpected: 'private' }, { password: '' }, 'SANDBOX');
   assert.equal(empty.config.port, '587'); assert.equal(empty.config.secure, 'false'); assert.equal('secrets' in empty, false); assert.equal('unexpected' in empty.config, false);
   const changed = contract.providerPatch('META', { phoneNumberId: '123', businessAccountId: '456', graphVersion: 'v25.0' }, { accessToken: 'test-only', password: 'not-allowed' }, 'SANDBOX');
   assert.equal(changed.secrets.accessToken, 'test-only'); assert.equal('password' in changed.secrets, false);
-  assert.throws(() => contract.providerPatch('SMTP', { ...config, host: 'smtp.gmail.com' }, {}, 'SANDBOX'), /OAuth/);
+  assert.doesNotThrow(() => contract.providerPatch('SMTP', { ...config, host: 'smtp.gmail.com' }, {}, 'SANDBOX'));
 });
-test('providers show real states, configurable Web Push and unavailable Gmail', () => {
+test('providers show real states, configurable Web Push and SMTP-only email management', () => {
   const { ProviderCards } = load('components/communication-providers.tsx');
   const html = renderToStaticMarkup(React.createElement(ProviderCards, { providers: [provider(), provider('META', { status: 'CONNECTED' }), provider('EVOLUTION', { status: 'FAILED' }), provider('GMAIL', { adapterAvailable: false }), provider('PUSH_PENDING', { adapterAvailable: false })], select() {} }));
-  assert.match(html, /Validação pendente/); assert.match(html, /Conectado/); assert.match(html, /Falha/); assert.match(html, /OAuth ainda não configurado/); assert.equal((html.match(/>Configurar</g) ?? []).length, 4);
+  assert.match(html, /Validação pendente/); assert.match(html, /Conectado/); assert.match(html, /Falha/); assert.doesNotMatch(html, /OAuth ainda não configurado/); assert.equal((html.match(/>Configurar</g) ?? []).length, 4);
   assert.match(html, /Push Web/);
   assert.match(contract.providerState(), /não retornado/);
 });
@@ -289,7 +289,7 @@ test('frontend provider/template payloads execute the real local backend validat
   for (const name of Object.keys(configs)) {
     const body = contract.providerPatch(name, configs[name], {}, 'SANDBOX');
     assert.doesNotThrow(() => backendConfig.validateConfig(name, body.config));
-    if (name === 'SMTP') { assert.equal('replyTo' in body.config, false); assert.throws(() => backendConfig.validateConfig(name, { ...body.config, replyTo: '' })); }
+    if (name === 'SMTP') { assert.equal('replyTo' in body.config, false); assert.doesNotThrow(() => backendConfig.validateConfig(name, { ...body.config, replyTo: '' })); }
   }
   assert.doesNotThrow(() => backendConfig.validateConfig('SMTP', contract.providerPatch('SMTP', { ...configs.SMTP, replyTo: 'support@example.test' }, {}, 'SANDBOX').config));
   const events = backendContracts.EVENTS.map(event => ({ event, variables: backendContracts.variablesFor(event) }));

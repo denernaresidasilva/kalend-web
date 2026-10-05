@@ -4051,3 +4051,11 @@ button:disabled { opacity: .55; cursor: not-allowed; }
 .push-settings li { padding: 12px 0; border-top: 1px solid #dedbe8; }
 .push-settings button { margin: 4px 8px 4px 0; }
 .push-settings button:disabled { opacity: .55; cursor: default; }
+
+.email-settings { min-width: 0; }
+.email-settings form { margin-block: 20px; }
+.email-settings fieldset { border: 0; padding: 0; min-width: 0; }
+.email-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.email-settings label { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+.email-settings input, .email-settings select { color: var(--kalend-text-primary); background: var(--kalend-surface); border: 1px solid var(--kalend-control-border); padding: 10px; border-radius: 8px; width: 100%; font: inherit; }
+@media (max-width: 760px) { .email-form-grid { grid-template-columns: 1fr; } }

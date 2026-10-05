@@ -1,4 +1,5 @@
 "use client";
+import { EmailSettings } from "@/components/email-settings";
 import { useRef, useState } from "react";
 import { AdminSection } from "@/components/admin-section";
 import { useAuth } from "@/components/auth-provider";
@@ -9,7 +10,7 @@ import { CommunicationTemplates, CommunicationEvents } from "@/components/commun
 import { CommunicationMeta } from "@/components/communication-meta";
 import { CommunicationOutbox, CommunicationDeliveries, CommunicationLogs } from "@/components/communication-records";
 import { CommunicationOperations, useCommunicationPending } from "@/components/communication-operations";
-const sections = { overview: "Visão geral", providers: "Canais", templates: "Templates internos", events: "Eventos", meta: "Meta Templates", outbox: "Fila / Outbox", deliveries: "Entregas", failures: "Falhas", logs: "Logs" };
+const sections = { overview: "Visão geral", providers: "Canais", email: "E-mail", templates: "Templates internos", events: "Eventos", meta: "Meta Templates", outbox: "Fila / Outbox", deliveries: "Entregas", failures: "Falhas", logs: "Logs" };
 export default function CommunicationPage() {
   return <CommunicationOperations><CommunicationContent /></CommunicationOperations>;
 }
@@ -28,7 +29,7 @@ export function CommunicationContent() {
   return <AdminSection><main className="commercial-page communication-page"><header className="commercial-heading"><div><p>SUPER ADMIN · ESCOPO GLOBAL</p><h1>Comunicação Global do Kalend</h1><p>Mensagens enviadas pela plataforma Kalend aos proprietários das empresas.</p></div></header>
     <nav className="communication-navigation" aria-label="Seções da comunicação">{(Object.keys(sections) as (keyof typeof sections)[]).map(key => <button key={key} aria-current={section === key ? "page" : undefined} className={section === key ? "commercial-primary" : ""} disabled={pending} onClick={() => navigate(key)}>{sections[key]}</button>)}</nav>
     <section aria-label={sections[section]} key={section} onChangeCapture={event => { if ((event.target as HTMLElement).closest("form")) dirty.current = true; }}>
-      {section === "overview" && <CommunicationOverview />}{section === "providers" && <CommunicationProviders />}{section === "templates" && <CommunicationTemplates />}{section === "events" && <CommunicationEvents />}{section === "meta" && <CommunicationMeta />}{section === "outbox" && <CommunicationOutbox />}{section === "deliveries" && <CommunicationDeliveries />}{section === "failures" && <CommunicationDeliveries failures />}{section === "logs" && <CommunicationLogs />}
+      {section === "email" && <EmailSettings scope="SYSTEM" />}{section === "overview" && <CommunicationOverview />}{section === "providers" && <CommunicationProviders />}{section === "templates" && <CommunicationTemplates />}{section === "events" && <CommunicationEvents />}{section === "meta" && <CommunicationMeta />}{section === "outbox" && <CommunicationOutbox />}{section === "deliveries" && <CommunicationDeliveries />}{section === "failures" && <CommunicationDeliveries failures />}{section === "logs" && <CommunicationLogs />}
     </section>
   </main></AdminSection>;
 }

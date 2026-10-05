@@ -113,9 +113,10 @@ export async function withTenantLock<T>(work: () => Promise<T>): Promise<T> {
   if (typeof navigator === "undefined" || !navigator.locks) throw new Error("Use um navegador compatível com sessões seguras para gerenciar a assinatura.");
   return navigator.locks.request("kalend-tenant-context", work);
 }
-export async function tenantApi<T>(companyId: string, path: string, init?: RequestInit): Promise<T> {
+export async function tenantApi<T>(companyId: string, path: string, init?: RequestInit, expectedUserId?: string): Promise<T> {
   return withTenantLock(async () => {
-    const tenant = await api<{ selectedCompanyId: string | null }>("/auth/me");
+    const tenant = await api<{ selectedCompanyId: string | null; user: { id: string } }>("/auth/me");
+    if (!companyId || (expectedUserId !== undefined && tenant.user.id !== expectedUserId)) { tenantChanged(); throw new Error("A sessão mudou. Atualize a página antes de continuar."); }
     if (tenant.selectedCompanyId !== companyId) { tenantChanged(); throw new Error("A empresa selecionada mudou em outra aba. Atualize a página."); }
     return api<T>(path, init);
   });

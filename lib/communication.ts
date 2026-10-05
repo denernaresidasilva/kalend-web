@@ -63,7 +63,6 @@ export const secretFields: Record<ProviderName, [string, string][]> = {
 export function providerPatch(provider: ProviderName, config: Record<string, string>, secrets: Record<string, string>, environment: Environment) {
   const cleanConfig = Object.fromEntries([...providerFields[provider].map(([key]) => key), ...(provider === "SMTP" ? ["port", "secure"] : [])].map(key => [key, config[key] ?? ""]));
   if (provider === "SMTP" && !cleanConfig.replyTo.trim()) delete cleanConfig.replyTo;
-  if (provider === "SMTP" && cleanConfig.host.trim().toLowerCase() === "smtp.gmail.com") throw new Error("Gmail exige OAuth. Este host não é permitido no SMTP.");
   const cleanSecrets = Object.fromEntries(secretFields[provider].filter(([key]) => !!secrets[key]).map(([key]) => [key, secrets[key]]));
   return { config: cleanConfig, environment, ...(Object.keys(cleanSecrets).length ? { secrets: cleanSecrets } : {}) };
 }

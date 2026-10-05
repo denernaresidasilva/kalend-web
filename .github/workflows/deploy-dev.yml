@@ -76,7 +76,7 @@ jobs:
             echo ""
             echo "=== Build ==="
 
-            npm run build
+            npm run build -- --webpack
 
             echo ""
             echo "=== Reiniciando PM2 ==="

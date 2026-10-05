@@ -1,4 +1,5 @@
 "use client";
+import { EmailSettings } from "@/components/email-settings";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -81,7 +82,7 @@ export function AccountContent({ profile, reload, logout, notifications = false 
           : <Card><h2>Assinatura da empresa</h2><p>Solicite ao proprietário ou administrador a gestão da assinatura.</p></Card>)}
       </div>}
       {!notifications && section === "seguranca" && <AccountSecurity profile={profile} leaving={leaving || busy} onLogout={() => void leave()} onLogoutAll={() => setConfirmLogout(true)} />}
-      {!notifications && section === "preferencias" && <div className="k-account-stack"><Card><h2>Aparência</h2><p>Alterne entre os modos claro e escuro. A preferência fica salva neste navegador.</p><ThemeControl /></Card>
+      {!notifications && section === "preferencias" && <div className="k-account-stack">{!busy && !admin && membership && ["OWNER", "ADMIN"].includes(membership.role) && <section aria-label="Configurações de comunicação"><h2>Comunicação</h2><EmailSettings scope="COMPANY" /></section>}<Card><h2>Aparência</h2><p>Alterne entre os modos claro e escuro. A preferência fica salva neste navegador.</p><ThemeControl /></Card>
         {!busy && (membership || admin) ? <PushSettings key={`${profile.user.id}:${profile.selectedCompanyId ?? "admin"}`} /> : <Card><h2>Notificações do navegador</h2><p>Selecione uma empresa no Perfil para gerenciar as preferências existentes.</p><a href="/conta#perfil">Abrir perfil</a></Card>}
       </div>}
     </main>

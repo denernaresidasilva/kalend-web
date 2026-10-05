@@ -1,4 +1,5 @@
 "use client";
+import { EmailSettings } from "./email-settings";
 import Link from "next/link";
 import { useState, type FormEvent } from "react";
 import { communication, providerNames, providerFields, secretFields, providerState, providerPatch, availableProvider, safeQr, type CommunicationProvider, type ProviderName, type Environment, type MetaTemplate } from "@/lib/communication";
@@ -7,9 +8,9 @@ import { useCommunicationMutation } from "./communication-operations";
 import { Feedback, ResourceState, useCommunicationResource } from "./communication-resource";
 
 export function ProviderCards({ providers, select }: { providers: CommunicationProvider[]; select?: (provider: ProviderName) => void }) {
-  return <div className="gateway-grid">{(Object.keys(providerNames) as ProviderName[]).map(name => {
+  return <div className="gateway-grid">{(Object.keys(providerNames) as ProviderName[]).filter(name => name !== "GMAIL").map(name => {
     const row = providers.find(item => item.provider === name);
-    return <section className="gateway-card" key={name}><h2>{providerNames[name]}</h2><p>{name === "GMAIL" ? "Em breve · OAuth ainda não configurado" : name === "PUSH_PENDING" ? providerState(row) : providerState(row)}</p>
+    return <section className="gateway-card" key={name}><h2>{providerNames[name]}</h2><p>{providerState(row)}</p>
       {row && <><div className="commercial-badges"><span>Credencial: {row.configured ? "salva" : "não configurada"}</span><span>{row.enabled ? "Habilitado" : "Desabilitado"}</span><span>{row.environment === "SANDBOX" ? "Sandbox" : "Produção"}</span></div><p>Adapter: {row.adapterAvailable ? "disponível" : "indisponível"}</p></>}
       {name === "PUSH_PENDING" && <Link href="/conta/notificacoes#preferencias">Gerenciar notificações e dispositivos</Link>}
       {select && availableProvider(name) && <button onClick={() => select(name)}>Configurar</button>}
@@ -103,6 +104,6 @@ export function CommunicationProviders() {
   const resource = useCommunicationResource(communication.providers);
   const [selected, setSelected] = useState<ProviderName | null>(null);
   return <><button disabled={resource.loading || !!selected} onClick={() => void resource.load()}>Atualizar canais</button>
-    {selected ? <ProviderEditor key={selected} name={selected} initial={resource.data?.find(row => row.provider === selected)} close={() => { setSelected(null); void resource.load(); }} /> : <ResourceState {...resource} retry={() => void resource.load()}><ProviderCards providers={resource.data ?? []} select={setSelected} /></ResourceState>}
+    {selected === "SMTP" ? <><button onClick={() => setSelected(null)}>Voltar aos canais</button><EmailSettings scope="SYSTEM" /></> : selected ? <ProviderEditor key={selected} name={selected} initial={resource.data?.find(row => row.provider === selected)} close={() => { setSelected(null); void resource.load(); }} /> : <ResourceState {...resource} retry={() => void resource.load()}><ProviderCards providers={resource.data ?? []} select={setSelected} /></ResourceState>}
   </>;
 }
