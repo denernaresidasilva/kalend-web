@@ -170,3 +170,99 @@ test('expired QR remains hidden and indicates recovery on the same connection', 
   const result=html(connection({status:'QR_AVAILABLE',qrCode:qr,qrExpiresAt:'2026-10-05T11:59:00Z'}));
   assert.match(result,/mesma conexão/); assert.doesNotMatch(result,/<img/);
 });
+
+for (const status of [400, 403, 500]) test(`GLOBAL prepare HTTP ${status} stops loading and polling and allows explicit retry`, async () => {
+  let fail = true;
+  const h = await mounted({ get: async () => { throw Error('HTTP ' + status); }, action: async () => {
+    if (fail) throw Error('HTTP ' + status);
+    return connection({ status: 'QR_AVAILABLE', qrCode: qr, qrExpiresAt: new Date(Date.now() + 45000).toISOString() });
+  } }, { context: { scope: 'GLOBAL', userId: 'admin' }, initiallyOpen: true });
+  try {
+    await React.act(async () => { await new Promise(r => setTimeout(r, 20)); });
+    assert.match(h.text(), /Não foi possível preparar/);
+    assert.doesNotMatch(h.text(), /Gerando QR Code|Atualizando conexão/);
+    assert.equal(h.intervals.size, 0);
+    assert.equal(h.button('Atualizar estado').disabled, false);
+    fail = false;
+    await h.click('Conectar usando QR Code');
+    assert.match(h.text(), /Escaneie/);
+    assert.equal(h.intervals.size, 1);
+  } finally { await h.close(); }
+});
+test('GLOBAL status error stops polling and generation after a successful prepare', async () => {
+  const h = await mounted({ get: async () => { throw Error('HTTP 403'); }, action: async () => connection({ status: 'CONNECTING' }) }, { context: { scope: 'GLOBAL', userId: 'admin' } });
+  try {
+    await h.click('Configurar'); assert.equal(h.intervals.size, 1);
+    await h.click('Atualizar estado');
+    assert.match(h.text(), /Não foi possível atualizar/);
+    assert.doesNotMatch(h.text(), /Gerando QR Code|Atualizando conexão/);
+    assert.equal(h.intervals.size, 0);
+  } finally { await h.close(); }
+});
+test('Evolution error response stops GLOBAL loading and polling', async () => {
+  const h = await mounted({ get: async () => connection(), action: async () => connection({ status: 'ERROR', errorCode: 'EVOLUTION_UNAVAILABLE' }) }, { context: { scope: 'GLOBAL', userId: 'admin' } });
+  try {
+    await h.click('Configurar');
+    assert.match(h.text(), /temporariamente indisponível/);
+    assert.doesNotMatch(h.text(), /Gerando QR Code|Atualizando conexão/);
+    assert.equal(h.intervals.size, 0);
+  } finally { await h.close(); }
+});
+test('late GLOBAL response after context invalidation cannot display a QR', async () => {
+  let resolve;
+  const h = await mounted({ get: async () => connection(), action: () => new Promise(r => { resolve = r; }) }, { context: { scope: 'GLOBAL', userId: 'admin' } });
+  try {
+    await h.click('Configurar');
+    await React.act(async () => window.dispatchEvent(new window.Event('kalend:tenant-changed')));
+    await React.act(async () => resolve(connection({ status: 'QR_AVAILABLE', qrCode: qr, qrExpiresAt: new Date(Date.now() + 45000).toISOString() })));
+    assert.equal(document.querySelector('img'), null);
+    assert.equal(h.intervals.size, 0);
+    assert.match(h.text(), /sessão ou empresa mudou/);
+  } finally { await h.close(); }
+});
+
+test('phone panel displays instructions, regenerates with the same number, and returns to QR', async () => {
+  const calls = [];
+  const h = await mounted({ get: async () => connection({ status: 'CONNECTED' }), action: async (ctx, action, phone) => {
+    calls.push([ctx, action, phone]);
+    return connection(action === 'pairing-code' ? { status: 'CONNECTING', pairingCode: 'ABCD1234', pairingExpiresAt: new Date(Date.now() + 45000).toISOString() } : { status: 'QR_AVAILABLE', qrCode: qr, qrExpiresAt: new Date(Date.now() + 45000).toISOString() });
+  } }, { context: { scope: 'GLOBAL', userId: 'admin' } });
+  try {
+    await h.click('Configurar');
+    assert.match(h.text(), /Como deseja conectar/);
+    await h.click('Conectar usando número de telefone');
+    const field = document.querySelector('input');
+    const props = field[Object.keys(field).find(key => key.startsWith('__reactProps'))];
+    await React.act(async () => props.onChange({ target: { value: '+55 (12) 99605-5129' } }));
+    await h.click('Gerar código');
+    assert.match(h.text(), /Código de pareamento.*ABCD1234/);
+    assert.match(h.text(), /Aguardando confirmação no WhatsApp/);
+    assert.doesNotMatch(h.text(), /WhatsApp conectado/);
+    assert.equal(document.querySelectorAll('.evolution-pairing li').length, 6);
+    assert.equal(h.intervals.size, 1);
+    await h.click('Gerar novo código');
+    assert.deepEqual(calls.filter(c => c[1] === 'pairing-code').map(c => c[2]), ['+55 (12) 99605-5129', '+55 (12) 99605-5129']);
+    await h.click('Voltar para QR Code');
+    assert.ok(document.querySelector('img'));
+    assert.equal(document.querySelector('input'), null);
+    assert.doesNotMatch(h.text(), /ABCD1234/);
+    await h.click('Atualizar estado');
+    assert.match(h.text(), /WhatsApp conectado/);
+    assert.equal(h.intervals.size, 0);
+    assert.ok(calls.every(c => c[0].scope === 'GLOBAL' && !c[0].companyId));
+  } finally { await h.close(); }
+});
+test('invalid phone stays in panel with friendly validation and never starts a pairing request', async () => {
+  const calls = [];
+  const h = await mounted({ get: async () => connection(), action: async (_ctx, action) => { calls.push(action); return connection(); } });
+  try {
+    await h.click('Configurar'); await h.click('Conectar usando número de telefone');
+    const field = document.querySelector('input');
+    const props = field[Object.keys(field).find(key => key.startsWith('__reactProps'))];
+    await React.act(async () => props.onChange({ target: { value: 'invalid' } }));
+    await h.click('Gerar código');
+    assert.match(h.text(), /Informe um número válido com DDI/);
+    assert.deepEqual(calls, ['prepare']);
+    assert.equal(h.intervals.size, 0);
+  } finally { await h.close(); }
+});
