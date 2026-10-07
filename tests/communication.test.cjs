@@ -134,7 +134,7 @@ test('Meta editor has only write-only secrets and sends approved static referenc
 });
 test('Evolution pairs with real backend PNG only; invalid data never renders', async () => {
   for (const qr of ['data:image/png;base64,iVBORw0KGgo=', 'https://untrusted.test/qr', 'data:image/svg+xml;base64,AAAA']) {
-    const h = harness('components/communication-providers.tsx', 'ProviderEditor', { name: 'EVOLUTION', initial: provider('EVOLUTION'), close() {} }, { '@/lib/communication': { ...contract, communication: { pair: async () => ({ connected: false, qrCode: qr }), providers: async () => [provider('EVOLUTION')] } } });
+    const h = harness('components/communication-providers.tsx', 'ProviderEditor', { name: 'EVOLUTION', initial: provider('EVOLUTION'), close() {} }, { '@/lib/communication': { ...contract, communication: { pair: async () => ({ status: 'QR_AVAILABLE', qrCode: qr }), providers: async () => [provider('EVOLUTION')] } } });
     click(h.render(), 'Parear / atualizar QR Code'); await tick(); const images = nodes(h.render(), n => n.type === 'img');
     assert.equal(images.length, qr.startsWith('data:image/png') ? 1 : 0);
     if (images.length) { assert.equal(images[0].props.src, qr); click(h.render(), 'Ocultar QR Code'); assert.equal(nodes(h.render(), n => n.type === 'img').length, 0); }
@@ -256,7 +256,7 @@ test('navigation stays blocked while mutation is pending and asks before discard
 });
 
 test('Evolution already-connected response requires no QR and never marks delivery or provider validated', async () => {
-  const h = harness('components/communication-providers.tsx', 'ProviderEditor', { name: 'EVOLUTION', initial: provider('EVOLUTION'), close() {} }, { '@/lib/communication': { ...contract, communication: { pair: async () => ({ connected: true }), providers: async () => [provider('EVOLUTION')] } } });
+  const h = harness('components/communication-providers.tsx', 'ProviderEditor', { name: 'EVOLUTION', initial: provider('EVOLUTION'), close() {} }, { '@/lib/communication': { ...contract, communication: { pair: async () => ({ status: 'CONNECTED', qrCode: null }), providers: async () => [provider('EVOLUTION')] } } });
   click(h.render(), 'Parear / atualizar QR Code'); await tick();
   assert.equal(nodes(h.render(), node => node.type === 'img').length, 0);
   assert.match(h.html(), /instância já está conectada/); assert.match(h.html(), /Validação pendente/); assert.doesNotMatch(h.html(), /QR Code inválido|Cannot read|Entregue/);
@@ -327,7 +327,7 @@ test('frontend provider/template payloads execute the real local backend validat
 });
 test('real Evolution transport response variants are consumed by the frontend pairing handler', { skip: !fs.existsSync(path.join(backendRoot, 'communication/transports.ts')) }, async () => {
   let remote;
-  const mocks = { '@nestjs/common': { Injectable: () => () => {}, Inject: () => () => {}, BadRequestException: Error }, './gmail.js': { GmailTransport: class {} }, './push.js': { GlobalPush: class {} }, nodemailer: {}, './meta.js': { MetaTransport: class {} }, './evolution.js': { EvolutionService: class {}, GLOBAL_EVOLUTION: { scope: 'GLOBAL' } }, './network.js': { allowedHost() {}, jsonRequest: async () => remote }, './evolution-client.js': { EvolutionClient: class { async connectInstance() { return remote; } }, record: value => value ?? {}, evolutionQr: value => contract.safeQr(value), EvolutionFailure: class extends Error {} } };
+  const mocks = { '@nestjs/common': { Injectable: () => () => {}, Inject: () => () => {}, BadRequestException: Error, HttpException: class extends Error { getStatus() { return 500; } } }, './gmail.js': { GmailTransport: class {} }, './push.js': { GlobalPush: class {} }, nodemailer: {}, './meta.js': { MetaTransport: class {} }, './evolution.js': { EvolutionService: class {}, GLOBAL_EVOLUTION: { scope: 'GLOBAL' } }, './network.js': { allowedHost() {}, jsonRequest: async () => remote }, './evolution-client.js': { EvolutionClient: class { async connectInstance() { return remote; } }, record: value => value ?? {}, evolutionQr: value => contract.safeQr(value), EvolutionFailure: class extends Error {} } };
   const backend = load(path.join(backendRoot, 'communication/transports.ts'), mocks);
   for (const value of [{ instance: { state: 'open' } }, { qrcode: { base64: 'data:image/png;base64,iVBORw0KGgo=' } }]) {
     remote = value;
@@ -335,7 +335,7 @@ test('real Evolution transport response variants are consumed by the frontend pa
     const result = await transport.pair({ baseUrl: 'https://evo.example.test', instance: 'kalend' }, { apiKey: 'test-only' });
     const h = harness('components/communication-providers.tsx', 'ProviderEditor', { name: 'EVOLUTION', initial: provider('EVOLUTION'), close() {} }, { '@/lib/communication': { ...contract, communication: { pair: async () => result, providers: async () => [provider('EVOLUTION')] } } });
     click(h.render(), 'Parear / atualizar QR Code'); await tick();
-    assert.equal(nodes(h.render(), node => node.type === 'img').length, result.connected ? 0 : 1); assert.doesNotMatch(h.html(), /QR Code inválido|Cannot read/);
+    assert.equal(nodes(h.render(), node => node.type === 'img').length, result.status === 'CONNECTED' ? 0 : 1); assert.doesNotMatch(h.html(), /QR Code inválido|Cannot read/);
   }
 });
 

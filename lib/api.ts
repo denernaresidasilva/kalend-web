@@ -13,7 +13,7 @@ const messages: Record<number, string> = {
   503: "Serviço ou integração indisponível. Tente novamente mais tarde.",
 };
 export class ApiError extends Error {
-  constructor(public status: number, public issue?: CommercialIssue) { super(issue ? (issue.code === "PLAN_LIMIT_REACHED" ? "O limite do plano foi atingido." : issue.code === "SUBSCRIPTION_REQUIRED" ? "Sua assinatura precisa de regularização." : "Recurso indisponível no plano atual.") : messages[status] || "Não foi possível conectar ao serviço. Tente novamente."); }
+  constructor(public status: number, public issue?: CommercialIssue, public errorCode?: string) { super(issue ? (issue.code === "PLAN_LIMIT_REACHED" ? "O limite do plano foi atingido." : issue.code === "SUBSCRIPTION_REQUIRED" ? "Sua assinatura precisa de regularização." : "Recurso indisponível no plano atual.") : messages[status] || "Não foi possível conectar ao serviço. Tente novamente."); }
 }
 let refreshFlight: Promise<void> | null = null;
 let generation = 0;
@@ -90,9 +90,11 @@ export async function apiFetch(path: string, init: RequestInit = {}): Promise<Re
     if (response.status === 401) endSession();
   }
   if (!response.ok) {
-    const issue = response.status === 403 ? parseCommercialIssue(await response.json().catch(() => null)) : undefined;
+    const body = await response.json().catch(() => null);
+    const issue = response.status === 403 ? parseCommercialIssue(body) : undefined;
     if (issue && typeof window !== "undefined") window.dispatchEvent(new CustomEvent("kalend:commercial-issue", { detail: issue }));
-    throw new ApiError(response.status, issue);
+    const errorCode = typeof body?.errorCode === "string" && /^[A-Z_]{1,80}$/.test(body.errorCode) ? body.errorCode : undefined;
+    throw new ApiError(response.status, issue, errorCode);
   }
   return response;
 }

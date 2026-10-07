@@ -1,42 +1,41 @@
-# Evolution — DEV/produção e recuperação do QR
+# Evolution — contrato de sessão e interface Kalend
 
-**Uma empresa = uma instância por ambiente. O Super Admin possui uma conexão GLOBAL independente.** Correção local das pendências da auditoria; nenhuma publicação, chave pública ou alteração de ambiente foi feita.
+Atualizado em 07/10/2026. Implementação/testes locais, sem commit, push, deploy, restart ou operações na Evolution real.
 
-A interface permanece nativa: Configurar prepara automaticamente a instância e mostra QR. GLOBAL usa AdminGuard e /communication/evolution; COMPANY usa TenantGuard OWNER/ADMIN e /company/communication/evolution. tenantApi, invalidação da sessão, abort/versionamento e componentes visuais existentes foram preservados.
+## Contextos
 
-## Ambiente
+Super Admin usa GLOBAL, sem selectedCompanyId, em `/communication/evolution`; backend AdminGuard. Empresa usa `/company/communication/evolution`, TenantGuard OWNER/ADMIN e companyId da sessão. Frontend verifica usuário/empresa antes do request e invalida respostas em mudança de sessão/tenant. Não há seleção de instanceName, ambiente ou credencial pelo navegador.
 
-Backend exige EVOLUTION_WEBHOOK_BASE_URL, sem fallback: DEV usa https://api-dev.kalend.tech; produção usa https://api.kalend.tech. NODE_ENV não decide o namespace. Coerência com BILLING_PUBLIC_API_URL e DATABASE_URL é verificada pelo backend. Frontend não informa ambiente/nome/instância/chave.
+O origin da API vem exclusivamente de NEXT_PUBLIC_API_URL no build Web. Não existe variável pública de API key Evolution nem request direto ao provider. Nomes DEV/produção e webhook são definidos pelo backend; ver [documentação API](../../kalend-api/docs/EVOLUTION-INTEGRATION.md).
 
-Nomes backend:
-- DEV: kalend_dev_global e kalend_dev_<UUID>;
-- produção: kalend_global e kalend_<UUID>, com preservação de GLOBAL produtivo legacy válido.
+## Contrato
 
-Registros explícitos do outro ambiente são recusados. Vínculos DEV legacy sem prefixo são associados ao nome DEV antes de chamadas remotas; a instância antiga ambígua não é consultada/desconectada/excluída. Empresa/dados comerciais permanecem, mas WhatsApp DEV pode exigir novo pareamento.
+`lib/evolution.ts` define um único EvolutionConnection para get/prepare/connect/reconnect/pairing/logout/delete e para o pareamento global legado. Contém status, qrCode/qrExpiresAt, pairingCode/pairingExpiresAt, attemptExpiresAt, disconnectReason, operationPending, pairingSupported, perfil conectado e errorCode/message seguros. API não entrega credenciais, lease, ciphertext ou telefone digitado na tentativa. Não usar connected:boolean para o pareamento legado; testes de saúde/envio continuam com seus resultados próprios.
 
-## QR e pairing
+Estados preservados: PENDING, CREATED, CREATING, DELETING, CONNECTING, QR_AVAILABLE, CONNECTED, DISCONNECTED, ERROR. Somente confirmação open marca CONNECTED; QR ou HTTP bem-sucedido não comprovam conexão.
 
-Cache de payload por processo removido no backend. Réplicas consultam Evolution e compartilham somente fingerprint HMAC, expiração e cooldown de recuperação. QR/pairing não são guardados permanentemente em banco/browser storage.
+## QR e telefone
 
-QR expirado é ocultado e mostra “Solicitando um novo código automaticamente na mesma conexão...”. Polling moderado de 10 segundos continua durante tentativa, inclusive recuperação. Backend primeiro usa connect na mesma instância; somente uma tentativa connecting expirada/sem código pode usar POST restart. Estado close usa connect, open não é reiniciado. Não executa create/delete por expiração.
+Configurar prepara a instância; painel GLOBAL aberto pela seção Canais prepara automaticamente. Abertura preserva sessão/tentativa existente, inclusive PHONE legado. Botão Conectar usando QR Code solicita/reutiliza QR; não cancela tentativa válida para atualizá-la.
 
-Pairing usa GET connect?number exclusivamente através do Kalend API. Telefone validado/normalizado; código exibido exatamente como retornado. Recuperação sem número pode retornar QR; novo pairing exige informar o telefone novamente. Nenhum número de tentativa ou código é persistido desnecessariamente.
+Evolution → webhook → snapshot cifrado temporário no PostgreSQL → consulta Kalend → imagem PNG no painel. Não é necessário recuperar imagem novamente da Evolution. Browser mantém o resultado somente no estado React, sem localStorage/sessionStorage. Código expirado é ocultado, com instrução de pedir novo código na mesma conexão; não há restart em polling.
 
-Conexão concluída, logout/delete, troca de empresa/sessão e unmount param polling e descartam respostas antigas. Logout mantém vínculo; exclusão confirmada não recria em loop. Sem Sandbox, seletor de ambiente, fields técnicos ou NEXT_PUBLIC_EVOLUTION_API_KEY. Logs do provedor serão verificados na VPS; o Kalend não registra headers/tokens/QR.
+Conectar usando número abre formulário. Separadores são removidos preservando todos os dígitos: `+55 (12) 99605-5129` → `5512996055129`. POST pairing-code envia `{phone}`; backend preserva telefone cifrado por até cinco minutos para a operação. Código aparece como **Código de conexão**, com instruções do WhatsApp, sem reformatar o valor. Se só houver QR, ele pode aparecer com aviso de pairing pendente. Reconnect usa número preservado enquanto a tentativa existe; após logout/encerramento/expiração total é necessário informar o telefone novamente.
 
-## Validação e banco
+QR tem janela local de 60s, pairing 120s; tentativa total 5min e espera inicial sem código 60s. Esses limites não são promessa de validade remota do WhatsApp. Expiração não inventa um código nem estende o mesmo valor por polling. Open/logout/close/delete retiram os códigos.
 
-npm test: 16 arquivos aprovados; testes Evolution: 25 casos; lint e build -- --webpack aprovados com Node 24.21.0. API possui 628 casos, 119 e2e e 21 testes HTTP/TLS integrados, incluindo fluxos React/Web reais com provedor simulado.
+## Polling e erros
 
-As duas migrations anteriores permaneceram intactas. Uma terceira acrescenta vínculo de ambiente e metadados efêmeros de recuperação; nenhuma foi aplicada. Preflight por snapshot/DEV read-only disponível no backend, sem acesso a produção nesta tarefa.
+Há um intervalo de 10 segundos enquanto painel permanece aberto/visível, inclusive depois de conectado/desconectado. Requests usam single flight; foco também solicita atualização. Cleanup remove intervalos/timers/listeners e aborta requests. Resultados antigos são versionados e descartados.
 
-Arquitetura, variáveis sem valores secretos, transição legacy, código/SQL e operação do preflight: [relatório completo](../../kalend-api/docs/EVOLUTION-INTEGRATION.md).
+Erro transitório não interrompe imediatamente o monitoramento. Três falhas consecutivas pausam polling; 401/403 de sessão/autorização pausam imediatamente. Atualizar estado ou nova ação reinicia. Uma espera sem código é limitada a 60 segundos; uma reconexão posterior começa nova janela de espera. Um erro de validação do telefone não cancela monitoramento de uma conexão válida.
 
-VPS, dados/DDL DEV reais, aparelho/navegador físico, logs do provedor e concorrência real: **NÃO VALIDADO**. A janela de 45 segundos é política local, não TTL contratual da Evolution.
+Requests possuem deadlines e AbortController propagado: leitura 40s (até duas chamadas provider de 15s + DNS/auth); gerenciamento/envio de teste 90s (provisionamento pode exigir múltiplas chamadas sequenciais). Nunca há sleep arbitrário para aguardar QR. Mensagens públicas vêm de allowlist por errorCode; body/mensagem remota não são exibidos diretamente. Credenciais do provider inválidas não disparam refresh da sessão de usuário.
 
-SEM GIT ADD.
-SEM COMMIT.
-SEM PUSH.
-SEM DEPLOY.
-SEM RESTART PM2.
-SEM MIGRATION APLICADA.
+Excluir pede confirmação e fecha/resetta painel quando concluído; não recria em loop. Logout remove QR/pairing. O painel da empresa conectado oferece Enviar teste para mim, sem telefone/destinatário no body. Aceitação não é confirmação de entrega. GLOBAL mantém seu teste de envio na preferência do canal global.
+
+## Testes e publicação futura
+
+Testes incluem PNG completo de QR legível (fixture offline, não sessão real), renderização/expiração, pairing, retry, close/401, monitoramento conectado, single flight, limite de espera, desmontagem e mudança de identidade. Integração HTTP/TLS local exercita provider simulado → callback 200 sob lease → persistência → cliente HTTP real do Web → React.
+
+API/migration devem preceder Web. O contrato do pareamento global legado mudou para EvolutionConnection; ambos projetos devem ser publicados juntos, sem misturar writers API antigos/novos. Nenhuma migration ou publicação foi realizada nesta implementação. VPS, aparelhos reais, proxy/PM2 e logs próprios da Evolution continuam pendentes de homologação. Não é necessário modificar a Evolution 2.3.7.

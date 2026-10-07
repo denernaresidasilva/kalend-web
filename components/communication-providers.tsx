@@ -61,12 +61,12 @@ export function ProviderEditor({ initial, name, close }: { initial?: Communicati
         setMessage(result.accepted ? "Teste aceito pelo provedor para o administrador autenticado. Entrega não confirmada." : "O provedor não confirmou a aceitação.");
       } else if (action === "pair") {
         const result = await communication.pair();
-        if (result.connected) setMessage("A Evolution informou que a instância já está conectada. Execute Testar conexão para validar a configuração no Kalend.");
-        else {
+        if (result.status === 'CONNECTED') setMessage("A Evolution informou que a instância já está conectada. Execute Testar conexão para validar a configuração no Kalend.");
+        else if (result.qrCode) {
           const image = safeQr(result.qrCode);
           if (!image) throw new Error("QR Code inválido retornado pelo serviço.");
           setQr(image); setMessage("Escaneie o QR Code e depois teste a conexão. O pareamento não confirma conexão ou entrega.");
-        }
+        } else { setQr(null); setMessage("Aguardando o QR Code da Evolution. Abra o painel WhatsApp para acompanhar a conexão."); }
       } else { setRow(await communication.patchProvider(name, { enabled: !row?.enabled })); setMessage("Estado do canal atualizado."); }
     } catch (err) { setError(err instanceof Error ? err.message : "Operação indisponível."); }
     finally {

@@ -23,19 +23,19 @@ function load(file, mocks = {}, globals = {}) {
   process: { env: { NEXT_PUBLIC_API_URL: 'https://api.example.test' } }, ...globals }, { filename: file });
   return mod.exports;
 }
-const qr = 'data:image/png;base64,iVBORw0KGgo=';
+const qr = fs.readFileSync('tests/fixtures/evolution-qr.txt', 'utf8').trim();
 const connection = extra => ({ status: 'PENDING', phone: null, profileName: null, connectedAt: null, qrCode: null, qrExpiresAt: null, pairingCode: null, pairingExpiresAt: null, pairingSupported: true, errorCode: null, message: null, ...extra });
 const mocks = { '@/lib/communication': { safeQr: value => /^data:image\/png;base64,/.test(value) ? value : null }, './auth-provider': { useAuth: () => ({ loading: false, profile: null }) } };
 const view = load('components/evolution-settings.tsx', mocks).EvolutionView;
 const html = (row, busy = false) => renderToStaticMarkup(React.createElement(view, { row, busy, now: Date.parse('2026-10-05T12:00:00Z') }));
 for (const [name, row, text] of [
-  ['sem conexão', null, 'Conecte seu WhatsApp'], ['carregando', connection(), 'Gerando QR Code'],
+  ['sem conexão', null, 'Conecte seu WhatsApp'], ['aguardando configuração', connection(), 'Aguardando conexão'],
   ['QR disponível', connection({ status: 'QR_AVAILABLE', qrCode: qr, qrExpiresAt: '2026-10-05T12:01:00Z' }), 'QR Code para conectar'],
   ['QR expirado', connection({ status: 'QR_AVAILABLE', qrCode: qr, qrExpiresAt: '2026-10-05T11:59:00Z' }), 'Este QR Code expirou'],
   ['conectando', connection({ status: 'CONNECTING' }), 'Conectando...'],
   ['conectado', connection({ status: 'CONNECTED', phone: '+5511999999999', profileName: 'Maria' }), 'WhatsApp conectado'],
   ['desconectado', connection({ status: 'DISCONNECTED' }), 'WhatsApp desconectado'],
-  ['erro transitório', connection({ status: 'ERROR', message: 'private stack' }), 'temporariamente indisponível'],
+  ['erro transitório', connection({ status: 'ERROR', errorCode: 'EVOLUTION_UNAVAILABLE', message: 'private stack' }), 'temporariamente indisponível'],
   ['pairing', connection({ status: 'CONNECTING', pairingCode: 'ABCD1234', pairingExpiresAt: '2026-10-05T12:01:00Z' }), 'ABCD1234'],
 ]) test(`Evolution UX: ${name}`, () => assert.ok(html(row, !row).includes(text)));
 test('expired and connected QR never render; internal fields and raw errors are ignored', () => {
@@ -55,15 +55,16 @@ test('API routes use authenticated tenant client with exact bodies and no identi
 });
 async function mounted(api, options = {}) {
   const intervals = new Map();
-  const dom = new JSDOM('<div id="app"></div>', { url: 'https://web.example.test' });
+  const callbacks = new Map();
+  const dom = new JSDOM('<div id="app"></div>', { url: 'https://web.example.test', pretendToBeVisual: true });
   global.window = dom.window; global.document = dom.window.document; global.IS_REACT_ACT_ENVIRONMENT = true;
   dom.window.confirm = () => true;
-  const exports = load('components/evolution-settings.tsx', { ...mocks, '@/lib/evolution': { ...load('lib/evolution.ts'), evolutionApi: api } }, { window: dom.window, document: dom.window.document, setInterval: (fn, ms) => { const id = setInterval(fn, ms); intervals.set(id, ms); return id; }, clearInterval: id => { intervals.delete(id); clearInterval(id); } });
+  const exports = load('components/evolution-settings.tsx', { ...mocks, '@/lib/evolution': { ...load('lib/evolution.ts'), evolutionApi: api } }, { window: dom.window, document: dom.window.document, Date: options.Date ?? Date, setInterval: (fn, ms) => { const id = setInterval(fn, ms); intervals.set(id, ms); callbacks.set(id, fn); return id; }, clearInterval: id => { intervals.delete(id); callbacks.delete(id); clearInterval(id); } });
   const root = createRoot(document.getElementById('app'));
   await React.act(async () => root.render(React.createElement(exports.EvolutionPanel, { context: options.context ?? { companyId: 'company-a', userId: 'user-a' }, initiallyOpen: options.initiallyOpen ?? false })));
   const button = text => [...document.querySelectorAll('button')].find(b => b.textContent === text);
   const click = async text => { const target = button(text); assert.ok(target, text); await React.act(async () => target.click()); };
-  return { intervals, click, button, text: () => document.body.textContent, close: async () => { await React.act(async () => root.unmount()); dom.window.close(); delete global.window; delete global.document; delete global.IS_REACT_ACT_ENVIRONMENT; } };
+  return { intervals, tick: async () => { await React.act(async () => { for (const fn of callbacks.values()) fn(); }); }, click, button, text: () => document.body.textContent, close: async () => { await React.act(async () => root.unmount()); dom.window.close(); delete global.window; delete global.document; delete global.IS_REACT_ACT_ENVIRONMENT; } };
 }
 test('configure, QR, reconnect, number flow and deletion use the same context', async () => {
   const calls = [];
@@ -118,7 +119,7 @@ test('management UI authorizes only OWNER/ADMIN and remounts for tenant/user ide
 });
 
 
-test('GLOBAL prepares automatically on entry and has moderate polling that stops when connected', async () => {
+test('GLOBAL prepares automatically on entry and has moderate polling that continues monitoring after connected', async () => {
   const calls = [];
   const h = await mounted({ get: async () => connection({ status: 'CONNECTED' }), action: async (ctx, action) => { calls.push([ctx, action]); return connection({ status: 'QR_AVAILABLE', qrCode: qr, qrExpiresAt: new Date(Date.now() + 45000).toISOString() }); } }, { context: { scope: 'GLOBAL', userId: 'admin' }, initiallyOpen: true });
   try {
@@ -126,7 +127,7 @@ test('GLOBAL prepares automatically on entry and has moderate polling that stops
     assert.equal(calls.length, 1); assert.equal(calls[0][0].scope, 'GLOBAL'); assert.equal(calls[0][1], 'prepare');
     assert.equal(document.querySelector('img').src, qr); assert.ok([...h.intervals.values()].every(ms => ms === 10000));
     assert.equal(h.intervals.size, 1); assert.doesNotMatch(h.text(), /Sandbox|Gerar novo QR|Instance Name|API Key/);
-    await h.click('Atualizar estado'); assert.equal(h.intervals.size, 0); assert.equal(document.querySelector('img'), null);
+    await h.click('Atualizar estado'); assert.equal(h.intervals.size, 1); assert.equal(document.querySelector('img'), null);
   } finally { await h.close(); }
 });
 for (const event of ['kalend:tenant-changed', 'kalend:session-ended']) test(`polling is cancelled on ${event}`, async () => {
@@ -179,7 +180,7 @@ for (const status of [400, 403, 500]) test(`GLOBAL prepare HTTP ${status} stops 
   } }, { context: { scope: 'GLOBAL', userId: 'admin' }, initiallyOpen: true });
   try {
     await React.act(async () => { await new Promise(r => setTimeout(r, 20)); });
-    assert.match(h.text(), /Não foi possível preparar/);
+    assert.match(h.text(), /Não foi possível atualizar/);
     assert.doesNotMatch(h.text(), /Gerando QR Code|Atualizando conexão/);
     assert.equal(h.intervals.size, 0);
     assert.equal(h.button('Atualizar estado').disabled, false);
@@ -190,7 +191,7 @@ for (const status of [400, 403, 500]) test(`GLOBAL prepare HTTP ${status} stops 
   } finally { await h.close(); }
 });
 test('GLOBAL status error stops polling and generation after a successful prepare', async () => {
-  const h = await mounted({ get: async () => { throw Error('HTTP 403'); }, action: async () => connection({ status: 'CONNECTING' }) }, { context: { scope: 'GLOBAL', userId: 'admin' } });
+  const h = await mounted({ get: async () => { throw { status: 403 }; }, action: async () => connection({ status: 'CONNECTING' }) }, { context: { scope: 'GLOBAL', userId: 'admin' } });
   try {
     await h.click('Configurar'); assert.equal(h.intervals.size, 1);
     await h.click('Atualizar estado');
@@ -199,13 +200,13 @@ test('GLOBAL status error stops polling and generation after a successful prepar
     assert.equal(h.intervals.size, 0);
   } finally { await h.close(); }
 });
-test('Evolution error response stops GLOBAL loading and polling', async () => {
+test('Evolution error response stops loading but preserves state monitoring', async () => {
   const h = await mounted({ get: async () => connection(), action: async () => connection({ status: 'ERROR', errorCode: 'EVOLUTION_UNAVAILABLE' }) }, { context: { scope: 'GLOBAL', userId: 'admin' } });
   try {
     await h.click('Configurar');
     assert.match(h.text(), /temporariamente indisponível/);
     assert.doesNotMatch(h.text(), /Gerando QR Code|Atualizando conexão/);
-    assert.equal(h.intervals.size, 0);
+    assert.equal(h.intervals.size, 1);
   } finally { await h.close(); }
 });
 test('late GLOBAL response after context invalidation cannot display a QR', async () => {
@@ -235,7 +236,7 @@ test('phone panel displays instructions, regenerates with the same number, and r
     const props = field[Object.keys(field).find(key => key.startsWith('__reactProps'))];
     await React.act(async () => props.onChange({ target: { value: '+55 (12) 99605-5129' } }));
     await h.click('Gerar código');
-    assert.match(h.text(), /Código de pareamento.*ABCD1234/);
+    assert.match(h.text(), /Código de conexão.*ABCD1234/);
     assert.match(h.text(), /Aguardando confirmação no WhatsApp/);
     assert.doesNotMatch(h.text(), /WhatsApp conectado/);
     assert.equal(document.querySelectorAll('.evolution-pairing li').length, 6);
@@ -248,7 +249,7 @@ test('phone panel displays instructions, regenerates with the same number, and r
     assert.doesNotMatch(h.text(), /ABCD1234/);
     await h.click('Atualizar estado');
     assert.match(h.text(), /WhatsApp conectado/);
-    assert.equal(h.intervals.size, 0);
+    assert.equal(h.intervals.size, 1);
     assert.ok(calls.every(c => c[0].scope === 'GLOBAL' && !c[0].companyId));
   } finally { await h.close(); }
 });
@@ -263,6 +264,79 @@ test('invalid phone stays in panel with friendly validation and never starts a p
     await h.click('Gerar código');
     assert.match(h.text(), /Informe um número válido com DDI/);
     assert.deepEqual(calls, ['prepare']);
-    assert.equal(h.intervals.size, 0);
+    assert.equal(h.intervals.size, 1);
   } finally { await h.close(); }
+});
+
+
+test('connected panel automatically detects a later close/401 and discards codes', async () => {
+  const h = await mounted({ action: async () => connection({ status: 'CONNECTED' }), get: async () => connection({ status: 'DISCONNECTED', disconnectReason: 401, errorCode: 'WHATSAPP_LOGGED_OUT' }) });
+  try {
+    await h.click('Configurar'); assert.equal(h.intervals.size, 1);
+    await h.tick(); assert.match(h.text(), /WhatsApp desconectado/); assert.match(h.text(), /revogou a sessão/);
+    assert.equal(document.querySelector('img'), null); assert.doesNotMatch(h.text(), /Gerando QR Code/);
+    assert.equal(h.intervals.size, 1);
+  } finally { await h.close(); assert.equal(h.intervals.size, 0); }
+});
+test('transient polling error retries and a successful snapshot restores the real PNG', async () => {
+  let attempts = 0;
+  const h = await mounted({ action: async () => connection({ status: 'CONNECTING' }), get: async () => {
+    if (++attempts === 1) throw { status: 503, errorCode: 'EVOLUTION_UNAVAILABLE' };
+    return connection({ status: 'QR_AVAILABLE', qrCode: qr, qrExpiresAt: new Date(Date.now() + 60000).toISOString() });
+  } });
+  try {
+    await h.click('Configurar'); await h.tick(); assert.equal(h.intervals.size, 1); assert.match(h.text(), /temporariamente indisponível/);
+    await h.tick(); assert.equal(document.querySelector('img').src, qr); assert.equal(h.intervals.size, 1);
+    assert.equal(Buffer.from(qr.split(',')[1], 'base64').readUInt32BE(16) > 100, true);
+  } finally { await h.close(); }
+});
+test('three consecutive network failures pause polling and explicit retry restarts it', async () => {
+  let fail = true;
+  const h = await mounted({ action: async () => connection({ status: 'CONNECTING' }), get: async () => { if (fail) throw Error('network'); return connection({ status: 'CONNECTED' }); } });
+  try {
+    await h.click('Configurar'); await h.tick(); await h.tick(); await h.tick(); assert.equal(h.intervals.size, 0);
+    fail = false; await h.click('Atualizar estado'); assert.equal(h.intervals.size, 1); assert.match(h.text(), /WhatsApp conectado/);
+  } finally { await h.close(); }
+});
+test('single flight prevents interval and manual refresh from starting concurrent requests', async () => {
+  let calls = 0, resolve;
+  const h = await mounted({ action: async () => connection({ status: 'CONNECTED' }), get: () => { calls++; return new Promise(r => { resolve = r; }); } });
+  try {
+    await h.click('Configurar'); await h.tick(); await h.tick(); await h.click('Atualizar estado'); assert.equal(calls, 1);
+    await React.act(async () => resolve(connection({ status: 'DISCONNECTED' }))); assert.match(h.text(), /WhatsApp desconectado/);
+  } finally { await h.close(); }
+});
+test('waiting for a missing code is bounded and allows a new request', async () => {
+  let clock = Date.now();
+  class Clock extends Date { static now() { return clock; } }
+  const h = await mounted({ action: async () => connection({ status: 'CONNECTING' }), get: async () => connection({ status: 'CONNECTING' }) }, { Date: Clock });
+  try {
+    await h.click('Configurar'); clock += 61000; await h.tick();
+    assert.match(h.text(), /código não chegou no prazo/); assert.doesNotMatch(h.text(), /Gerando QR Code/); assert.equal(h.intervals.size, 0);
+    await h.click('Conectar usando QR Code'); assert.equal(h.intervals.size, 1);
+  } finally { await h.close(); }
+});
+test('normalization preserves every digit, including non-ASCII whitespace separators', () => {
+  const { normalizeEvolutionPhone } = load('lib/evolution.ts');
+  for (const value of ['+55 (12) 99605-5129', '55\t12\u00a099605.5129']) assert.equal(normalizeEvolutionPhone(value), '5512996055129');
+});
+
+test('company send-test uses own authenticated context and reports acceptance separately from delivery', async () => {
+  const calls = [];
+  const h = await mounted({ action: async () => connection({ status: 'CONNECTED' }), get: async () => connection({ status: 'CONNECTED' }), sendTest: async ctx => { calls.push(ctx); return { accepted: true, delivered: false }; } });
+  try {
+    await h.click('Configurar'); await h.click('Enviar teste para mim');
+    // The component runs in a VM realm; compare fields without comparing its object prototype.
+    assert.equal(calls.length, 1);
+    assert.deepEqual(Object.keys(calls[0]).sort(), ['companyId', 'userId']);
+    assert.equal(calls[0].companyId, 'company-a');
+    assert.equal(calls[0].userId, 'user-a');
+    assert.match(h.text(), /aceita pelo WhatsApp.*Entrega não confirmada/);
+  } finally { await h.close(); }
+  const apiCalls = [];
+  const client = load('lib/evolution.ts', { './api': { tenantApi: async (...args) => { apiCalls.push(args); return { accepted: true, delivered: false }; }, jsonBody: value => ({ body: JSON.stringify(value) }) } });
+  await client.evolutionApi.sendTest({ companyId: 'company-a', userId: 'user-a' });
+  assert.equal(apiCalls[0][1], '/company/communication/evolution/send-test');
+  assert.deepEqual(JSON.parse(apiCalls[0][2].body), {});
+  await assert.rejects(() => client.evolutionApi.sendTest({ scope: 'GLOBAL', userId: 'admin' }));
 });

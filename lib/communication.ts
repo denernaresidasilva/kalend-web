@@ -1,4 +1,5 @@
 import { api, jsonBody } from "./api";
+import type { EvolutionConnection } from "./evolution";
 
 // Contracts checked against kalend-api develop: communication module, services and Prisma schema.
 export type ProviderName = "SMTP" | "META" | "EVOLUTION" | "GMAIL" | "PUSH_PENDING";
@@ -89,7 +90,7 @@ export const communication = {
   patchProvider: (p: ProviderName, body: ReturnType<typeof providerPatch> | { enabled: boolean }) => api<CommunicationProvider>(`/communication/providers/${p}`, { method: "PATCH", ...jsonBody(body) }),
   test: (p: ProviderName) => api<{ connected: boolean; sendTested: false }>(`/communication/providers/${p}/test`, { method: "POST" }),
   sendTest: (p: ProviderName, template?: MetaReference) => api<{ accepted: boolean; delivered: false }>(`/communication/providers/${p}/send-test`, { method: "POST", ...jsonBody(template ? { template } : {}) }),
-  pair: () => api<{ connected: true } | { connected: false; qrCode: string }>("/communication/providers/EVOLUTION/pair", { method: "POST" }),
+  pair: () => api<EvolutionConnection>("/communication/providers/EVOLUTION/pair", { method: "POST" }),
   saveTemplate: (event: string, channel: Channel, body: TemplatePatch) => api<InternalTemplate>(`/communication/templates/${encodeURIComponent(event)}/${channel}`, { method: "PATCH", ...jsonBody(body) }),
   syncMeta: (after?: string) => api<{ synced: number; after: string | null }>("/communication/meta/templates/sync", { method: "POST", ...jsonBody(after ? { after } : {}) }),
   createMeta: (templateId: string) => api<{ template: InternalTemplate; alreadySubmitted: boolean; syncRequired: true }>("/communication/meta/templates", { method: "POST", ...jsonBody({ templateId }) }),
