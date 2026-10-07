@@ -33,6 +33,7 @@ async function fixture(t, { notification = false } = {}) {
   };
   const stub = () => null;
   const mocks = {
+    'next/link': ({ children, href }) => React.createElement("a", { href }, children),
     'next/navigation': { useRouter: () => browser.router },
     '@/components/auth-provider': { useAuth: () => ({ loading: false, profile: { systemRole: 'SUPER_ADMIN', user: { id: 'super' }, memberships: [], selectedCompanyId: null } }) },
     '@/components/communication-overview': { CommunicationOverview: stub },
@@ -41,9 +42,14 @@ async function fixture(t, { notification = false } = {}) {
     '@/components/communication-meta': { CommunicationMeta: stub },
     '@/components/communication-records': { CommunicationOutbox: stub, CommunicationDeliveries: stub, CommunicationLogs: stub },
   };
+  mocks['./auth-provider'] = mocks['@/components/auth-provider'];
   const load = loader(mocks, { window, document, Element, navigator, fetch: mockFetch, BroadcastChannel: undefined,
     Event: browser.window.Event, CustomEvent: browser.window.CustomEvent });
-  const { default: CommunicationPage } = load('components/communication-page.tsx');
+  const { SettingsSectionPage } = load('components/settings-section.tsx');
+  const CommunicationPage = () => {
+    const [email, setEmail] = React.useState(true);
+    return React.createElement(React.Fragment, null, React.createElement('button', { onClick: () => { router.push('/super-admin/configuracoes'); if (browser.snapshot().url.endsWith('/configuracoes')) setEmail(false); } }, 'Configurações'), React.createElement('button', { onClick: () => setEmail(true) }, 'E-mail'), email && React.createElement(SettingsSectionPage, { section: 'email' }));
+  };
   const { NotificationList } = load('components/notification-list.tsx');
   const guard = load('lib/email-leave-guard.ts'); const router = guard.guardEmailRouter(browser.router);
   const button = text => [...container.querySelectorAll('button')].find(button => button.textContent === text);
@@ -70,7 +76,7 @@ test('real React effects: GET → edit → PUT 200 → editor snapshot clean →
   assert.equal(f.unloadAllowed(), true);
   await f.change('Servidor SMTP', 'smtp.updated.test');
   assert.equal(f.unloadAllowed(), false);
-  await f.click('Visão geral'); assert.ok(f.input('Servidor SMTP')); assert.equal(f.prompts.length, 1);
+  await f.click('Configurações'); assert.ok(f.input('Servidor SMTP')); assert.equal(f.prompts.length, 1);
   f.prompts.length = 0;
   await f.submit();
   assert.equal(f.calls.at(-1).method, 'PUT'); assert.equal(f.calls.at(-1).body.smtpHost, 'smtp.updated.test');
@@ -78,7 +84,7 @@ test('real React effects: GET → edit → PUT 200 → editor snapshot clean →
   assert.match(f.container.textContent, /Configuração salva com sucesso\./);
   assert.doesNotMatch(f.container.textContent, /Salve as alterações/); assert.equal(f.unloadAllowed(), true);
   f.router.push('/conta'); assert.equal(f.prompts.length, 0); assert.equal(f.calls.filter(call => call.method === 'PUT').length, 1);
-  await f.click('Visão geral'); assert.equal(f.prompts.length, 0); assert.equal(f.input('Servidor SMTP'), undefined);
+  await f.click('Configurações'); assert.equal(f.prompts.length, 0); assert.equal(f.input('Servidor SMTP'), undefined);
   await f.click('E-mail'); await React.act(async () => { await tick(); }); await f.click('Gerenciar');
   assert.equal(f.calls.at(-1).method, 'GET'); assert.equal(f.input('Servidor SMTP').value, 'smtp.updated.test');
   assert.equal(f.unloadAllowed(), true);
@@ -90,9 +96,9 @@ for (const status of [400, 500]) test(`real React effects: PUT ${status} retains
   assert.match(f.container.textContent, /Não foi possível salvar a configuração/);
   assert.doesNotMatch(f.container.textContent, /Configuração salva com sucesso|unsuitable internal details/);
   const before = f.snapshot(); f.router.replace('/conta'); assert.deepEqual(f.snapshot(), before);
-  await f.click('Visão geral'); assert.ok(f.input('Servidor SMTP')); assert.equal(f.prompts.length, 2);
+  await f.click('Configurações'); assert.ok(f.input('Servidor SMTP')); assert.equal(f.prompts.length, 2);
   f.status(200); await f.submit(); assert.equal(f.unloadAllowed(), true);
-  await f.click('Visão geral'); assert.equal(f.prompts.length, 2);
+  await f.click('Configurações'); assert.equal(f.prompts.length, 2);
 });
 test('mounted password input: visual placeholder stays out of PUT, replacement alone is sent and successful save restores clean mask', async t => {
   const f = await fixture(t); const field = f.input('Senha de app');
@@ -103,7 +109,7 @@ test('mounted password input: visual placeholder stays out of PUT, replacement a
   assert.equal(f.input('Senha de app').value, ''); assert.equal(f.input('Senha de app').placeholder, '••••••••••••');
   assert.equal(f.unloadAllowed(), true); assert.doesNotMatch(f.container.textContent, /Salve as alterações/);
   f.router.push('/conta'); assert.equal(f.prompts.length, 0);
-  await f.click('Visão geral'); assert.equal(f.prompts.length, 0);
+  await f.click('Configurações'); assert.equal(f.prompts.length, 0);
 });
 
 test('mounted notification action uses guarded App Router before navigation; saving releases the same action', async t => {

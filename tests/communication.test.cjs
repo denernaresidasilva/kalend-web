@@ -148,7 +148,7 @@ test('internal template validates event variables, persists exact text contract 
   labelInput(h.render(), 'Conteúdo em texto').props.onChange({ target: { value: '<img src=x onerror=alert(1)> {{nome}}' } });
   assert.match(h.html(), /&lt;img/); assert.doesNotMatch(h.html(), /<img/); assert.match(h.html(), /\[nome\]/);
   await h.render().props.onSubmit({ preventDefault() {} });
-  assert.deepEqual(JSON.parse(JSON.stringify(calls[0])), ['TRIAL_STARTED', 'EMAIL', { provider: 'SMTP', enabled: false, content: { subject: 'Olá {{nome}}', text: '<img src=x onerror=alert(1)> {{nome}}' } }]);
+  assert.deepEqual(JSON.parse(JSON.stringify(calls[0])), ['TRIAL_STARTED', 'EMAIL', { enabled: false, content: { subject: 'Olá {{nome}}', text: '<img src=x onerror=alert(1)> {{nome}}' } }]);
   labelInput(h.render(), 'Conteúdo em texto').props.onChange({ target: { value: '{{token}}' } }); await h.render().props.onSubmit({ preventDefault() {} }); assert.equal(calls.length, 1); assert.match(h.html(), /Use apenas as variáveis/);
 });
 test('Meta saves one local source with examples and pending status, without independent official content', async () => {
@@ -189,7 +189,7 @@ test('reprocess confirms before execution, prevents double click and never offer
 });
 test('outbox, deliveries, failures and logs render empty and real records without sensitive payloads', () => {
   const cases = [
-    ['CommunicationOutbox', {}, { id: 'outbox', event: 'TRIAL_STARTED', expandedAt: null, lastError: null, createdAt: null, variables: { secret: 'hidden-value' }, businessKey: 'hidden-value' }, /TRIAL_STARTED/],
+    ['CommunicationOutbox', {}, { id: 'outbox', event: 'TRIAL_STARTED', expandedAt: null, lastError: null, createdAt: null, variables: { secret: 'hidden-value' }, businessKey: 'hidden-value' }, /Período de teste iniciado/],
     ['CommunicationDeliveries', {}, { id: 'id', outboxId: 'outbox', channel: 'WHATSAPP', provider: 'EVOLUTION', environment: 'SANDBOX', status: 'ACCEPTED', attempts: 1, recipientMasked: '+55***99', createdAt: null, nextAttemptAt: null, lastError: null, payloadEncrypted: 'hidden-value' }, /Aceito pelo provedor/],
     ['CommunicationDeliveries', { failures: true }, { id: 'id', outboxId: 'outbox', channel: 'EMAIL', provider: 'SMTP', environment: 'SANDBOX', status: 'UNCERTAIN', attempts: 1, recipientMasked: 'o***@example.test', createdAt: null, lastError: 'WORKER_INTERRUPTED', payloadEncrypted: 'hidden-value' }, /Resultado incerto/],
     ['CommunicationLogs', {}, { id: 'log', action: 'PROVIDER_TEST_SMTP', code: 'CONNECTION_FAILED', attempt: 1, createdAt: null, actorId: 'hidden-value' }, /CONNECTION_FAILED/],
@@ -216,7 +216,7 @@ test('communication route never mounts or loads its sections for non-Super Admin
   let mounted = 0;
   const child = () => { mounted++; return React.createElement('p', null, 'GLOBAL CONTENT'); };
   for (const state of [{ profile: null, loading: true }, { profile: null, loading: false }, { profile: { systemRole: 'USER' }, loading: false }, { profile: { systemRole: 'SUPER_ADMIN' }, loading: false }]) {
-    const h = harness('components/communication-page.tsx', 'CommunicationContent', {}, { '@/components/auth-provider': { useAuth: () => state }, '@/components/admin-section': { AdminSection: ({ children }) => children }, '@/components/communication-overview': { CommunicationOverview: child } });
+    const h = harness('components/communication-page.tsx', 'CommunicationContent', {}, { '@/components/auth-provider': { useAuth: () => state }, '@/components/admin-section': { AdminSection: ({ children }) => children }, '@/components/communication-templates': { CommunicationTemplates: child } });
     const html = h.html(); assert.equal(html.includes('GLOBAL CONTENT'), state.profile?.systemRole === 'SUPER_ADMIN');
   }
   assert.equal(mounted, 1);
@@ -249,10 +249,10 @@ test('navigation stays blocked while mutation is pending and asks before discard
   const mocks = { '@/components/auth-provider': auth, '@/components/admin-section': { AdminSection: ({ children }) => children }, '@/components/communication-operations': { CommunicationOperations: ({ children }) => children, useCommunicationPending: () => true } };
   const busy = harness('components/communication-page.tsx', 'CommunicationContent', {}, mocks);
   const buttons = nodes(busy.render(), node => node.type === 'button'); assert.ok(buttons.every(button => button.props.disabled));
-  click(busy.render(), 'Canais'); assert.equal(busy.states[0], 'overview');
+  click(busy.render(), 'Fila / Outbox'); assert.equal(busy.states[0], 'templates');
   const h = harness('components/communication-page.tsx', 'CommunicationContent', {}, { ...mocks, '@/components/communication-operations': { ...mocks['@/components/communication-operations'], useCommunicationPending: () => false } }, { window: { confirm: () => { confirmations++; return allowed; } } });
   nodes(h.render(), node => node.type === 'section')[0].props.onChangeCapture({ target: { closest: () => ({}) } });
-  click(h.render(), 'Canais'); assert.equal(h.states[0], 'overview'); allowed = true; click(h.render(), 'Canais'); assert.equal(h.states[0], 'providers'); assert.equal(confirmations, 2);
+  click(h.render(), 'Fila / Outbox'); assert.equal(h.states[0], 'templates'); allowed = true; click(h.render(), 'Fila / Outbox'); assert.equal(h.states[0], 'outbox'); assert.equal(confirmations, 2);
 });
 
 test('Evolution already-connected response requires no QR and never marks delivery or provider validated', async () => {
@@ -343,5 +343,28 @@ test('global Evolution UI contains no credential or instance editor', () => {
   const h = harness('components/communication-providers.tsx', 'ProviderEditor', { name: 'EVOLUTION', initial: provider('EVOLUTION'), close() {} });
   assert.equal(nodes(h.render(), n => n.type === 'input').length, 0);
   assert.doesNotMatch(h.html(), /Nova API key|URL base HTTPS|Salvar configuração/);
-  assert.match(h.html(), /Canais da empresa/);
+  assert.match(h.html(), /Configurações da empresa/);
+});
+
+test('communication navigation contains exactly the five operational sections', () => {
+  const h = harness('components/communication-page.tsx', 'CommunicationContent', {}, { '@/components/auth-provider': { useAuth: () => ({ profile: { systemRole: 'SUPER_ADMIN' } }) } });
+  assert.deepEqual(nodes(h.render(), n => n.type === 'button').map(n => n.props.children), ['Templates internos', 'Fila / Outbox', 'Entregas', 'Falhas', 'Logs']);
+});
+test('every backend event has a Portuguese label and template submits channel without physical provider', () => {
+  const backend = fs.readFileSync('../kalend-api/src/communication/contracts.ts', 'utf8').split('] as const;')[0];
+  const events = [...backend.matchAll(/'([A-Z_]+)'/g)].map(m => m[1]);
+  for (const event of events) { assert.ok(contract.eventLabels[event]); assert.notEqual(contract.eventLabel(event), event); }
+  const h = harness('components/communication-templates.tsx', 'InternalTemplateEditor', { event: { event: 'OWNER_WELCOME', variables: [] }, channel: 'EMAIL', providers: [provider()], saved() {} });
+  assert.match(h.html(), /Boas-vindas ao proprietário/);
+  assert.equal(labelInput(h.render(), 'Provedor'), undefined);
+  assert.doesNotMatch(h.html(), /Gmail · Em breve/);
+});
+
+test('GLOBAL WhatsApp test passes only the optional number and shows safe authentication errors', async () => {
+  const calls = [];
+  const { communication: client } = load('lib/communication.ts', { './api': { api: async (url, init) => { calls.push([url, JSON.parse(init.body)]); return { accepted: true }; }, jsonBody: body => ({ body: JSON.stringify(body) }) } });
+  await client.sendTest('EVOLUTION', undefined, '+5511999999999');
+  assert.deepEqual(calls, [['/communication/providers/EVOLUTION/send-test', { number: '+5511999999999' }]]);
+  const { ApiError } = load('lib/api.ts');
+  assert.match(new ApiError(503, undefined, 'EVOLUTION_AUTH_FAILED').message, /autenticação da Evolution/);
 });

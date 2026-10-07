@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { communication, canReprocess, channelNames, providerNames, stateLabel, type Delivery } from "@/lib/communication";
+import { communication, eventLabel, canReprocess, channelNames, providerNames, stateLabel, type Delivery } from "@/lib/communication";
 import { date } from "@/lib/commercial";
 import { useCommunicationMutation } from "./communication-operations";
 import { Feedback, ResourceState, useCommunicationResource } from "./communication-resource";
@@ -29,7 +29,7 @@ export function CommunicationDeliveries({ failures = false }: { failures?: boole
 export function CommunicationOutbox() {
   const resource = useCommunicationResource(communication.outbox);
   return <><button disabled={resource.loading} onClick={() => void resource.load()}>Atualizar fila</button><ResourceState {...resource} retry={() => void resource.load()}><section className="commercial-panel"><h2>Fila / Outbox global</h2><p>Até 100 registros mais recentes. Sem paginação ou filtros no contrato atual. A outbox representa eventos; canais e destinatários são definidos na expansão em entregas.</p>
-    {!resource.data?.length ? <p>Nenhum evento na outbox.</p> : <div className="commercial-table-wrap" role="region" aria-label="Outbox" tabIndex={0}><table><thead><tr><th>ID</th><th>Evento</th><th>Criado em</th><th>Expansão</th><th>Erro sanitizado</th></tr></thead><tbody>{resource.data.map(row => <tr key={row.id}><td>{row.id}</td><td>{row.event}</td><td>{date(row.createdAt)}</td><td>{row.expandedAt ? date(row.expandedAt) : "Ainda não expandido"}</td><td>{row.lastError ?? "—"}</td></tr>)}</tbody></table></div>}
+    {!resource.data?.length ? <p>Nenhum evento na outbox.</p> : <div className="commercial-table-wrap" role="region" aria-label="Outbox" tabIndex={0}><table><thead><tr><th>ID</th><th>Evento</th><th>Criado em</th><th>Expansão</th><th>Erro sanitizado</th></tr></thead><tbody>{resource.data.map(row => <tr key={row.id}><td>{row.id}</td><td>{eventLabel(row.event)}</td><td>{date(row.createdAt)}</td><td>{row.expandedAt ? date(row.expandedAt) : "Ainda não expandido"}</td><td>{row.lastError ?? "—"}</td></tr>)}</tbody></table></div>}
   </section></ResourceState></>;
 }
 export function CommunicationLogs() {

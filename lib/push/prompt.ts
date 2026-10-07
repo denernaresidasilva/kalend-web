@@ -14,7 +14,9 @@ function promptStatus(status: PushStatus): PromptStatus {
 }
 // Probing never grants or restores consent. Registration requires a user action.
 export async function inspectPushPrompt(profile: PushProfile): Promise<PromptStatus> {
-  return promptStatus((await evaluatePush(profile)).status);
+  if (typeof Notification !== "undefined" && Notification.permission === "denied") return "hidden";
+  const status = promptStatus((await evaluatePush(profile)).status);
+  return status === "invite" && typeof Notification !== "undefined" && Notification.permission === "granted" ? "hidden" : status;
 }
 
 // Prepared configuration preserves the permission request's user gesture.

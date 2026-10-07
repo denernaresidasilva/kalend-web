@@ -77,7 +77,7 @@ export function metaParameters(content: Record<string, string>): string[] {
   try { const parsed: unknown = JSON.parse(content.metaParameters || "[]"); return Array.isArray(parsed) && parsed.every(item => typeof item === "string") ? parsed : []; } catch { return []; }
 }
 export type MetaReference = { id: string; name: string; language: string; parameters: string[] };
-export type TemplatePatch = { provider: ProviderName; enabled: boolean; content: { text: string; subject?: string; title?: string; url?: string; icon?: string; actionText?: string; name?: string; language?: string; category?: string; examples?: Record<string, string> } | MetaReference };
+export type TemplatePatch = { provider?: ProviderName; enabled: boolean; content: { text: string; subject?: string; title?: string; url?: string; icon?: string; actionText?: string; name?: string; language?: string; category?: string; examples?: Record<string, string> } | MetaReference };
 export const communication = {
   providers: (signal?: AbortSignal) => api<CommunicationProvider[]>("/communication/providers", { signal }),
   events: (signal?: AbortSignal) => api<CommunicationEvent[]>("/communication/events", { signal }),
@@ -89,10 +89,13 @@ export const communication = {
   logs: (signal?: AbortSignal) => api<CommunicationLog[]>("/communication/logs", { signal }),
   patchProvider: (p: ProviderName, body: ReturnType<typeof providerPatch> | { enabled: boolean }) => api<CommunicationProvider>(`/communication/providers/${p}`, { method: "PATCH", ...jsonBody(body) }),
   test: (p: ProviderName) => api<{ connected: boolean; sendTested: false }>(`/communication/providers/${p}/test`, { method: "POST" }),
-  sendTest: (p: ProviderName, template?: MetaReference) => api<{ accepted: boolean; delivered: false }>(`/communication/providers/${p}/send-test`, { method: "POST", ...jsonBody(template ? { template } : {}) }),
+  sendTest: (p: ProviderName, template?: MetaReference, number?: string) => api<{ accepted: boolean; delivered: false }>(`/communication/providers/${p}/send-test`, { method: "POST", ...jsonBody(template ? { template } : p === "EVOLUTION" && number ? { number } : {}) }),
   pair: () => api<EvolutionConnection>("/communication/providers/EVOLUTION/pair", { method: "POST" }),
   saveTemplate: (event: string, channel: Channel, body: TemplatePatch) => api<InternalTemplate>(`/communication/templates/${encodeURIComponent(event)}/${channel}`, { method: "PATCH", ...jsonBody(body) }),
   syncMeta: (after?: string) => api<{ synced: number; after: string | null }>("/communication/meta/templates/sync", { method: "POST", ...jsonBody(after ? { after } : {}) }),
   createMeta: (templateId: string) => api<{ template: InternalTemplate; alreadySubmitted: boolean; syncRequired: true }>("/communication/meta/templates", { method: "POST", ...jsonBody({ templateId }) }),
   reprocess: (id: string) => api<{ queued: true }>(`/communication/deliveries/${encodeURIComponent(id)}/reprocess`, { method: "POST" }),
 };
+
+export const eventLabels: Record<string, string> = {"OWNER_WELCOME": "Boas-vindas ao proprietário", "TRIAL_STARTED": "Período de teste iniciado", "TRIAL_EXPIRING": "Período de teste próximo do fim", "TRIAL_EXPIRED": "Período de teste encerrado", "PAYMENT_PENDING": "Pagamento pendente", "PAYMENT_APPROVED": "Pagamento aprovado", "PAYMENT_FAILED": "Falha no pagamento", "PAYMENT_OVERDUE": "Pagamento em atraso", "SUBSCRIPTION_GRACE_PERIOD": "Assinatura em período de tolerância", "SUBSCRIPTION_SUSPENDED": "Assinatura suspensa", "SUBSCRIPTION_REACTIVATED": "Assinatura reativada", "SUBSCRIPTION_CANCELLED": "Assinatura cancelada", "SECURITY_PASSWORD_CHANGED": "Senha alterada"};
+export const eventLabel = (event: string) => eventLabels[event] ?? event;

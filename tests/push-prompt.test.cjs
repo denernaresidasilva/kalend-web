@@ -42,7 +42,7 @@ function fixture(options = {}) {
 test('default invites without requesting permission or registering', async () => { const f = fixture(); assert.equal(await f.inspectPushPrompt(profile), 'invite'); assert.deepEqual(f.calls.filter(c => c === 'permission' || c[0] === 'enable'), []); });
 test('granted and valid authorized device hides invitation', async () => { const f = fixture({ permission: 'granted' }); assert.equal(await f.inspectPushPrompt(profile), 'ready'); assert.equal(f.calls.some(c => c[0] === 'enable'), false); });
 for (const options of [{ absent: true }, { noBackend: true }]) test(`read-only inspection requires registration ${JSON.stringify(options)}`, async () => {
-  const f = fixture({ permission: 'granted', ...options }); assert.equal(await f.inspectPushPrompt(profile), 'invite'); assert.equal(f.calls.some(c => c[0] === 'enable'), false);
+  const f = fixture({ permission: 'granted', ...options }); assert.equal(await f.inspectPushPrompt(profile), 'hidden'); assert.equal(f.calls.some(c => c[0] === 'enable'), false);
 });
 test('denied neither invites nor requests permission nor queries backend', async () => { const f = fixture({ permission: 'denied' }); assert.equal(await f.inspectPushPrompt(profile), 'hidden'); assert.equal(await f.activatePushPrompt(profile), 'hidden'); assert.deepEqual(f.calls, []); });
 test('explicit activation validates configuration before permission and registers existing identity', async () => { const f = fixture(); assert.equal(await f.activatePushPrompt(profile), 'ready'); assert.ok(f.calls.indexOf('config') < f.calls.indexOf('permission')); assert.equal(f.calls.at(-1), 'changed'); });
@@ -54,7 +54,7 @@ test('changed VAPID blocks activation', async () => {
   const f = fixture({ permission: 'granted', matchingKey: false }); assert.equal(await f.activatePushPrompt(profile), 'error'); assert.equal(f.calls.some(c => c[0] === 'enable'), false);
 });
 test('expired subscription requires explicit registration', async () => {
-  const f = fixture({ permission: 'granted', expirationTime: 1 }); assert.equal(await f.inspectPushPrompt(profile), 'invite'); assert.equal(f.calls.some(c => c[0] === 'enable'), false);
+  const f = fixture({ permission: 'granted', expirationTime: 1 }); assert.equal(await f.inspectPushPrompt(profile), 'hidden'); assert.equal(f.calls.some(c => c[0] === 'enable'), false);
 });
 test('explicit tenant pause is preserved', async () => { const f = fixture({ permission: 'granted', device: { authorizations: [{ active: false, revokedAt: null }] } }); assert.equal(await f.inspectPushPrompt(profile), 'paused'); assert.equal(f.calls.some(c => c[0] === 'enable'), false); });
 test('roles use same mechanism; ordinary user must select company', async () => { for (const role of ['OWNER','PROFESSIONAL','RECEPTIONIST','CLIENT']) assert.equal(await fixture().inspectPushPrompt({ ...profile, membershipRole: role }), 'invite'); assert.equal(await fixture().inspectPushPrompt({ ...profile, selectedCompanyId: null }), 'context'); assert.equal(await fixture().inspectPushPrompt({ ...profile, selectedCompanyId: null, systemRole: 'SUPER_ADMIN' }), 'invite'); });
@@ -111,8 +111,7 @@ test('dismissal closes the global popup, next route and fresh mount offer again'
     nextActions.find(n => n.props.children === 'Ativar notificações').props.onClick();
     tree = await first.settle(); assert.equal(typeof tree.props.onActivate === "function", true);
     await tree.props.onActivate({ available: true, publicKey: 'fixture' });
-    tree = await first.settle(); assert.equal(tree.props.result, 'success');
-    tree.props.onClose(); assert.equal(await first.settle(), null);
+    tree = await first.settle(); assert.equal(tree, null);
   } finally { first.cleanup(); }
   const active = await mount({ status: 'ready', permission: 'granted' });
   try { assert.equal(await active.settle(), null); } finally { active.cleanup(); }

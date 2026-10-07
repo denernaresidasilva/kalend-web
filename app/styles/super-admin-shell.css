@@ -115,3 +115,14 @@
   .k-notification-panel { max-height: calc(90dvh - 100px); }
   .k-notification-item { padding: 12px 8px; gap: 8px; }
 }
+
+/* Channel and settings forms must remain contained on narrow screens. */
+.communication-page :is(input, select, textarea, fieldset, .commercial-panel) { min-width: 0; max-width: 100%; }
+.communication-page :is(p, a, dd, pre, [role=alert]) { overflow-wrap: anywhere; }
+.communication-page .commercial-actions { flex-wrap: wrap; }
+.communication-page :is(input, select, textarea) { background: var(--kalend-surface); color: var(--kalend-text-primary); border-color: var(--kalend-control-border); }
+@media (max-width: 767px) {
+  .communication-page .commercial-panel { padding: 16px; }
+  .communication-page .commercial-actions :is(button, a) { flex: 1 1 100%; white-space: normal; }
+  .communication-page .commercial-details { grid-template-columns: minmax(0, 1fr); }
+}

@@ -9,7 +9,7 @@ import { Card } from "./ui/card";
 import { Loading } from "./ui/loading";
 import { Alert } from "./ui/alert";
 import { Button } from "./ui/button";
-function NotificationPreferencesPanel({ profile }: { profile: AuthMe }) {
+function NotificationPreferencesPanel({ profile, separatePush = false }: { profile: AuthMe; separatePush?: boolean }) {
   const service = useMemo(() => notificationsApi(profile), [profile]);
   const [data, setData] = useState<NotificationPreferences | null>(null);
   const [error, setError] = useState(""); const [success, setSuccess] = useState(""); const [saving, setSaving] = useState(false);
@@ -36,22 +36,22 @@ function NotificationPreferencesPanel({ profile }: { profile: AuthMe }) {
       {data ? <><p>Notificações no sistema: <strong>{data.inSystemEnabled ? "Ativadas" : "Desativadas"}</strong></p><Button loading={saving} variant={data.inSystemEnabled ? "secondary" : "primary"} onClick={() => void toggle()}>{data.inSystemEnabled ? "Desativar notificações no sistema" : "Ativar notificações no sistema"}</Button></> : !error && <Loading>Carregando preferências…</Loading>}
       {error && <><Alert tone="danger">{error}</Alert>{!data && <Button variant="secondary" onClick={() => void load()}>Tentar novamente</Button>}</>}{success && <Alert>{success}</Alert>}
     </Card>
-    {profile.selectedCompanyId || profile.systemRole === "SUPER_ADMIN" ? <PushSettings /> : <Card><h2>Push Web</h2><p>Selecione uma empresa no Perfil para configurar as notificações deste navegador.</p><a href="/conta#perfil">Abrir perfil</a></Card>}
+    {separatePush || profile.systemRole === "SUPER_ADMIN" ? <a href={profile.systemRole === "SUPER_ADMIN" ? "/super-admin/configuracoes/push" : "/conta/configuracoes/push"}>Gerenciar configuração de Push</a> : profile.selectedCompanyId ? <PushSettings /> : <Card><h2>Push Web</h2><p>Selecione uma empresa no Perfil para configurar as notificações deste navegador.</p><a href="/conta#perfil">Abrir perfil</a></Card>}
   </section>;
 }
-export function NotificationCenter({ profile }: { profile: AuthMe }) {
+export function NotificationCenter({ profile, separatePush = false, showPreferences = true }: { profile: AuthMe; separatePush?: boolean; showPreferences?: boolean }) {
   const [filter, setFilter] = useState<NotificationFilter>("all");
   const list = useNotificationList(profile, filter, 20);
   return <div className="k-account-stack">
     <Card><p>{profile.selectedCompanyId ? `Notificações globais e da empresa selecionada: ${profile.memberships.find(m => m.company.id === profile.selectedCompanyId)?.company.name ?? "empresa selecionada"}.` : "Notificações globais da sua conta. Nenhuma empresa selecionada."}</p>
       <div className="k-notification-toolbar"><div className="k-notification-filters" role="group" aria-label="Filtrar notificações">{([['all', 'Todas'], ['unread', 'Não lidas'], ['read', 'Lidas']] as const).map(([value, label]) => <Button key={value} variant={value === filter ? "primary" : "secondary"} aria-pressed={filter === value} disabled={list.saving} onClick={() => setFilter(value)}>{label}</Button>)}</div>
-        <Button variant="secondary" loading={list.saving} disabled={list.loading} onClick={() => void list.read()}>Marcar todas como lidas</Button><Button variant="ghost" disabled={list.loading || list.saving} onClick={() => void list.refresh()}>Atualizar</Button><a href="#preferencias">Preferências de notificações</a>
+        <Button variant="secondary" loading={list.saving} disabled={list.loading} onClick={() => void list.read()}>Marcar todas como lidas</Button><Button variant="ghost" disabled={list.loading || list.saving} onClick={() => void list.refresh()}>Atualizar</Button><a href={showPreferences ? "#preferencias" : profile.systemRole === "SUPER_ADMIN" ? "/super-admin/configuracoes/notificacoes" : "/conta/configuracoes/notificacoes"}>Gerenciar configuração de notificações</a>
       </div>
       {list.error && <Alert tone="danger">{list.error}</Alert>}{list.success && <Alert>{list.success}</Alert>}
       {list.loading ? <Loading>Carregando notificações…</Loading> : list.data && <NotificationList items={list.data.items} saving={list.saving} read={list.read} />}
       {list.error && <Button variant="secondary" onClick={() => void list.refresh()}>Tentar novamente</Button>}
       {list.data?.nextCursor && <Button variant="secondary" disabled={list.loading || list.saving} onClick={() => void list.refresh(list.data!.nextCursor)}>Carregar mais</Button>}
     </Card>
-    <NotificationPreferencesPanel profile={profile} />
+    {showPreferences && <NotificationPreferencesPanel profile={profile} separatePush={separatePush} />}
   </div>;
 }

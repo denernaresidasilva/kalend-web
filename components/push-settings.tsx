@@ -1,7 +1,8 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "./auth-provider";
-import { evaluatePush, type PushStatus, type PushProfile } from "@/lib/push/client";
+import { evaluatePush, inContext, pushApi, type PushStatus, type PushProfile, type Device } from "@/lib/push/client";
+import { activatePushPrompt } from "@/lib/push/prompt";
 import { watchPushChanges } from "@/lib/push/events";
 const labels: Record<PushStatus, string> = {
   loading: "Verificando notificações...",
@@ -23,6 +24,9 @@ export function PushSettings() {
   } : null, [userId, selectedCompanyId, systemRole]);
   const [state, setState] = useState<{ context: string; status: PushStatus }>({ context: "", status: "loading" });
   const version = useRef(0);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+  const [device, setDevice] = useState<Device | undefined>();
   const context = `${userId}:${selectedCompanyId}`;
   const status = state.context === context ? state.status : "loading";
   const load = useCallback(async () => {
@@ -30,7 +34,7 @@ export function PushSettings() {
     const context = `${profile?.user.id}:${profile?.selectedCompanyId}`;
     setState({ context, status: "loading" });
     const result = await evaluatePush(profile);
-    if (current === version.current) setState({ context, status: result.status });
+    if (current === version.current) { setState({ context, status: result.status }); setDevice(result.device); }
   }, [profile]);
   useEffect(() => {
     const requestVersion = version;
@@ -47,13 +51,34 @@ export function PushSettings() {
       document.removeEventListener("visibilitychange", visible);
     };
   }, [load]);
+  async function activate() {
+    if (!profile || busy) return;
+    setBusy(true); setMessage("");
+    try {
+      const result = await activatePushPrompt(profile);
+      setMessage(result === "ready" ? "Dispositivo registrado para Push." : "Verifique a permissão e a configuração do dispositivo.");
+      await load();
+    } catch (err) { setMessage(err instanceof Error ? err.message : "Não foi possível registrar o dispositivo."); }
+    finally { setBusy(false); }
+  }
+  async function pause() {
+    if (!profile || !device || busy) return;
+    setBusy(true); setMessage("");
+    try { await inContext(profile, () => pushApi.update(device.id, false)); await load(); }
+    catch (err) { setMessage(err instanceof Error ? err.message : "Não foi possível pausar o dispositivo."); }
+    finally { setBusy(false); }
+  }
   if (!profile) return null;
   return <section className="commercial-panel push-settings" aria-labelledby="push-title">
     <h2 id="push-title">Push Web</h2><p>Receba notificações do Kalend neste dispositivo.</p>
     <p role={status === "error" ? "alert" : "status"}>{labels[status]}</p>
+    {typeof Notification !== "undefined" && Notification.permission === "granted" && <p>Notificações permitidas</p>}
+    {device && <p>Dispositivo: {device.label ?? device.platform} · Registro: {device.active && !device.revokedAt ? "ativo" : "inativo"}</p>}
+    {message && <p role="status">{message}</p>}
+    {status === "activated" && <button disabled={busy} onClick={() => void pause()}>Desativar neste dispositivo</button>}
     {status === "activated" && <p>Este navegador está configurado para receber notificações.</p>}
     {status === "blocked" && <p>Permita notificações nas configurações do navegador para continuar.</p>}
-    {(status === "needs_registration" || status === "paused") && <button type="button" onClick={() => window.dispatchEvent(new Event("kalend:push-open"))}>{status === "paused" ? "Reativar notificações" : "Ativar notificações"}</button>}
+    {(status === "needs_registration" || status === "paused") && <button type="button" disabled={busy} onClick={() => { if (Notification.permission === "granted") void activate(); else window.dispatchEvent(new Event("kalend:push-open")); }}>{status === "paused" ? "Reativar notificações" : "Ativar notificações"}</button>}
     {(status === "error" || status === "unavailable") && <button type="button" onClick={() => void load()}>Verificar novamente</button>}
   </section>;
 }

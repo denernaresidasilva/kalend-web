@@ -18,7 +18,7 @@ function load(file, mocks = {}, globals = {}) {
       return load(['.ts','.tsx'].map(ext => base + ext).find(file => fs.existsSync(file)), mocks, globals);
     }
     return require(id);
-  }, setTimeout, clearTimeout, URL, AbortController, console, Error, ...globals }, { filename: file });
+  }, process: { env: {} }, setTimeout, clearTimeout, URL, AbortController, console, Error, ...globals }, { filename: file });
   return loaded.exports;
 }
 function nodes(tree, predicate) {
@@ -47,8 +47,9 @@ function harness(options={}) {
     '@/lib/account-session':{logoutAllSessions:options.logoutAll||async function(){calls.push('logout-all');}},
     '@/lib/company-selection':{accountDestination:()=>'/painel/proprietario',linkedCompanies:p=>p.memberships,selectCompany:async(_p,id)=>{calls.push(['tenant',id]);if(options.selectError)throw Error('Não foi possível selecionar a empresa.');auth.profile={...auth.profile,selectedCompanyId:id};}},
   };
-  const exported={...load('app/conta/page.tsx',mocks),...load('components/account-content.tsx',mocks)};
-  return {auth,redirects,calls,section(value){currentSection=value;},render(outer=false){cursor=0;return outer?exported.default():exported.AccountContent({profile:auth.profile,reload:auth.reload,logout:auth.logout});},effects(){return effects.splice(0).map(fn=>fn());}};
+  mocks['./auth-provider'] = mocks['@/components/auth-provider'];
+  const exported={...load('app/conta/page.tsx',mocks),...load('components/account-content.tsx',mocks),...load('components/account-settings.tsx',mocks,{window:{confirm:()=>options.confirm?.() ?? true}})};
+  return {auth,redirects,calls,settings(){cursor=0;return exported.AccountSettings({section:currentSection});},section(value){currentSection=value;},render(outer=false){cursor=0;return outer?exported.default():exported.AccountContent({profile:auth.profile,reload:auth.reload,logout:auth.logout});},effects(){return effects.splice(0).map(fn=>fn());}};
 }
 const tick=()=>new Promise(resolve=>setTimeout(resolve,0));
 
@@ -103,25 +104,24 @@ test('logout-all calls the official endpoint without user, role or tenant; clear
  const failure=load('lib/account-session.ts',{'./api':{api:async()=>{throw Error('Falha do backend');},endSession:()=>cleared++}});await assert.rejects(failure.logoutAllSessions(),/Falha do backend/);assert.equal(cleared,1);
 });
 
-test('all-session logout requires confirmation, permits cancel and blocks duplicate submissions',async()=>{
- let finish;let mutations=0;const pending=new Promise(resolve=>finish=resolve);
- const h=harness({logoutAll:async()=>{mutations++;await pending;}});h.section('seguranca');h.render();h.effects();
- nodes(h.render(),n=>n.type?.name==='AccountSecurity')[0].props.onLogoutAll();let drawer=nodes(h.render(),n=>n.type?.name==='Drawer')[0];assert.equal(drawer.props.open,true);assert.equal(mutations,0);
- nodes(drawer,n=>n.props.children==='Cancelar')[0].props.onClick();assert.equal(nodes(h.render(),n=>n.type?.name==='Drawer')[0].props.open,false);
- nodes(h.render(),n=>n.type?.name==='AccountSecurity')[0].props.onLogoutAll();drawer=nodes(h.render(),n=>n.type?.name==='Drawer')[0];const confirm=nodes(drawer,n=>n.props.children==='Confirmar e sair')[0];confirm.props.onClick();confirm.props.onClick();assert.equal(mutations,1);assert.equal(h.render().props.leaving,true);finish();await tick();assert.deepEqual(h.redirects,['/']);
+test('security moved to Settings preserves confirmation and blocks duplicate logout-all',async()=>{
+ let finish, allowed=false, mutations=0;
+ const h=harness({confirm:()=>allowed,logoutAll:async()=>{mutations++;await new Promise(resolve=>finish=resolve);}});h.section('seguranca');
+ let panel=nodes(h.settings(),n=>n.type?.name==='AccountSecurity')[0];
+ panel.props.onLogoutAll();assert.equal(mutations,0);
+ allowed=true;panel.props.onLogoutAll();panel.props.onLogoutAll();assert.equal(mutations,1);
+ finish();await tick();assert.deepEqual(h.redirects,['/']);
 });
-
-test('failed logout-all does not navigate or pretend the session was revoked; retry is available',async()=>{
- const h=harness({logoutAll:async()=>{throw Error('Não foi possível encerrar a sessão.');}});h.section('seguranca');h.render();h.effects();nodes(h.render(),n=>n.type?.name==='AccountSecurity')[0].props.onLogoutAll();
- nodes(h.render(),n=>n.props.children==='Confirmar e sair')[0].props.onClick();await tick();const tree=h.render();assert.match(tree.props.error,/Não foi possível encerrar/);assert.equal(tree.props.leaving,false);assert.deepEqual(h.redirects,[]);assert.equal(nodes(tree,n=>n.type?.name==='Drawer')[0].props.open,true);
+test('settings failed logout-all keeps the session and allows retry',async()=>{
+ const h=harness({logoutAll:async()=>{throw Error('Não foi possível encerrar a sessão.');}});h.section('seguranca');
+ nodes(h.settings(),n=>n.type?.name==='AccountSecurity')[0].props.onLogoutAll();await tick();
+ assert.match(renderToStaticMarkup(h.settings()),/Não foi possível encerrar/);assert.deepEqual(h.redirects,[]);
 });
-
-test('current session logout uses existing AuthProvider and preserves failure feedback',async()=>{
- let calls=0;const h=harness({auth:{logout:async()=>{calls++;throw Error('Não foi possível sair.');}}});h.render();h.effects();h.render().props.logout();await tick();assert.equal(calls,1);assert.match(h.render().props.error,/Não foi possível sair/);assert.deepEqual(h.redirects,[]);
-});
-
-test('preferences reuse existing theme/Push, mounted for the exact user/selected company',()=>{
- const h=harness();h.section('preferencias');const tree=h.render();const push=nodes(tree,n=>n.type?.name==='PushSettings')[0];assert.match(push.key,/account-user.*company-2/);assert.equal(nodes(tree,n=>n.type?.name==='ThemeControl').length,1);assert.equal(tree.props.headerContext.settingsHref,'/conta#preferencias');
+test('account preferences link to Settings without duplicating channel configuration',()=>{
+ for(const role of ['OWNER','SUPER_ADMIN']) {
+ const h=harness({auth:{profile:profile(role)}});h.section('preferencias');
+ const html=renderToStaticMarkup(h.render());assert.match(html,role==='SUPER_ADMIN'?/super-admin\/configuracoes/:/conta\/configuracoes/);assert.doesNotMatch(html,/Servidor SMTP|Ativar notificações/);
+ }
 });
 
 test('section parser accepts only working account sections; shared sidebar marks one active',()=>{

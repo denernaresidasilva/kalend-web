@@ -76,7 +76,7 @@ export function ProviderEditor({ initial, name, close }: { initial?: Communicati
     }
   }
   function save(event: FormEvent) { event.preventDefault(); void run("save", event.currentTarget as HTMLFormElement); }
-  return <section className="commercial-panel"><div className="commercial-heading"><h2>{providerNames[name]}</h2><button disabled={busy} onClick={close}>Voltar aos canais</button></div>
+  return <section className="commercial-panel"><div className="commercial-heading"><h2>{providerNames[name]}</h2><button disabled={busy} onClick={close}>Voltar à configuração</button></div>
     <div className="commercial-badges"><span>{providerState(row)}</span><span>{row?.enabled ? "Habilitado" : "Desabilitado"}</span></div>
     <dl className="commercial-details"><div><dt>Credencial</dt><dd>{row?.configured ? "Credencial salva (não recuperável)" : "Não configurada"}</dd></div><div><dt>Última verificação</dt><dd>{date(row?.lastVerifiedAt ?? null)}</dd></div><div><dt>Último envio aceito</dt><dd>{date(row?.lastSentAt ?? null)}</dd></div></dl>
     {name !== "EVOLUTION" && <form className="commercial-form" onSubmit={save} autoComplete="off"><fieldset disabled={busy || stale}>
@@ -88,7 +88,7 @@ export function ProviderEditor({ initial, name, close }: { initial?: Communicati
       {name === "PUSH_PENDING" && <p>A chave privada é somente de escrita e fica cifrada no servidor. Testar conexão valida o par VAPID; para comprovar entrega, ative um dispositivo na central e use o teste administrativo deste canal. Trocar a chave exige novo registro dos navegadores.</p>}
       <button className="commercial-primary" disabled={!dirty}>Salvar configuração</button>
     </fieldset></form>}
-    {name === "EVOLUTION" && <p>A instância e a credencial deste canal global são gerenciadas pelo servidor. Para conectar o WhatsApp de uma empresa, acesse <Link href="/conta/comunicacao">Canais da empresa</Link>.</p>}
+    {name === "EVOLUTION" && <p>A instância e a credencial deste canal global são gerenciadas pelo servidor. Para conectar o WhatsApp de uma empresa, acesse <Link href="/conta/configuracoes/whatsapp">Configurações da empresa</Link>.</p>}
     {name === "META" && row?.configured && <div className="commercial-form"><MetaTest key={`${row.revision}:${row.environment}`} choose={setMetaTest} /></div>}
     <div className="commercial-actions"><button disabled={busy || stale || dirty || !row?.configured || !row.adapterAvailable} onClick={() => void run("test")}>Testar conexão</button>
       <button disabled={busy || stale || dirty || !row?.configured || !row.adapterAvailable || (name === "META" && !metaTest)} onClick={() => void run("send-test")}>Enviar teste para mim</button>
@@ -105,7 +105,7 @@ export function CommunicationProviders() {
   const resource = useCommunicationResource(communication.providers);
   const [selected, setSelected] = useState<ProviderName | null>(null);
   return <><button disabled={resource.loading || !!selected} onClick={() => void resource.load()}>Atualizar canais</button>
-    {selected === "EVOLUTION" ? <><button onClick={() => { setSelected(null); void resource.load(); }}>Voltar aos canais</button><EvolutionSettings scope="GLOBAL" initiallyOpen onConnectionChange={() => void resource.load()} /><GlobalEvolutionSending /></> : selected === "SMTP" ? <><button onClick={() => setSelected(null)}>Voltar aos canais</button><EmailSettings scope="SYSTEM" /></> : selected ? <ProviderEditor key={selected} name={selected} initial={resource.data?.find(row => row.provider === selected)} close={() => { setSelected(null); void resource.load(); }} /> : <ResourceState {...resource} retry={() => void resource.load()}><ProviderCards providers={resource.data ?? []} select={setSelected} /></ResourceState>}
+    {selected === "EVOLUTION" ? <><button onClick={() => { setSelected(null); void resource.load(); }}>Voltar à configuração</button><EvolutionSettings scope="GLOBAL" initiallyOpen onConnectionChange={() => void resource.load()} /><GlobalEvolutionSending /></> : selected === "SMTP" ? <><button onClick={() => setSelected(null)}>Voltar à configuração</button><EmailSettings scope="SYSTEM" /></> : selected ? <ProviderEditor key={selected} name={selected} initial={resource.data?.find(row => row.provider === selected)} close={() => { setSelected(null); void resource.load(); }} /> : <ResourceState {...resource} retry={() => void resource.load()}><ProviderCards providers={resource.data ?? []} select={setSelected} /></ResourceState>}
   </>;
 }
 
@@ -115,6 +115,7 @@ export function GlobalEvolutionSending() {
   const { busy, setBusy, lockRef } = useCommunicationMutation();
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [testNumber, setTestNumber] = useState("");
   async function run(action: "test" | "send" | "toggle") {
     if (lockRef.current) return;
     if (action === "toggle" && !window.confirm(row?.enabled ? "Desabilitar as comunicações do Kalend neste canal?" : "Habilitar as comunicações do Kalend neste canal?")) return;
@@ -124,17 +125,20 @@ export function GlobalEvolutionSending() {
         const result = await communication.test("EVOLUTION");
         setMessage(result.connected ? "WhatsApp conectado." : "WhatsApp desconectado.");
       } else if (action === "send") {
-        await communication.sendTest("EVOLUTION"); setMessage("Mensagem de teste aceita pelo WhatsApp. Entrega não confirmada.");
+        const result = await communication.sendTest("EVOLUTION", undefined, testNumber.trim() || undefined);
+        if (!result.accepted) throw new Error("O WhatsApp não confirmou a aceitação da mensagem.");
+        setMessage("Mensagem de teste aceita pelo WhatsApp. Entrega não confirmada.");
       } else {
         await communication.patchProvider("EVOLUTION", { enabled: !row?.enabled });
         setMessage("Preferência de envio atualizada.");
       }
       await resource.load();
-    } catch { setError("Não foi possível atualizar o envio global. Atualize o estado e tente novamente."); }
+    } catch (err) { setError(err instanceof Error ? err.message : "Não foi possível atualizar o envio global."); }
     finally { lockRef.current = false; setBusy(false); }
   }
   return <section className="commercial-panel"><h3>Comunicações do Kalend</h3><p>Este canal envia mensagens do sistema a seus proprietários e ao administrador. Não envia campanhas aos clientes das empresas.</p>
-    <p>{row?.enabled ? "Envio habilitado" : "Envio desabilitado"}</p><div className="commercial-actions">
+    <label>Número para teste (opcional, com DDI)<input type="tel" inputMode="tel" autoComplete="tel" maxLength={32} placeholder="+55 (11) 99999-9999" value={testNumber} disabled={busy} onChange={event => setTestNumber(event.target.value)} /></label><p>Informe seu próprio número se não houver telefone salvo no perfil. Este número será usado somente neste teste.</p>
+    <p>{row?.enabled ? "Uso para comunicação: habilitado" : "Uso para comunicação: desabilitado"}</p><div className="commercial-actions">
       <button disabled={busy} onClick={() => void resource.load()}>Atualizar preferência de envio</button>
       <button disabled={busy} onClick={() => void run("test")}>Testar conexão</button>
       <button disabled={busy} onClick={() => void run("send")}>Enviar teste para mim</button>

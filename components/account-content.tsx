@@ -1,13 +1,10 @@
 "use client";
-import { EvolutionSettings } from "@/components/evolution-settings";
-import { EmailSettings } from "@/components/email-settings";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { UserRound, ShieldCheck, SlidersHorizontal, LayoutDashboard, Bell } from "lucide-react";
 import type { AuthMe } from "@/lib/contracts";
 import type { useAuth } from "@/components/auth-provider";
-import { PushSettings } from "@/components/push-settings";
 import { RegularizationPanel } from "@/components/regularization-panel";
 import { CompanySelector } from "@/components/company-selector";
 import { accountDestination, linkedCompanies, selectCompany } from "@/lib/company-selection";
@@ -16,8 +13,6 @@ import { logoutAllSessions } from "@/lib/account-session";
 import { AdminShell } from "@/components/super-admin/admin-shell";
 import { NotificationCenter } from "@/components/notification-center";
 import { AccountProfile } from "@/components/account-profile";
-import { AccountSecurity } from "@/components/account-security";
-import { ThemeControl } from "@/components/theme/theme-control";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
@@ -69,7 +64,7 @@ export function AccountContent({ profile, reload, logout, notifications = false 
     headerContext={{ title: notifications ? "Notificações" : "Minha conta", settingsHref: notifications ? "/conta/notificacoes#preferencias" : "/conta#preferencias" }}>
     <main className="k-account-page">
       <div className="k-account-heading"><span className="k-eyebrow">MINHA CONTA</span><h1 aria-live="polite">{notifications ? "Notificações" : sections.find(item => item.href === `/conta#${section}`)?.label}</h1></div>
-      {notifications && <NotificationCenter key={`${profile.user.id}:${profile.selectedCompanyId ?? "global"}`} profile={profile} />}
+      {notifications && <NotificationCenter key={`${profile.user.id}:${profile.selectedCompanyId ?? "global"}`} profile={profile} showPreferences={false} />}
       {!notifications && section === "perfil" && <div className="k-account-stack"><AccountProfile profile={profile} />
         <Card aria-labelledby="account-company-title"><h2 id="account-company-title">Contexto da empresa</h2>
           {admin && <p>Sua conta tem acesso global ao Super Admin e não exige uma empresa selecionada.</p>}
@@ -82,10 +77,8 @@ export function AccountContent({ profile, reload, logout, notifications = false 
           ? <section aria-label="Assinatura da empresa"><Link href="/conta/planos" className="k-link-button">Escolher plano</Link><RegularizationPanel key={`${profile.user.id}:${membership.company.id}`} companyId={membership.company.id} /></section>
           : <Card><h2>Assinatura da empresa</h2><p>Solicite ao proprietário ou administrador a gestão da assinatura.</p></Card>)}
       </div>}
-      {!notifications && section === "seguranca" && <AccountSecurity profile={profile} leaving={leaving || busy} onLogout={() => void leave()} onLogoutAll={() => setConfirmLogout(true)} />}
-      {!notifications && section === "preferencias" && <div className="k-account-stack">{!busy && !admin && membership && ["OWNER", "ADMIN"].includes(membership.role) && <section aria-label="Configurações de comunicação"><h2>Comunicação</h2><Link href="/conta/comunicacao">Canais da empresa</Link><EmailSettings scope="COMPANY" /><EvolutionSettings /></section>}<Card><h2>Aparência</h2><p>Alterne entre os modos claro e escuro. A preferência fica salva neste navegador.</p><ThemeControl /></Card>
-        {!busy && (membership || admin) ? <PushSettings key={`${profile.user.id}:${profile.selectedCompanyId ?? "admin"}`} /> : <Card><h2>Notificações do navegador</h2><p>Selecione uma empresa no Perfil para gerenciar as preferências existentes.</p><a href="/conta#perfil">Abrir perfil</a></Card>}
-      </div>}
+      {!notifications && section === "seguranca" && <Link href={admin ? "/super-admin/configuracoes/seguranca" : "/conta/configuracoes/seguranca"}>Gerenciar configuração de segurança</Link>}
+      {!notifications && section === "preferencias" && <Link href={admin ? "/super-admin/configuracoes" : "/conta/configuracoes"}>Gerenciar configuração</Link>}
     </main>
     <Drawer open={confirmLogout} label="Sair de todos os dispositivos" onClose={() => { if (!leaving) setConfirmLogout(false); }}>
       <p>Isso encerra todas as sessões da sua conta, incluindo este dispositivo. Você precisará entrar novamente.</p>

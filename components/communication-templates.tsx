@@ -1,6 +1,6 @@
 "use client";
 import { useState, type FormEvent } from "react";
-import { communication, providerNames, channelNames, providerChannels, availableProvider, previewText, providerState, type CommunicationEvent, type InternalTemplate, type Channel, type ProviderName, type CommunicationProvider } from "@/lib/communication";
+import { communication, eventLabel, channelNames, providerChannels, previewText, providerState, type CommunicationEvent, type InternalTemplate, type Channel, type ProviderName, type CommunicationProvider } from "@/lib/communication";
 import { useCommunicationMutation, useCommunicationPending } from "./communication-operations";
 import { Feedback, ResourceState, useCommunicationResource } from "./communication-resource";
 const loadTemplates = async (signal?: AbortSignal) => {
@@ -9,7 +9,7 @@ const loadTemplates = async (signal?: AbortSignal) => {
 };
 export function InternalTemplateEditor({ event, channel, initial, providers, saved }: { event: CommunicationEvent; channel: Channel; initial?: InternalTemplate; providers: CommunicationProvider[]; saved: (row: InternalTemplate) => void }) {
   const [row, setRow] = useState(initial);
-  const [provider, setProvider] = useState<ProviderName>(initial?.provider ?? (channel === "EMAIL" ? "SMTP" : channel === "WHATSAPP" ? "EVOLUTION" : "PUSH_PENDING"));
+  const [provider] = useState<ProviderName>(initial?.provider ?? (channel === "EMAIL" ? "SMTP" : channel === "WHATSAPP" ? "EVOLUTION" : "PUSH_PENDING"));
   const [enabled, setEnabled] = useState(initial?.enabled ?? false);
   const [text, setText] = useState(initial?.content.text ?? "");
   const [subject, setSubject] = useState(initial?.content.subject ?? initial?.content.title ?? "");
@@ -29,7 +29,7 @@ export function InternalTemplateEditor({ event, channel, initial, providers, sav
   const [dirty, setDirty] = useState(false);
   const { busy, setBusy, lockRef } = useCommunicationMutation();
   const [error, setError] = useState(""); const [message, setMessage] = useState("");
-  const canEnable = availableProvider(provider) && providers.some(p => p.provider === provider && p.adapterAvailable) && (provider !== "META" || row?.approvalStatus === "APPROVED" && !dirty);
+  const canEnable = providers.some(p => providerChannels[p.provider] === channel && p.adapterAvailable) && (provider !== "META" || row?.approvalStatus === "APPROVED" && !dirty);
   const keys = [...new Set([...text.matchAll(/\{\{([a-z_]+)\}\}/g)].map(m => m[1]))].filter(k => event.variables.includes(k));
   function accept(next: InternalTemplate) {
     setRow(next); setEnabled(next.enabled);
@@ -46,7 +46,7 @@ export function InternalTemplateEditor({ event, channel, initial, providers, sav
     try {
       const content = { text, ...(channel === "EMAIL" ? { subject } : channel === "PUSH" ? { title: subject, ...(url ? { url } : {}), ...(icon ? { icon } : {}), ...(actionText ? { actionText } : {}) } : {}),
         ...(provider === "META" ? { name, language, category, examples: Object.fromEntries(keys.map(k => [k, examples[k] ?? ""])) } : {}) };
-      const next = await communication.saveTemplate(event.event, channel, { provider, enabled: provider === "EVOLUTION" || enabled && canEnable, content });
+      const next = await communication.saveTemplate(event.event, channel, { ...(initial?.provider === "META" ? { provider: "META" as const } : {}), enabled: provider === "EVOLUTION" || enabled && canEnable, content });
       accept(next); setDirty(false); setMessage(provider === "EVOLUTION" ? "Template ATIVO. Envio depende da conexão e habilitação da Evolution." : provider === "META" ? "Template salvo. Consulte o estado de aprovação antes de enviar." : "Template global salvo.");
     } catch (err) { setError(err instanceof Error ? err.message : "Não foi possível salvar o template."); }
     finally { lockRef.current = false; setBusy(false); }
@@ -74,8 +74,8 @@ export function InternalTemplateEditor({ event, channel, initial, providers, sav
     catch { setError("Não foi possível copiar. Selecione a variável e copie manualmente."); }
   }
   const approval = row?.provider === provider ? row?.approvalStatus ?? "PENDING" : "PENDING";
-  return <form className="commercial-panel commercial-form" onSubmit={submit}><h2>{event.event} · {channelNames[channel]}</h2><p>Template GLOBAL, gerenciado pelo Super Admin. O conteúdo salvo é a fonte da mensagem e da submissão Meta.</p>
-    <fieldset disabled={busy}><label>Provedor<select value={provider} onChange={e => { setProvider(e.target.value as ProviderName); setEnabled(false); setDirty(true); }}>{(Object.keys(providerNames) as ProviderName[]).filter(p => providerChannels[p] === channel).map(p => <option key={p} value={p}>{providerNames[p]}{!availableProvider(p) ? " · Em breve" : ""}</option>)}</select></label>
+  return <form className="commercial-panel commercial-form" onSubmit={submit}><h2>{eventLabel(event.event)} · {channelNames[channel]}</h2><p>Template GLOBAL, gerenciado pelo Super Admin. O conteúdo salvo é a fonte da mensagem e da submissão Meta.</p>
+    <fieldset disabled={busy}><p>O canal utiliza automaticamente a configuração ativa do sistema.</p>
       {channel !== "WHATSAPP" && <label>{channel === "EMAIL" ? "Assunto" : "Título"}<input required maxLength={200} value={subject} onChange={e => { setSubject(e.target.value); setDirty(true); }} /></label>}
       <label>{channel === "PUSH" ? "Mensagem" : "Conteúdo em texto"}<textarea required rows={8} maxLength={provider === "META" ? 1024 : 8000} value={text} onChange={e => { setText(e.target.value); setDirty(true); }} /></label>
       {channel === "WHATSAPP" && <p>{text.length}/{provider === "META" ? 1024 : 8000} caracteres</p>}
@@ -95,10 +95,10 @@ export function CommunicationTemplates() {
   const [updates, setUpdates] = useState<InternalTemplate[]>([]);
   const events = resource.data?.events ?? []; const event = events.find(row => row.event === eventId) ?? events[0];
   const current = event ? [...updates, ...(resource.data?.templates ?? [])].find(row => row.event === event.event && row.channel === channel) : undefined;
-  return <ResourceState {...resource} retry={() => void resource.load()}>{!events.length ? <p className="commercial-notice">Nenhum evento retornado pela API.</p> : <><div className="commercial-panel commercial-form"><h2>Templates internos do Kalend</h2><p>A API retorna até 100 templates. O evento e o canal permitem abrir ou criar a política correspondente.</p><div className="communication-form-grid"><label>Evento<select disabled={pending} value={event?.event ?? ""} onChange={e => setEventId(e.target.value)}>{events.map(row => <option key={row.event} value={row.event}>{row.event}</option>)}</select></label><label>Canal<select disabled={pending} value={channel} onChange={e => setChannel(e.target.value as Channel)}>{(Object.keys(channelNames) as Channel[]).map(key => <option key={key} value={key}>{channelNames[key]}</option>)}</select></label></div></div>
+  return <ResourceState {...resource} retry={() => void resource.load()}>{!events.length ? <p className="commercial-notice">Nenhum evento retornado pela API.</p> : <><div className="commercial-panel commercial-form"><h2>Templates internos do Kalend</h2><p>A API retorna até 100 templates. O evento e o canal permitem abrir ou criar a política correspondente.</p><div className="communication-form-grid"><label>Evento<select disabled={pending} value={event?.event ?? ""} onChange={e => setEventId(e.target.value)}>{events.map(row => <option key={row.event} value={row.event}>{eventLabel(row.event)}</option>)}</select></label><label>Canal<select disabled={pending} value={channel} onChange={e => setChannel(e.target.value as Channel)}>{(Object.keys(channelNames) as Channel[]).map(key => <option key={key} value={key}>{channelNames[key]}</option>)}</select></label></div></div>
     {event && <InternalTemplateEditor key={`${event.event}:${channel}`} event={event} channel={channel} initial={current} providers={resource.data?.providers ?? []} saved={row => setUpdates(old => [row, ...old.filter(item => item.event !== row.event || item.channel !== row.channel)])} />}</>}</ResourceState>;
 }
 export function CommunicationEvents() {
   const resource = useCommunicationResource(communication.events);
-  return <ResourceState {...resource} retry={() => void resource.load()}><section className="commercial-panel"><h2>Catálogo de eventos globais</h2>{!resource.data?.length ? <p>Nenhum evento retornado pela API.</p> : <dl className="communication-events">{resource.data.map(row => <div key={row.event}><dt>{row.event}</dt><dd>Variáveis: {row.variables.map(key => `{{${key}}}`).join(", ") || "Nenhuma"}</dd></div>)}</dl>}</section></ResourceState>;
+  return <ResourceState {...resource} retry={() => void resource.load()}><section className="commercial-panel"><h2>Catálogo de eventos globais</h2>{!resource.data?.length ? <p>Nenhum evento retornado pela API.</p> : <dl className="communication-events">{resource.data.map(row => <div key={row.event}><dt>{eventLabel(row.event)}</dt><dd>Variáveis: {row.variables.map(key => `{{${key}}}`).join(", ") || "Nenhuma"}</dd></div>)}</dl>}</section></ResourceState>;
 }

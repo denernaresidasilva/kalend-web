@@ -1,6 +1,23 @@
 import { parseCommercialIssue, type CommercialIssue } from "./commercial-errors";
 // Public API base is supplied at build time. Never fall back to production.
 export const API_URL = (process.env.NEXT_PUBLIC_API_URL?.trim() || "").replace(/\/+$/, "");
+const communicationMessages: Record<string, string> = {
+  GLOBAL_PROVIDER_DISABLED: "O uso do WhatsApp para comunicação está desabilitado. Habilite o envio antes do teste.",
+  CONNECTION_NOT_OPEN: "WhatsApp não conectado ou sessão fechada. Reconecte antes de enviar.",
+  TEST_RECIPIENT_UNAVAILABLE: "Informe um telefone válido com DDI no seu perfil para receber o teste.",
+  EVOLUTION_UNAVAILABLE: "A Evolution está indisponível.",
+  EVOLUTION_TIMEOUT: "A Evolution não respondeu no prazo.",
+  EVOLUTION_AUTH_FAILED: "A autenticação da Evolution é inválida.",
+  EVOLUTION_FORBIDDEN: "A Evolution recusou o acesso à instância global.",
+  EVOLUTION_RATE_LIMITED: "A Evolution limitou os envios. Aguarde antes de repetir.",
+  EVOLUTION_INVALID_RESPONSE: "A Evolution retornou uma resposta inválida.",
+  INTEGRATION_STATE_UNAVAILABLE: "Não foi possível verificar o estado da conexão WhatsApp.",
+  INVALID_PHONE: "O telefone do destinatário é inválido.",
+  INTEGRATION_BUSY: "A conexão está ocupada. Aguarde e tente novamente.",
+  MESSAGE_ACCEPTANCE_UNKNOWN: "Não foi possível confirmar o envio. Verifique o destinatário antes de repetir.",
+  SEND_TEST_FAILED_OR_UNCERTAIN: "Não foi possível confirmar o envio da mensagem de teste.",
+  CONNECTION_TEST_REQUIRED: "Valide a conexão antes de habilitar o canal.",
+};
 const messages: Record<number, string> = {
   400: "Confira os campos informados e tente novamente.",
   401: "Sessão encerrada. Entre novamente.",
@@ -13,7 +30,7 @@ const messages: Record<number, string> = {
   503: "Serviço ou integração indisponível. Tente novamente mais tarde.",
 };
 export class ApiError extends Error {
-  constructor(public status: number, public issue?: CommercialIssue, public errorCode?: string) { super(issue ? (issue.code === "PLAN_LIMIT_REACHED" ? "O limite do plano foi atingido." : issue.code === "SUBSCRIPTION_REQUIRED" ? "Sua assinatura precisa de regularização." : "Recurso indisponível no plano atual.") : messages[status] || "Não foi possível conectar ao serviço. Tente novamente."); }
+  constructor(public status: number, public issue?: CommercialIssue, public errorCode?: string) { super(issue ? (issue.code === "PLAN_LIMIT_REACHED" ? "O limite do plano foi atingido." : issue.code === "SUBSCRIPTION_REQUIRED" ? "Sua assinatura precisa de regularização." : "Recurso indisponível no plano atual.") : (errorCode && communicationMessages[errorCode]) || messages[status] || "Não foi possível conectar ao serviço. Tente novamente."); }
 }
 let refreshFlight: Promise<void> | null = null;
 let generation = 0;
@@ -93,7 +110,8 @@ export async function apiFetch(path: string, init: RequestInit = {}): Promise<Re
     const body = await response.json().catch(() => null);
     const issue = response.status === 403 ? parseCommercialIssue(body) : undefined;
     if (issue && typeof window !== "undefined") window.dispatchEvent(new CustomEvent("kalend:commercial-issue", { detail: issue }));
-    const errorCode = typeof body?.errorCode === "string" && /^[A-Z_]{1,80}$/.test(body.errorCode) ? body.errorCode : undefined;
+    const candidateCode = body?.errorCode ?? body?.message;
+    const errorCode = typeof candidateCode === "string" && /^[A-Z_]{1,80}$/.test(candidateCode) ? candidateCode : undefined;
     throw new ApiError(response.status, issue, errorCode);
   }
   return response;

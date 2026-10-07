@@ -126,8 +126,9 @@ test('trial dates alone cannot establish remaining days or override server expir
 test('settings hub separates real destinations without claiming provider connections', () => {
   const Page=load('app/super-admin/configuracoes/page.tsx',{'next/link':link,'@/components/theme/theme-control':{ThemeControl:()=>null}}).default;
   const html=renderToStaticMarkup(React.createElement(Page));
-  for(const name of ['Conta','Empresa','Aparência','Pagamentos','WhatsApp','E-mail','Push','Notificações','Integrações','Segurança']) assert.match(html,new RegExp(`<h2>${name}</h2>`));
-  assert.doesNotMatch(html,/Conectado|Configurado/); assert.match(html,/Em preparação/);
+  for(const name of ['WhatsApp','E-mail','Push','Notificações','Pagamentos','Aparência','Integrações','Webhooks','Segurança']) assert.match(html,new RegExp(`<h2>${name}</h2>`));
+  assert.doesNotMatch(html,/<h2>Conta<\/h2>|<h2>Empresa<\/h2>|Conectado|Configurado/);
+  for (const section of ["whatsapp", "email", "push", "notificacoes", "pagamentos", "aparencia", "integracoes", "webhooks", "seguranca"]) assert.match(html, new RegExp(`/super-admin/configuracoes/${section}`));
 });
 
 test('selecting a plan passes the actual record; unavailable annual choice cannot be selected', () => {

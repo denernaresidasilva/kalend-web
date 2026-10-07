@@ -142,7 +142,7 @@ for (const [options, promptStatus, label] of [
   [{ device: { authorizations: [{ active: false, revokedAt: null }] } }, 'paused', 'Notificações pausadas'],
   [{ permission: 'denied' }, 'hidden', 'Notificações bloqueadas'],
   [{ apiError: true }, 'error', 'Não foi possível verificar'],
-  [{ missing: true }, 'invite', 'Notificações ainda não ativadas'],
+  [{ missing: true }, 'hidden', 'Notificações ainda não ativadas'],
 ]) test(`popup and settings consume identical evaluation: ${promptStatus}`, { timeout: 5000 }, async () => {
   const f = fixture(options), slots = [], effects = [];
   let resolveEvaluation;
@@ -151,7 +151,7 @@ for (const [options, promptStatus, label] of [
   const hooks = { ...React,
     useState: initial => { const i = cursor++; if (!(i in slots)) slots[i] = initial; return [slots[i], value => {
       slots[i] = value;
-      if (value.status && value.status !== 'loading') resolveEvaluation();
+      if (value?.status && value.status !== 'loading') resolveEvaluation();
     }]; },
     useRef: initial => { const i = cursor++; return slots[i] ||= { current: initial }; },
     useMemo: fn => { cursor++; return fn(); }, useCallback: fn => { cursor++; return fn; },
@@ -159,7 +159,7 @@ for (const [options, promptStatus, label] of [
   };
   const { PushSettings } = load('components/push-settings.tsx', {
     react: hooks, './auth-provider': { useAuth: () => ({ profile: f.profile }) },
-    '@/lib/push/client': f.client, '@/lib/push/events': { watchPushChanges() {} },
+    '@/lib/push/client': f.client, '@/lib/push/prompt': f.prompt, '@/lib/push/events': { watchPushChanges() {} },
   }, { window: { addEventListener() {}, removeEventListener() {} }, document: { addEventListener() {}, removeEventListener() {}, visibilityState: 'visible' } });
   const render = () => { cursor = 0; return PushSettings(); };
   render(); const cleanups = effects.map(fn => fn());

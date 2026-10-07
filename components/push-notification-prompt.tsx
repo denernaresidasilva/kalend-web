@@ -61,6 +61,24 @@ export function PushNotificationPrompt() {
       window.removeEventListener("kalend:push-changed", pushChanged);
     };
   }, []);
+  useEffect(() => {
+    let alive = true;
+    let observed: PermissionStatus | undefined;
+    if (typeof navigator !== "undefined" && navigator.permissions?.query) {
+      void navigator.permissions.query({ name: "notifications" }).then(status => {
+        if (!alive) return;
+        observed = status;
+        status.onchange = () => {
+          if (Notification.permission !== "default") {
+            modalOpen.current = false; setModal(""); setView(null); setResult("");
+            release.current?.(); release.current = null;
+          }
+          setRevision(value => value + 1);
+        };
+      }).catch(() => {});
+    }
+    return () => { alive = false; if (observed) observed.onchange = null; };
+  }, []);
   useEffect(() => { dismissed.current = ""; inspected.current = null; modalOpen.current = false; release.current?.(); release.current = null; }, [identity, pathname]);
   useEffect(() => {
     let alive = true;
@@ -90,18 +108,18 @@ export function PushNotificationPrompt() {
     }, 0);
     return () => { alive = false; clearTimeout(timer); unlock?.(); if (release.current === unlock) release.current = null; };
   }, [identity, allowed, pathname, key, attention, permission]);
-  const visible = allowed && !!identity && view?.key === key && view.attention === attention && permission !== "denied" && document.visibilityState === "visible" && document.hasFocus();
+  const visible = allowed && !!identity && view?.key === key && view.attention === attention && permission === "default" && document.visibilityState === "visible" && document.hasFocus();
   function close(force = false) { if (busyRef.current && !force) return; modalOpen.current = false; setModal(""); setResult(""); dismissed.current = key; setView(null); release.current?.(); release.current = null; }
   async function activate(config?: PublicConfig) {
     if (!identity || busyRef.current) return;
     busyRef.current = true; setBusy(true); setResultKey(key);
     try {
       const status = await activatePushPrompt(identity, config);
-      if (key === activeKey.current) { if (status === "ready") { close(true); setResult("success"); } else if (typeof Notification !== "undefined" && Notification.permission === "denied") { setResult("denied"); } else if (status === "hidden") close(true); else { setResult("error"); setView({ key, status, attention }); } }
+      if (key === activeKey.current) { if (status === "ready" || Notification.permission === "granted") { close(true); } else if (typeof Notification !== "undefined" && Notification.permission === "denied") { setResult("denied"); } else if (status === "hidden") close(true); else { setResult("error"); setView({ key, status, attention }); } }
     } catch { if (key === activeKey.current) { console.warn("KALEND_PUSH_PROMPT_ACTIVATION_FAILED"); inspected.current = { key, status: "error", permission: typeof Notification === "undefined" ? "unsupported" : Notification.permission }; setResult("error"); setView({ key, status: "error", attention }); } }
     finally { busyRef.current = false; setBusy(false); }
   }
-  if (!allowed || !identity) return null;
+  if (!allowed || !identity || permission === "granted") return null;
   if (modal === key || result && resultKey === key) return <PushActivationModal profile={identity} busy={busy} result={result || (permission === "denied" ? "denied" : "")} onClose={() => close()} onActivate={config => void activate(config)} />;
   if (!visible) return null;
   return <section className="kalend-ui k-push-prompt" role="dialog" aria-modal="false" aria-labelledby="push-prompt-title" aria-describedby="push-prompt-description" onKeyDown={event => { if (event.key === "Escape") close(); }}>
