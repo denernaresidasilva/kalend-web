@@ -23,7 +23,7 @@ function fixture(options = {}) {
   const mod = { exports: {} };
   const window = { addEventListener: (name, fn) => listeners[name] = fn, removeEventListener: name => delete listeners[name], dispatchEvent: event => calls.push(event.type) };
   vm.runInNewContext(ts.transpileModule(fs.readFileSync('components/push-settings.tsx', 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, jsx: ts.JsxEmit.ReactJSX } }).outputText,
-    { module: mod, exports: mod.exports, require: id => ({ react: hooks, './auth-provider': { useAuth: () => ({ profile }) }, '@/lib/push/client': client, '@/lib/push/prompt': { activatePushPrompt: async () => { calls.push('register'); return 'ready'; } }, '@/lib/push/events': { watchPushChanges() {} } }[id] || require(id)), window, document: { visibilityState: 'visible', addEventListener() {}, removeEventListener() {} }, Notification: { permission: 'granted' }, crypto: { randomUUID: () => 'request-id' }, setTimeout, clearTimeout, Date, Event });
+    { module: mod, exports: mod.exports, require: id => ({ react: hooks, './auth-provider': { useAuth: () => ({ profile }) }, '@/lib/push/client': client, '@/lib/push/use-permission': { usePushPermission: () => 'granted' }, '@/lib/push/prompt': { activatePushPrompt: async () => { calls.push('register'); return 'ready'; } }, '@/lib/push/events': { watchPushChanges() {} } }[id] || require(id)), window, document: { visibilityState: 'visible', addEventListener() {}, removeEventListener() {} }, Notification: { permission: 'granted' }, crypto: { randomUUID: () => 'request-id' }, setTimeout, clearTimeout, Date, Event });
   const render = () => { cursor = 0; const tree = mod.exports.PushSettings(); while (effects.length) effects.shift()(); return tree; };
   return { render, calls, settle: async () => { render(); await new Promise(r => setTimeout(r, 10)); return render(); }, cleanup: () => slots.forEach(slot => slot?.cleanup?.()) };
 }
@@ -36,7 +36,7 @@ test('active settings does not call a missing self-test route', async () => {
     assert.equal(nodes(tree).some(node => node.props.children === 'Testar Push'), false);
   } finally { f.cleanup(); }
 });
-for (const [status, label] of Object.entries({ loading: 'Verificando notificações', paused: 'Notificações pausadas', blocked: 'Notificações bloqueadas no navegador', unavailable: 'Notificações indisponíveis', context: 'Selecione uma empresa', error: 'Não foi possível verificar', needs_registration: 'Notificações ainda não ativadas' })) {
+for (const [status, label] of Object.entries({ loading: 'Verificando notificações', paused: 'Notificações pausadas', blocked: 'Notificações bloqueadas no navegador', unavailable: 'Notificações indisponíveis', context: 'Selecione uma empresa', error: 'Não foi possível verificar', needs_registration: 'Permissão concedida, mas Push precisa ser reconectado' })) {
   test(`settings displays ${status} without claiming disabled`, async () => {
     const f = fixture({ status });
     try {

@@ -1,3 +1,4 @@
+import { canInvitePush, readPushPermission } from "./permission";
 import { eligible, enable, evaluatePush, inContext, pushApi, supported, type PublicConfig, type PushProfile, type PushStatus } from "./client";
 import { notifyPushChanged } from "./events";
 
@@ -14,9 +15,9 @@ function promptStatus(status: PushStatus): PromptStatus {
 }
 // Probing never grants or restores consent. Registration requires a user action.
 export async function inspectPushPrompt(profile: PushProfile): Promise<PromptStatus> {
-  if (typeof Notification !== "undefined" && Notification.permission === "denied") return "hidden";
+  if (readPushPermission() === "denied") return "hidden";
   const status = promptStatus((await evaluatePush(profile)).status);
-  return status === "invite" && typeof Notification !== "undefined" && Notification.permission === "granted" ? "hidden" : status;
+  return status === "invite" && !canInvitePush(readPushPermission()) ? "hidden" : status;
 }
 
 // Prepared configuration preserves the permission request's user gesture.

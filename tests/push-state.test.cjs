@@ -8,7 +8,7 @@ const { webcrypto, createHash } = require('node:crypto');
 function load(file, mocks, globals) {
   const mod = { exports: {} };
   vm.runInNewContext(ts.transpileModule(fs.readFileSync(file, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, jsx: ts.JsxEmit.ReactJSX } }).outputText,
-    { module: mod, exports: mod.exports, require: id => mocks[id] || require(id), crypto: webcrypto, TextEncoder, Uint8Array, atob, Date, Event, setTimeout, clearTimeout, ...globals });
+    { module: mod, exports: mod.exports, require: id => id === '@/lib/push/use-permission' ? (mocks[id] || { usePushPermission: () => globals.Notification?.permission || 'unsupported' }) : (id === './permission' || id === '@/lib/push/permission') ? load('lib/push/permission.ts', {}, globals) : mocks[id] || require(id), crypto: webcrypto, TextEncoder, Uint8Array, atob, Date, Event, setTimeout, clearTimeout, ...globals });
   return mod.exports;
 }
 function fixture(options = {}) {
@@ -142,7 +142,7 @@ for (const [options, promptStatus, label] of [
   [{ device: { authorizations: [{ active: false, revokedAt: null }] } }, 'paused', 'Notificações pausadas'],
   [{ permission: 'denied' }, 'hidden', 'Notificações bloqueadas'],
   [{ apiError: true }, 'error', 'Não foi possível verificar'],
-  [{ missing: true }, 'hidden', 'Notificações ainda não ativadas'],
+  [{ missing: true }, 'hidden', 'Permissão concedida, mas Push precisa ser reconectado'],
 ]) test(`popup and settings consume identical evaluation: ${promptStatus}`, { timeout: 5000 }, async () => {
   const f = fixture(options), slots = [], effects = [];
   let resolveEvaluation;
@@ -159,7 +159,7 @@ for (const [options, promptStatus, label] of [
   };
   const { PushSettings } = load('components/push-settings.tsx', {
     react: hooks, './auth-provider': { useAuth: () => ({ profile: f.profile }) },
-    '@/lib/push/client': f.client, '@/lib/push/prompt': f.prompt, '@/lib/push/events': { watchPushChanges() {} },
+    '@/lib/push/use-permission': { usePushPermission: () => f.globals.Notification.permission }, '@/lib/push/client': f.client, '@/lib/push/prompt': f.prompt, '@/lib/push/events': { watchPushChanges() {} },
   }, { window: { addEventListener() {}, removeEventListener() {} }, document: { addEventListener() {}, removeEventListener() {}, visibilityState: 'visible' } });
   const render = () => { cursor = 0; return PushSettings(); };
   render(); const cleanups = effects.map(fn => fn());

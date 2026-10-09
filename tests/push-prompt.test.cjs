@@ -7,7 +7,7 @@ const ts = require('typescript');
 function load(file, mocks, globals) {
   const mod = { exports: {} };
   vm.runInNewContext(ts.transpileModule(fs.readFileSync(file, 'utf8') + (file === 'components/push-notification-prompt.tsx' ? '\nexport { PushActivationModal };' : ''), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, jsx: ts.JsxEmit.ReactJSX } }).outputText,
-    { module: mod, exports: mod.exports, require: id => mocks[id] || require(id), Date, Event, ...globals });
+    { module: mod, exports: mod.exports, require: id => id === '@/lib/push/use-permission' ? (mocks[id] || { usePushPermission: () => globals.Notification?.permission || 'unsupported' }) : (id === './permission' || id === '@/lib/push/permission') ? load('lib/push/permission.ts', {}, globals) : mocks[id] || require(id), Date, Event, ...globals });
   return mod.exports;
 }
 const profile = { user: { id: 'a' }, selectedCompanyId: 'company-a', systemRole: 'USER' };
@@ -84,7 +84,7 @@ test('dismissal closes the global popup, next route and fresh mount offer again'
     const { PushNotificationPrompt } = load('components/push-notification-prompt.tsx', {
       react: hooks, 'next/navigation': { usePathname: () => pathname }, 'next/link': () => null,
       './auth-provider': { useAuth: () => ({ profile: options.visitor ? null : profile, loading: !!options.loading }) }, './ui/button': { Button: () => null },
-      '@/lib/push/client': {},
+      '@/lib/push/client': {}, '@/lib/push/use-permission': { usePushPermission: () => notification.permission },
       '@/lib/push/events': { watchPushChanges() {} },
       '@/lib/push/routes': { pushPromptAllowed: (p, path) => !!p && path !== '/' && path !== '/planos' },
       '@/lib/push/prompt': { inspectPushPrompt: async () => options.status || 'invite', withPushPromptLock: async fn => fn(), activatePushPrompt: async () => { if (options.fail) throw Error('API'); notification.permission = options.choice || 'granted'; browser.dispatchEvent(new Event('kalend:push-changed')); return notification.permission === 'denied' ? 'hidden' : 'ready'; } },
@@ -123,8 +123,10 @@ test('dismissal closes the global popup, next route and fresh mount offer again'
       actions.find(n => n.props.children === 'Ativar notificações').props.onClick();
       tree = await instance.settle();
       await tree.props.onActivate({ available: true, publicKey: 'fixture' });
-      tree = await instance.settle(); assert.equal(tree.props.result, options.fail ? 'error' : 'denied');
-      tree.props.onClose(); assert.equal(await instance.settle(), null);
+      tree = await instance.settle();
+      if (options.fail) { assert.equal(tree.props.result, 'error'); tree.props.onClose(); }
+      else assert.equal(tree, null);
+      assert.equal(await instance.settle(), null);
     } finally { instance.cleanup(); }
   }
   const ended = await mount();

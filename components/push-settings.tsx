@@ -1,5 +1,6 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { usePushPermission } from "@/lib/push/use-permission";
 import { useAuth } from "./auth-provider";
 import { evaluatePush, inContext, pushApi, type PushStatus, type PushProfile, type Device } from "@/lib/push/client";
 import { activatePushPrompt } from "@/lib/push/prompt";
@@ -15,6 +16,7 @@ const labels: Record<PushStatus, string> = {
   needs_registration: "Notificações ainda não ativadas",
 };
 export function PushSettings() {
+  const permission = usePushPermission();
   const { profile: authProfile } = useAuth();
   const userId = authProfile?.user.id;
   const selectedCompanyId = authProfile?.selectedCompanyId;
@@ -50,7 +52,7 @@ export function PushSettings() {
       window.removeEventListener("kalend:push-changed", load);
       document.removeEventListener("visibilitychange", visible);
     };
-  }, [load]);
+  }, [load, permission]);
   async function activate() {
     if (!profile || busy) return;
     setBusy(true); setMessage("");
@@ -71,14 +73,14 @@ export function PushSettings() {
   if (!profile) return null;
   return <section className="commercial-panel push-settings" aria-labelledby="push-title">
     <h2 id="push-title">Push Web</h2><p>Receba notificações do Kalend neste dispositivo.</p>
-    <p role={status === "error" ? "alert" : "status"}>{labels[status]}</p>
-    {typeof Notification !== "undefined" && Notification.permission === "granted" && <p>Notificações permitidas</p>}
+    <p role={status === "error" ? "alert" : "status"}>{permission === "granted" && status === "needs_registration" ? "Permissão concedida, mas Push precisa ser reconectado" : labels[status]}</p>
+    {permission === "granted" && <p>Notificações permitidas</p>}
     {device && <p>Dispositivo: {device.label ?? device.platform} · Registro: {device.active && !device.revokedAt ? "ativo" : "inativo"}</p>}
     {message && <p role="status">{message}</p>}
     {status === "activated" && <button disabled={busy} onClick={() => void pause()}>Desativar neste dispositivo</button>}
     {status === "activated" && <p>Este navegador está configurado para receber notificações.</p>}
     {status === "blocked" && <p>Permita notificações nas configurações do navegador para continuar.</p>}
-    {(status === "needs_registration" || status === "paused") && <button type="button" disabled={busy} onClick={() => { if (Notification.permission === "granted") void activate(); else window.dispatchEvent(new Event("kalend:push-open")); }}>{status === "paused" ? "Reativar notificações" : "Ativar notificações"}</button>}
+    {(status === "needs_registration" || status === "paused") && <button type="button" disabled={busy} onClick={() => { if (Notification.permission === "granted") void activate(); else window.dispatchEvent(new Event("kalend:push-open")); }}>{status === "paused" ? "Reativar notificações" : permission === "granted" ? "Reconectar Push neste dispositivo" : "Ativar notificações"}</button>}
     {(status === "error" || status === "unavailable") && <button type="button" onClick={() => void load()}>Verificar novamente</button>}
   </section>;
 }
