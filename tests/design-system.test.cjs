@@ -119,7 +119,7 @@ test('trial dates alone cannot establish remaining days or override server expir
   for (const day of [3,2,1,0]) {
     const subscription={status:'TRIALING',trialStartedAt:'2026-09-01T00:00:00Z',trialEndsAt:`2026-10-0${day+1}T00:00:00Z`};
     assert.equal(commercialDestination(regularization({subscription,financial:{status:'TRIALING'}}),'/conta'),'/conta');
-    assert.equal(commercialDestination(regularization({subscription,trial:{expired:true},financial:{status:'EXPIRED'}}),'/conta'),'/planos');
+    assert.equal(commercialDestination(regularization({subscription,trial:{expired:true},financial:{status:'EXPIRED'}}),'/conta'),'/conta');
   }
 });
 
@@ -139,12 +139,12 @@ test('selecting a plan passes the actual record; unavailable annual choice canno
   const html = renderToStaticMarkup(tree); assert.match(html,/Recurso real/); assert.match(html,/Destaque editorial/); assert.match(html,/cobrança anual/); assert.doesNotMatch(html,/mais vendido|Ilimitado/i);
 });
 
-test('financial obligation takes priority over expired trial, with no invented overdue state', () => {
+test('expired trial retains the initial route while the recovery modal handles payment', () => {
   const { commercialDestination } = load('lib/commercial-navigation.ts', { './api':{} });
-  assert.equal(commercialDestination(regularization({financial:{requiresAction:true},trial:{expired:true}}),'/conta'),'/conta/regularizar');
+  assert.equal(commercialDestination(regularization({financial:{requiresAction:true},trial:{expired:true}}),'/conta'),'/conta');
   for (const optional of [{ pendingCheckout:{ id:'upgrade' } },{ financial:{status:'PAST_DUE'} }]) assert.equal(commercialDestination(regularization(optional),'/conta'),'/conta');
-  assert.equal(commercialDestination(regularization({ trial:{expired:true},pendingCheckout:{id:'payment'} }),'/conta'),'/planos');
-  assert.equal(commercialDestination(regularization({ trial:{expired:true},financial:{status:'EXPIRED'} }),'/conta'),'/planos');
+  assert.equal(commercialDestination(regularization({ trial:{expired:true},pendingCheckout:{id:'payment'} }),'/conta'),'/conta');
+  assert.equal(commercialDestination(regularization({ trial:{expired:true},financial:{status:'EXPIRED'} }),'/conta'),'/conta');
   assert.equal(commercialDestination(regularization(),'/conta'),'/conta');
   assert.equal(commercialDestination(regularization({ subscription:{ trialEndsAt:'2000-01-01' } }),'/conta'),'/conta');
 });
@@ -155,8 +155,8 @@ test('login destinations honor every role and keep Super Admin separate', async 
   assert.equal(await loginDestination({ ...profile('OWNER'),systemRole:'SUPER_ADMIN' }),'/super-admin'); assert.equal(calls.length,0);
   for (const role of ['OWNER','ADMIN','PROFESSIONAL','RECEPTIONIST','CLIENT']) assert.equal(await loginDestination(profile(role)),({OWNER:'/painel/proprietario',ADMIN:'/painel/proprietario',PROFESSIONAL:'/painel/profissional',RECEPTIONIST:'/painel/recepcionista',CLIENT:'/painel/cliente'})[role]);
   assert.equal(calls.length,5);
-  result = regularization({trial:{expired:true}}); assert.equal(await loginDestination(profile('OWNER')),'/planos');
-  result = regularization({financial:{requiresAction:true},trial:{expired:true}}); assert.equal(await loginDestination(profile('OWNER')),'/conta/regularizar');
+  result = regularization({trial:{expired:true}}); assert.equal(await loginDestination(profile('OWNER')),'/painel/proprietario');
+  result = regularization({financial:{requiresAction:true},trial:{expired:true}}); assert.equal(await loginDestination(profile('OWNER')),'/painel/proprietario');
 });
 
 test('public LP reloads the real catalog with no cookies or authentication refresh', async () => {

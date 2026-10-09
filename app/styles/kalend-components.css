@@ -139,3 +139,7 @@ body { background: var(--kalend-background); color: var(--kalend-text-primary); 
 .k-push-modal h2 { font-size: 1.3rem; margin-bottom: 12px; }
 .k-push-modal p { margin-bottom: 24px; }
 .k-push-modal > div { display: flex; flex-wrap: wrap; gap: 12px; }
+
+.k-trial-expired-modal { width: min(1120px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); overflow: auto; border: 1px solid var(--kalend-border); border-radius: 16px; padding: 24px; color: var(--kalend-text-primary); background: var(--kalend-surface); }
+.k-trial-expired-modal::backdrop { background: #0009; }
+@media (max-width: 600px) { .k-trial-expired-modal { padding: 16px; } }

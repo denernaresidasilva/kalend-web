@@ -15,10 +15,11 @@ export function PendingPayment({ payment }: { payment: PendingCheckout }) {
     <p>O retorno do provedor não confirma pagamento. A assinatura será atualizada após confirmação pelo backend.</p>
   </section>;
 }
-export function RegularizationPanel({ companyId }: { companyId: string }) {
+export function RegularizationPanel({ companyId, state, recovery = false }: { companyId: string; state?: Regularization; recovery?: boolean }) {
   const { profile } = useAuth();
   const userId = profile?.user.id ?? "";
-  const [data, setData] = useState<Regularization | null>(null);
+  const [localData, setData] = useState<Regularization | null>(null);
+  const data = state ?? localData;
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -67,10 +68,10 @@ export function RegularizationPanel({ companyId }: { companyId: string }) {
     finally { operation.current = false; setBusy(false); }
   }
   return <div className="kalend-ui k-billing-page"><header className="commercial-heading"><div><h2>Assinatura e pagamentos</h2><p>Escolha o plano adequado à empresa. O plano do trial não limita sua escolha.</p></div><button disabled={loading || busy} onClick={() => void load()}>Atualizar estado</button></header>
-    {loading ? <div role="status" className="commercial-skeleton">Carregando assinatura e planos…</div> : <>
+    {loading && !state ? <div role="status" className="commercial-skeleton">Carregando assinatura e planos…</div> : <>
       {error && <div className="commercial-notice" role="alert"><p>{error}</p><button disabled={busy} onClick={() => void load()}>Tentar novamente</button></div>}
       {data && <><section className="commercial-panel"><h2>{commercialStatuses[data.financial.status ?? "NO_SUBSCRIPTION"] ?? data.financial.status ?? "Sem assinatura"}</h2><p>{!data.financial.requiresAction && !data.trial.expired ? "Acesso comercial permitido pela assinatura." : data.trial.expired ? "Seu período de teste terminou. Escolha um plano para regularizar a assinatura." : "Sua assinatura precisa de regularização para liberar o acesso comercial."}</p><p>Sua sessão permanece autenticada.</p>
-        {data.subscription && <><dl className="commercial-details"><div><dt>Plano atual</dt><dd>{data.subscription.planName}</dd></div><div><dt>Intervalo</dt><dd>{data.subscription.billingInterval === "YEARLY" ? "Anual" : "Mensal"}</dd></div><div><dt>Fim do trial</dt><dd>{date(data.subscription.trialEndsAt)}</dd></div><div><dt>Fim do período</dt><dd>{date(data.subscription.currentPeriodEnd)}</dd></div>{data.subscription.graceEndsAt && <div><dt>Fim do período de graça</dt><dd>{date(data.subscription.graceEndsAt)}</dd></div>}<div><dt>Cancelamento ao fim do período</dt><dd>{data.subscription.cancelAtPeriodEnd ? "Solicitado" : "Não solicitado"}</dd></div></dl>{data.subscription.status !== "CANCELED" && <button disabled={busy} onClick={() => void cancel()}>Cancelar assinatura imediatamente</button>}</>}
+        {data.subscription && <><dl className="commercial-details"><div><dt>Plano atual</dt><dd>{data.subscription.planName}</dd></div><div><dt>Intervalo</dt><dd>{data.subscription.billingInterval === "YEARLY" ? "Anual" : "Mensal"}</dd></div><div><dt>Fim do trial</dt><dd>{date(data.subscription.trialEndsAt)}</dd></div><div><dt>Fim do período</dt><dd>{date(data.subscription.currentPeriodEnd)}</dd></div>{data.subscription.graceEndsAt && <div><dt>Fim do período de graça</dt><dd>{date(data.subscription.graceEndsAt)}</dd></div>}<div><dt>Cancelamento ao fim do período</dt><dd>{data.subscription.cancelAtPeriodEnd ? "Solicitado" : "Não solicitado"}</dd></div></dl>{!recovery && data.subscription.status !== "CANCELED" && <button disabled={busy} onClick={() => void cancel()}>Cancelar assinatura imediatamente</button>}</>}
       </section>
       {data.pendingCheckout ? <PendingPayment payment={data.pendingCheckout} /> : <form id="escolher-plano" className="commercial-panel commercial-form" onSubmit={checkout}><h2>Escolher um plano</h2><p>Preços e disponibilidade informados pelo serviço comercial. Compras durante assinatura paga vigente dependem das regras do backend; não há troca com prorrata.</p><fieldset disabled={busy}>
         <PlanCatalog plans={(data.plans ?? [])} interval={interval} onInterval={setInterval} selectedId={planId} disabled={busy} onSelect={p => { setPlanId(p.id); setInterval(selectPlanInterval(p, interval)); }} />

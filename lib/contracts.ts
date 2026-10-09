@@ -50,6 +50,9 @@ export type PendingCheckout = {
 };
 export type Regularization = {
   serverNow: string;
+  accessAllowed?: boolean;
+  accessStatus?: "TRIAL_ACTIVE" | "TRIAL_EXPIRING" | "TRIAL_EXPIRED" | "ACTIVE" | "PAST_DUE" | "SUSPENDED" | "CANCELED" | "EXPIRED" | "NO_SUBSCRIPTION" | "NOT_APPLICABLE";
+  revalidateAfterMs?: number;
   trial: { active: boolean; endsAt: string | null; remainingDays: number; expired: boolean };
   financial: { requiresAction: boolean; status: string | null; paymentStatus?: string | null };
   context: { companyId?: string; role: AuthMe["memberships"][number]["role"] | null; systemRole?: AuthMe["systemRole"]; commercialApplicable?: boolean };

@@ -7,11 +7,13 @@ export function billingMembership(profile: AuthMe) {
   return profile.memberships.find(row => row.company.id === profile.selectedCompanyId && ["OWNER", "ADMIN"].includes(row.role));
 }
 export function commercialDestination(data: Regularization, normal: string) {
+  // Expiration is presented by the persistent recovery modal on the initial page.
+  if (data.trial.expired === true || data.accessStatus === "TRIAL_EXPIRED") return normal;
   if (data.financial.requiresAction === true) return "/conta/regularizar";
-  if (data.trial.expired === true) return "/planos";
   return normal;
 }
 export function commercialRedirect(data: Regularization, pathname: string, normal: string) {
+  if (data.trial.expired === true || data.accessStatus === "TRIAL_EXPIRED") return null;
   const destination = commercialDestination(data, normal);
   if (destination === pathname) return null;
   if (destination === normal) return pathname === "/conta/regularizar" ? normal : null;
