@@ -39,3 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Homologação: relatórios, traces e sessões não são versionados
+/homologacao/artifacts/
+/homologacao/.auth/
+/homologacao/evidencias/
+/homologacao/ultima-execucao.json

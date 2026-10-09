@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --test tests/*.test.cjs"
+    "test": "node --test tests/*.test.cjs",
+    "test:homologacao": "playwright test --config playwright.homologacao.config.ts"
   },
   "dependencies": {
     "lucide-react": "^1.47.0",
@@ -16,6 +17,7 @@
     "react-dom": "19.2.8"
   },
   "devDependencies": {
+    "@playwright/test": "^1.64.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",

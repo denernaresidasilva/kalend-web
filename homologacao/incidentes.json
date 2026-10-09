@@ -1,0 +1,10 @@
+[
+  {
+    "id": "BUG-01",
+    "severity": "critical",
+    "status": "OPEN",
+    "summary": "Popup Push reaparece em DEV com permission granted; confirmado pelo usuário",
+    "evidence": "../../auditoria-2026-10-09/RELATORIO.md",
+    "closure": "Reprodução e prova no perfil DEV afetado; teste mock passando não encerra"
+  }
+]
