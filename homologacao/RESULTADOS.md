@@ -175,3 +175,26 @@ Há uma execução completa da API e E2E anterior à correção final de anotaç
 - Os itens OUTBOX-01 a OUTBOX-13 foram adicionados à matriz com o nível de evidência correspondente. Nenhuma linha DEV REAL foi marcada como aprovada.
 
 Status deste bloco: **PARCIAL**. O bug de provider ausente e a semântica local da fila foram corrigidos e testados. A homologação DEV real de providers, frequência do worker e concorrência com PostgreSQL continua pendente.
+
+## Barreira de comunicação QA (13/10/2026)
+
+Implementada localmente uma trilha técnica isolada `QA_COMMUNICATION_TEST`. O endpoint `POST /communication/qa-test` fica sob o guard global de Super Admin e valida ambiente do backend, IDs QA configurados no servidor, company ativa com slug reservado, OWNER ativo da mesma company, canal/provider GLOBAL ativo e destinatário/device allowlisted. A mensagem usa conteúdo fixo e inofensivo. O destinatário não vem do corpo da requisição; e-mail/WhatsApp vêm do perfil QA e Push exige uma subscription específica com authorization ativa para a company.
+
+`communication:worker:qa` chama `--qa-only`, rejeita ambiente não autorizado e consome no máximo uma delivery elegível do evento QA. Esse caminho não chama geração temporal, ingestão de notificações nem expansão comercial. O worker normal exclui o evento QA tanto da expansão quanto da seleção de deliveries. A validação de escopo/destinatário é repetida imediatamente antes de obter contexto do provider e enviar. A mesma chave idempotente reutiliza uma Outbox/delivery. O template QA é fixo e a rota genérica de edição de templates não pode alterá-lo. Não foi criada migration.
+
+O ambiente só é reconhecido por URL backend e identidade do banco configuradas no processo; `NODE_ENV` e dados enviados pelo navegador não habilitam QA. DEV exige a origem `api-dev.kalend.tech` junto ao banco `kalend_dev`; produção é recusada mesmo com as flags QA presentes. Staging tem identidade reconhecida, mas o adaptador Evolution atual ainda reconhece somente DEV/PRODUCTION; envio WhatsApp em staging permanece bloqueado até haver suporte explícito de ambiente nessa integração.
+
+| Verificação | Resultado | Camada |
+|---|---|---|
+| Policy QA, escopo, allowlist, bloqueio de produção, revalidação antes do provider e intent idempotente | 10 testes QA passaram dentro dos 43 testes focados de comunicação | TESTE UNITÁRIO / fixtures locais |
+| API completa | 42 arquivos; 709 testes passaram | TESTE UNITÁRIO e integração local com simuladores |
+| API E2E | 7 arquivos; 128 testes passaram | TESTE E2E LOCAL; não chama provider externo |
+| API TypeScript, lint e build | passaram usando Node 24.21.0 | CHECK local |
+| Prisma validate | passou com `DATABASE_URL` descartável apenas para carregar a configuração | CHECK local; nenhuma conexão/migration |
+| Web unitários | 17 arquivos; todos passaram após manter o evento QA fora do catálogo comercial | TESTE UNITÁRIO |
+| Web lint e build webpack | passaram; build fora do sandbox depois de erro de parsing de tsc no sandbox | CHECK local |
+| DEV real / mensagem externa | não executados; nenhum tenant ou contato criado e nenhum envio feito | NÃO TESTADO |
+
+Os cenários QA-COMM-01 a QA-COMM-07 estão marcados como evidência unitária local na matriz; QA-COMM-08 (Push device/authorization) permanece NÃO TESTADO. A matriz não representa prova DEV real. Para habilitar a primeira execução controlada, ainda será preciso criar a company `QA-COMMUNICATION-DEV`, OWNER e configurar IDs/destinatários QA exclusivamente no ambiente DEV; nenhum contato foi inventado nesta alteração. E-mail depende de provider QA; WhatsApp usa o provider GLOBAL já existente somente após allowlist de um número controlado; Push depende de um device QA e authorization própria.
+
+**Status da preparação QA: PARCIAL.** A barreira de código local passou testes; não há autorização/configuração para envio real nem homologação de recipient/device. Timer e execução recorrente continuam desativados.
