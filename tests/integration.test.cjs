@@ -376,6 +376,18 @@ test('Super Admin user list shows access status for orphan accounts and keeps th
   assert.match(html, /Super Admin/);
 });
 
+test('user deletion requires normalized email, handles API errors, removes the row and refetches', () => {
+  const source = fs.readFileSync('app/super-admin/usuarios/page.tsx', 'utf8');
+  const deletion = source.match(/async function deleteUser\(\) \{([\s\S]*?)\n  \}/)?.[1];
+  assert.ok(deletion);
+  assert.match(deletion, /deleteConfirmation\.trim\(\)\.toLowerCase\(\) !== deleteTarget\.email\.trim\(\)\.toLowerCase\(\)/);
+  assert.match(deletion, /method: "DELETE"/);
+  assert.match(deletion, /if \(!response\.ok\)/);
+  assert.match(deletion, /setUsers\(\(current\) => current\.filter\(\(user\) => user\.id !== deleteTarget\.id\)\)/);
+  assert.match(deletion, /await loadData\(\)/);
+  assert.match(source, /disabled=\{actionBusy \|\| deleteConfirmation\.trim\(\)\.toLowerCase\(\) !== deleteTarget\.email\.trim\(\)\.toLowerCase\(\)\}/);
+});
+
 test('reusable limit notice shows actual usage and grants commercial link only to managers', () => {
   const { PlanLimitNotice } = load('components/commercial-notice.tsx', { 'next/link': linkMock, './auth-provider': {} });
   const issue = { code: 'PLAN_LIMIT_REACHED', feature: 'professionals', current: 5, limit: 5, upgradeRequired: true };

@@ -195,7 +195,7 @@ export default function UsuariosPage() {
   }
 
   async function deleteUser() {
-    if (!deleteTarget || actionBusy || deleteConfirmation !== deleteTarget.email) return;
+    if (!deleteTarget || actionBusy || deleteConfirmation.trim().toLowerCase() !== deleteTarget.email.trim().toLowerCase()) return;
     setActionBusy(true); setActionError("");
     try {
       const response = await apiFetch(`/users/${deleteTarget.id}`, {
@@ -206,6 +206,18 @@ export default function UsuariosPage() {
         const body = await response.json().catch(() => null);
         throw new Error(body?.message || "Não foi possível excluir o usuário.");
       }
+      const wasOperationallyActive = deleteTarget.canAuthenticate;
+      const removedRoles = deleteTarget.memberships.filter((membership) => membership.isActive);
+      const removedAccessibleRoles = removedRoles.filter((membership) => membership.hasAccess);
+      setUsers((current) => current.filter((user) => user.id !== deleteTarget.id));
+      setSummary((current) => ({
+        ...current,
+        active: Math.max(0, current.active - (wasOperationallyActive ? 1 : 0)),
+        inactive: current.inactive + (wasOperationallyActive ? 1 : 0),
+        owners: Math.max(0, current.owners - removedRoles.filter((membership) => membership.role === "OWNER").length),
+        professionals: Math.max(0, current.professionals - removedAccessibleRoles.filter((membership) => membership.role === "PROFESSIONAL").length),
+        clients: Math.max(0, current.clients - removedAccessibleRoles.filter((membership) => membership.role === "CLIENT").length),
+      }));
       setDeleteTarget(null); setDeleteConfirmation("");
       await loadData();
     } catch (err) {
@@ -561,7 +573,7 @@ export default function UsuariosPage() {
             <p id="user-delete-warning">A conta de <strong>{deleteTarget.name}</strong> ({deleteTarget.email}) será desativada. Todas as memberships serão desativadas e as sessões revogadas. O histórico será preservado; esta operação não apaga registros históricos.</p>
             <label>Digite exatamente o e-mail <strong>{deleteTarget.email}</strong> para confirmar<input autoComplete="off" value={deleteConfirmation} onChange={(event) => setDeleteConfirmation(event.target.value)} /></label>
             {actionError && <p className="company-modal-error" role="alert">{actionError}</p>}
-            <footer><button type="button" className="company-modal-cancel" disabled={actionBusy} onClick={() => setDeleteTarget(null)}>Cancelar</button><button type="button" className="company-modal-delete" disabled={actionBusy || deleteConfirmation !== deleteTarget.email} onClick={() => void deleteUser()}>{actionBusy ? <Loader2 size={16} className="plans-spinner" /> : <Trash2 size={16} />}Excluir definitivamente</button></footer>
+            <footer><button type="button" className="company-modal-cancel" disabled={actionBusy} onClick={() => setDeleteTarget(null)}>Cancelar</button><button type="button" className="company-modal-delete" disabled={actionBusy || deleteConfirmation.trim().toLowerCase() !== deleteTarget.email.trim().toLowerCase()} onClick={() => void deleteUser()}>{actionBusy ? <Loader2 size={16} className="plans-spinner" /> : <Trash2 size={16} />}Excluir definitivamente</button></footer>
           </section>
         </div>
       )}
