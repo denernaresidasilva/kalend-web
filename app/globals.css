@@ -4100,6 +4100,10 @@ button:disabled { opacity: .55; cursor: not-allowed; }
 .communication-page .commercial-table-wrap { max-width: 100%; }
 .communication-qr { display: grid; gap: 12px; justify-items: start; margin: 24px 0; }.communication-qr img { max-width: 100%; width: 280px; height: auto; }
 .communication-page :where(textarea):focus-visible { outline: 3px solid #7657d5; outline-offset: 3px; }
+.communication-variable-buttons { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 16px; }
+.communication-variable-buttons button { border: 1px solid #b79a52; border-radius: 999px; background: #fffdf7; color: #201d16; padding: 6px 12px; font: inherit; font-size: .9rem; font-weight: 650; cursor: pointer; transition: background-color .15s ease, color .15s ease, border-color .15s ease; }
+.communication-variable-buttons button:hover, .communication-variable-buttons button:focus-visible, .communication-variable-buttons button.copied { background: #201d16; border-color: #d7b65c; color: #f3d67d; }
+.communication-variable-buttons button:focus-visible { outline: 3px solid #d7b65c; outline-offset: 2px; }
 @media (max-width: 760px) { .communication-form-grid { grid-template-columns: 1fr; }.communication-navigation button { flex: 1 1 140px; }.communication-page .commercial-actions button { flex: 1 1 180px; } }
 
 /* PWA controls reuse the existing account panel. */

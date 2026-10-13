@@ -19,6 +19,10 @@ export interface InternalTemplate {
   metaSubmittedAt?: string | null; metaSyncedAt?: string | null; metaStatusAt?: string | null;
   metaRejectionReason?: string | null;
 }
+export interface EffectiveCompanyTemplate {
+  event: string; channel: Channel; enabled: boolean; content: Record<string, string>;
+  source: "GLOBAL" | "COMPANY"; hasOverride: boolean; revision: number;
+}
 export interface MetaTemplate {
   id: string; externalId: string; name: string; language: string; category: string; status: string;
   components: { type: string; text?: string; format?: string }[]; syncedAt: string;
@@ -86,6 +90,7 @@ export const communication = {
   providers: (signal?: AbortSignal) => api<CommunicationProvider[]>("/communication/providers", { signal }),
   events: (signal?: AbortSignal) => api<CommunicationEvent[]>("/communication/events", { signal }),
   templates: (signal?: AbortSignal) => api<InternalTemplate[]>("/communication/templates", { signal }),
+  companyTemplates: (signal?: AbortSignal) => api<EffectiveCompanyTemplate[]>("/communication/company/templates", { signal }),
   metaTemplates: (signal?: AbortSignal) => api<MetaTemplate[]>("/communication/meta/templates", { signal }),
   outbox: (signal?: AbortSignal) => api<Outbox[]>("/communication/outbox", { signal }),
   outboxFailures: (signal?: AbortSignal) => api<OutboxFailure[]>("/communication/outbox/failures", { signal }),
@@ -97,6 +102,8 @@ export const communication = {
   sendTest: (p: ProviderName, template?: MetaReference, number?: string) => api<{ accepted: boolean; delivered: false }>(`/communication/providers/${p}/send-test`, { method: "POST", ...jsonBody(template ? { template } : p === "EVOLUTION" && number ? { number } : {}) }),
   pair: () => api<EvolutionConnection>("/communication/providers/EVOLUTION/pair", { method: "POST" }),
   saveTemplate: (event: string, channel: Channel, body: TemplatePatch) => api<InternalTemplate>(`/communication/templates/${encodeURIComponent(event)}/${channel}`, { method: "PATCH", ...jsonBody(body) }),
+  saveCompanyTemplate: (event: string, channel: Channel, body: { enabled: boolean; content: { text: string; subject?: string; title?: string } }) => api<EffectiveCompanyTemplate>(`/communication/company/templates/${encodeURIComponent(event)}/${channel}`, { method: "PATCH", ...jsonBody(body) }),
+  restoreCompanyTemplate: (event: string, channel: Channel) => api<EffectiveCompanyTemplate>(`/communication/company/templates/${encodeURIComponent(event)}/${channel}`, { method: "DELETE" }),
   syncMeta: (after?: string) => api<{ synced: number; after: string | null }>("/communication/meta/templates/sync", { method: "POST", ...jsonBody(after ? { after } : {}) }),
   createMeta: (templateId: string) => api<{ template: InternalTemplate; alreadySubmitted: boolean; syncRequired: true }>("/communication/meta/templates", { method: "POST", ...jsonBody({ templateId }) }),
   reprocess: (id: string) => api<{ queued: true }>(`/communication/deliveries/${encodeURIComponent(id)}/reprocess`, { method: "POST" }),

@@ -148,7 +148,8 @@ test('internal template validates event variables, persists exact text contract 
   labelInput(h.render(), 'Conteúdo em texto').props.onChange({ target: { value: '<img src=x onerror=alert(1)> {{nome}}' } });
   assert.match(h.html(), /&lt;img/); assert.doesNotMatch(h.html(), /<img/); assert.match(h.html(), /\[nome\]/);
   await h.render().props.onSubmit({ preventDefault() {} });
-  assert.deepEqual(JSON.parse(JSON.stringify(calls[0])), ['TRIAL_STARTED', 'EMAIL', { enabled: false, content: { subject: 'Olá {{nome}}', text: '<img src=x onerror=alert(1)> {{nome}}' } }]);
+  assert.deepEqual(JSON.parse(JSON.stringify(calls[0])), ['TRIAL_STARTED', 'EMAIL', { enabled: true, content: { subject: 'Olá {{nome}}', text: '<img src=x onerror=alert(1)> {{nome}}' } }]);
+  assert.match(h.html(), /Template salvo com sucesso/);
   labelInput(h.render(), 'Conteúdo em texto').props.onChange({ target: { value: '{{token}}' } }); await h.render().props.onSubmit({ preventDefault() {} }); assert.equal(calls.length, 1); assert.match(h.html(), /Use apenas as variáveis/);
 });
 test('Meta saves one local source with examples and pending status, without independent official content', async () => {
@@ -160,9 +161,9 @@ test('Meta saves one local source with examples and pending status, without inde
   assert.deepEqual(JSON.parse(JSON.stringify(calls[0][2].content)), { text: 'Olá {{nome}}, tudo bem?', name: 'hello', language: 'pt_BR', category: 'UTILITY', examples: { nome: 'Maria' } });
   assert.equal(nodes(h.render(), n => n.type === 'input' && n.props.type === 'checkbox')[0].props.disabled, true);
 });
-test('Gmail and Push templates cannot activate an unavailable provider', () => {
+test('template activation is independent from provider availability', () => {
   const h = harness('components/communication-templates.tsx', 'InternalTemplateEditor', { event: { event: 'OWNER_WELCOME', variables: ['nome'] }, channel: 'PUSH', providers: [provider('PUSH_PENDING', { adapterAvailable: false })], saved() {} });
-  const checkbox = nodes(h.render(), n => n.type === 'input' && n.props.type === 'checkbox')[0]; assert.equal(checkbox.props.disabled, true); assert.equal(checkbox.props.checked, false);
+  const checkbox = nodes(h.render(), n => n.type === 'input' && n.props.type === 'checkbox')[0]; assert.equal(checkbox.props.disabled, false); assert.equal(checkbox.props.checked, true);
 });
 test('events come from API and templates handle an empty event catalog', () => {
   for (const data of [[], [{ event: 'FUTURE_BACKEND_EVENT', variables: ['nome'] }]]) {
@@ -288,14 +289,49 @@ test('Meta uncertain submission blocks repeat and persisted state survives edito
   h = harness('components/communication-templates.tsx', 'InternalTemplateEditor', { ...props, initial: { ...initial, metaSubmissionState: 'UNCERTAIN' } }, mocks);
   assert.equal(nodes(h.render(), n => n.type === 'button' && n.props.children === 'Enviar conteúdo salvo para aprovação')[0].props.disabled, true);
 });
-test('Push editor saves URL/action/icon through existing template and previews fallback', async () => {
+test('Push editor persists only the supported title and body fields', async () => {
   const calls = [];
-  const h = harness('components/communication-templates.tsx', 'InternalTemplateEditor', { event: { event: 'OWNER_WELCOME', variables: ['nome', 'link'] }, channel: 'PUSH', providers: [provider('PUSH_PENDING')], saved() {} }, { '@/lib/communication': { ...contract, communication: { saveTemplate: async (...args) => { calls.push(args); return {}; } } } });
-  for (const [label, value] of [['Título', 'Atualização'], ['Mensagem', 'Olá {{nome}}'], ['Link', '/agenda/agendamento/123'], ['Texto do botão', 'VER AGENDAMENTO']]) labelInput(h.render(), label).props.onChange({ target: { value } });
-  labelInput(h.render(), 'Ícone').props.onChange({ target: { value: '/icons/kalend-192.png' } });
+  const h = harness('components/communication-templates.tsx', 'InternalTemplateEditor', { event: { event: 'OWNER_WELCOME', variables: ['nome'] }, channel: 'PUSH', providers: [provider('PUSH_PENDING')], saved() {} }, { '@/lib/communication': { ...contract, communication: { saveTemplate: async (...args) => { calls.push(args); return {}; } } } });
+  for (const [label, value] of [['Título', 'Atualização'], ['Mensagem', 'Olá {{nome}}']]) labelInput(h.render(), label).props.onChange({ target: { value } });
   await h.render().props.onSubmit({ preventDefault() {} });
-  assert.deepEqual(JSON.parse(JSON.stringify(calls[0][2].content)), { title: 'Atualização', text: 'Olá {{nome}}', url: '/agenda/agendamento/123', actionText: 'VER AGENDAMENTO', icon: '/icons/kalend-192.png' });
-  assert.match(h.html(), /somente em navegadores com suporte/); assert.match(h.html(), /VER AGENDAMENTO/);
+  assert.deepEqual(JSON.parse(JSON.stringify(calls[0][2].content)), { title: 'Atualização', text: 'Olá {{nome}}' });
+  assert.match(h.html(), /Atualização/); assert.match(h.html(), /Olá \[nome\]/);
+});
+test('template variable buttons use friendly event-supported labels and copy exact placeholders', async () => {
+  const copied = [];
+  const h = harness('components/communication-templates.tsx', 'InternalTemplateEditor', { event: { event: 'TRIAL_STARTED', variables: ['nome', 'empresa', 'plano', 'dias_trial', 'vencimento'] }, channel: 'EMAIL', providers: [provider()], saved() {} }, {}, { navigator: { clipboard: { writeText: async value => copied.push(value) } } });
+  const name = nodes(h.render(), node => node.type === 'button' && node.props['aria-label'] === 'Copiar variável Nome')[0];
+  assert.equal(name.props.title, 'Copiar {{nome}}');
+  await name.props.onClick(); await tick();
+  assert.deepEqual(copied, ['{{nome}}']);
+  assert.match(h.html(), /\{\{nome\}\} copiado/);
+  for (const label of ['Empresa', 'Plano', 'Dias do teste', 'Vencimento']) assert.ok(nodes(h.render(), node => node.type === 'button' && node.props.children === label).length);
+  assert.equal(nodes(h.render(), node => node.type === 'button' && node.props.children === 'Valor').length, 0);
+  const payment = harness('components/communication-templates.tsx', 'InternalTemplateEditor', { event: { event: 'PAYMENT_APPROVED', variables: ['nome', 'empresa', 'valor'] }, channel: 'PUSH', providers: [provider('PUSH_PENDING')], saved() {} });
+  assert.equal(nodes(payment.render(), node => node.type === 'button' && node.props.children === 'Valor').length, 1);
+  assert.equal(nodes(payment.render(), node => node.type === 'button' && node.props.children === 'Plano').length, 0);
+  const password = harness('components/communication-templates.tsx', 'InternalTemplateEditor', { event: { event: 'SECURITY_PASSWORD_CHANGED', variables: ['nome'] }, channel: 'WHATSAPP', providers: [provider('EVOLUTION')], saved() {} });
+  assert.deepEqual(nodes(password.render(), node => node.type === 'button' && node.props['aria-label']?.startsWith('Copiar variável')).map(node => node.props.children), ['Nome']);
+});
+test('variable copy uses a document fallback and shows a visible error when both clipboard paths fail', async () => {
+  let copiedText = '';
+  const document = {
+    body: { appendChild(field) { copiedText = field.value; } },
+    createElement() { return { value: '', style: {}, setAttribute() {}, select() {}, remove() {} }; },
+    execCommand(command) { return command === 'copy'; },
+  };
+  let h = harness('components/communication-templates.tsx', 'InternalTemplateEditor', { event: { event: 'OWNER_WELCOME', variables: ['empresa'] }, channel: 'WHATSAPP', providers: [provider('EVOLUTION')], saved() {} }, {}, { navigator: {}, document });
+  await nodes(h.render(), node => node.type === 'button' && node.props['aria-label'] === 'Copiar variável Empresa')[0].props.onClick();
+  assert.equal(copiedText, '{{empresa}}'); assert.match(h.html(), /\{\{empresa\}\} copiado/);
+  h = harness('components/communication-templates.tsx', 'InternalTemplateEditor', { event: { event: 'OWNER_WELCOME', variables: ['nome'] }, channel: 'EMAIL', providers: [provider()], saved() {} }, {}, { navigator: { clipboard: { writeText: async () => { throw new Error('denied'); } } } });
+  await nodes(h.render(), node => node.type === 'button' && node.props['aria-label'] === 'Copiar variável Nome')[0].props.onClick();
+  await tick();
+  assert.match(h.html(), /Não foi possível copiar a variável/);
+});
+test('failed template save never reports success', async () => {
+  const h = harness('components/communication-templates.tsx', 'InternalTemplateEditor', { event: { event: 'OWNER_WELCOME', variables: ['nome'] }, channel: 'EMAIL', providers: [provider()], saved() {} }, { '@/lib/communication': { ...contract, communication: { saveTemplate: async () => { throw new Error('Save failed safely'); } } } });
+  await h.render().props.onSubmit({ preventDefault() {} });
+  assert.match(h.html(), /Save failed safely/); assert.doesNotMatch(h.html(), /Template salvo com sucesso/);
 });
 test('resource retry inside a form is explicitly a non-submit button', () => {
   const { ResourceState } = load('components/communication-resource.tsx'); let retries = 0;
