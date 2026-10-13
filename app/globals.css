@@ -3993,6 +3993,36 @@ button:disabled { opacity: .55; cursor: not-allowed; }
 .session-navigation { position: relative; }
 .session-navigation nav { position: absolute; right: 0; top: 30px; display: grid; gap: 14px; padding: 20px; min-width: 180px; border-radius: 12px; background: #171b39; box-shadow: 0 6px 20px #0003; }
 
+.company-row-actions { display: flex; align-items: center; justify-content: flex-end; gap: 7px; white-space: nowrap; }
+.company-row-actions button { min-height: 34px; border: 1px solid #e4e1eb; border-radius: 9px; background: white; color: #302d3a; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; }
+.company-row-actions .company-edit-button { padding: 0 10px; font-size: 11px; font-weight: 650; }
+.company-row-actions .company-edit-button:hover { border-color: #9a7b2f; color: #8a6b1f; }
+.company-row-actions .company-delete-button { width: 34px; color: #b42318; }
+.company-row-actions .company-delete-button:hover { background: #fff5f4; border-color: #efb2ad; }
+.company-action-notice { position: fixed; z-index: 80; top: 18px; right: 20px; display: flex; align-items: center; gap: 16px; padding: 13px 16px; border: 1px solid #c5e7d1; border-radius: 12px; background: #f2fbf5; color: #17623a; box-shadow: 0 8px 30px #17211b20; font-size: 13px; }
+.company-action-notice button { display: inline-flex; padding: 2px; border: 0; background: transparent; color: inherit; cursor: pointer; }
+.company-modal-backdrop { position: fixed; z-index: 100; inset: 0; display: grid; place-items: center; overflow-y: auto; padding: 24px; background: #1010189c; }
+.company-modal { width: min(100%, 560px); max-height: min(90vh, 850px); overflow-y: auto; padding: 24px; border: 1px solid #e7e2d6; border-radius: 18px; background: #fff; color: #29272f; box-shadow: 0 24px 80px #0005; }
+.company-modal > header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 22px; }
+.company-modal > header span { color: #927328; font-size: 10px; font-weight: 800; letter-spacing: .12em; }
+.company-modal > header h2 { margin: 6px 0 0; font-size: 22px; }
+.company-modal > header button { width: 34px; height: 34px; border: 1px solid #e8e5ec; border-radius: 9px; background: white; color: #625f69; cursor: pointer; }
+.company-modal form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.company-modal label { display: grid; gap: 7px; color: #46434d; font-size: 12px; font-weight: 650; }
+.company-modal input, .company-modal select { width: 100%; min-width: 0; min-height: 42px; padding: 9px 11px; border: 1px solid #dedbe4; border-radius: 9px; background: #fff; color: #2e2b34; font: inherit; font-weight: 450; }
+.company-slug-input { display: flex; align-items: center; gap: 7px; }
+.company-slug-input span { flex: 0 0 auto; color: #77737f; font-size: 11px; font-weight: 450; }
+.company-modal form > footer, .company-modal > footer { grid-column: 1 / -1; display: flex; justify-content: flex-end; gap: 10px; margin-top: 8px; }
+.company-modal form > footer button, .company-modal > footer button { min-height: 40px; padding: 0 14px; border-radius: 9px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; font-size: 12px; font-weight: 700; cursor: pointer; }
+.company-modal-cancel { border: 1px solid #dedbe4; background: white; color: #504d57; }
+.company-modal-save { border: 1px solid #97772a; background: #171717; color: #f2d58c; }
+.company-delete-modal > p { color: #5f5a62; font-size: 13px; line-height: 1.7; }
+.company-delete-modal > label { margin-top: 20px; }
+.company-modal-delete { border: 1px solid #b42318; background: #b42318; color: white; }
+.company-modal button:disabled { opacity: .55; cursor: not-allowed; }
+.company-modal-error { grid-column: 1 / -1; margin: 0; color: #b42318; font-size: 12px; }
+@media (max-width: 640px) { .company-modal-backdrop { padding: 12px; } .company-modal { padding: 18px; } .company-modal form { grid-template-columns: 1fr; } .company-row-actions .company-edit-button { width: 34px; padding: 0; } .company-row-actions .company-edit-button span { display: none; } }
+
 /* Commercial administration shares Kalend's typography, purple and neutral palette. */
 .commercial-page { width: 100%; max-width: 1280px; margin: 0 auto; padding: 32px; color: #26243a; }
 .account-page { max-width: 1100px; }

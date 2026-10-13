@@ -2,8 +2,8 @@
 
 import { apiFetch } from "@/lib/api";
 
-import { Building2, ChevronRight, CreditCard, Loader2, Plus, Search, Users, WalletCards } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { Building2, Check, ChevronRight, CreditCard, Loader2, Pencil, Plus, Search, Trash2, Users, WalletCards, X } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
@@ -11,6 +11,7 @@ type Company = {
   id: string;
   name: string;
   slug: string;
+  timezone: string;
   status: string;
   createdAt: string;
   updatedAt: string;
@@ -37,6 +38,9 @@ type Company = {
     } | null;
   } | null;
 };
+
+type PlanOption = { id: string; name: string; isActive: boolean };
+type CompanyStatus = "TRIAL" | "ACTIVE" | "SUSPENDED" | "CANCELED";
 
 
 function formatDate(value: string | null | undefined) {
@@ -109,6 +113,19 @@ export default function CompaniesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
+  const [plans, setPlans] = useState<PlanOption[]>([]);
+  const [editing, setEditing] = useState<Company | null>(null);
+  const [editDraft, setEditDraft] = useState({ name: "", slug: "", timezone: "America/Sao_Paulo", status: "TRIAL" as CompanyStatus, ownerEmail: "", planId: "" });
+  const [deleteTarget, setDeleteTarget] = useState<Company | null>(null);
+  const [deleteConfirmation, setDeleteConfirmation] = useState("");
+  const [actionBusy, setActionBusy] = useState(false);
+  const [actionError, setActionError] = useState("");
+  const [notice, setNotice] = useState("");
+
+  const reloadCompanies = useCallback(async () => {
+    const response = await apiFetch("/companies", { cache: "no-store" });
+    setCompanies(await response.json());
+  }, []);
 
   useEffect(() => {
     async function loadCompanies() {
@@ -116,16 +133,7 @@ export default function CompaniesPage() {
         setLoading(true);
         setError("");
 
-        const response = await apiFetch(
-          `/companies`,
-          {
-            cache: "no-store",
-          }
-        );
-
-        const data: Company[] = await response.json();
-
-        setCompanies(data);
+        await reloadCompanies();
       } catch (err) {
         setError(
           err instanceof Error
@@ -138,7 +146,75 @@ export default function CompaniesPage() {
     }
 
     loadCompanies();
-  }, []);
+  }, [reloadCompanies]);
+
+  async function openEdit(company: Company) {
+    setActionError("");
+    setNotice("");
+    setEditing(company);
+    setEditDraft({
+      name: company.name,
+      slug: company.slug,
+      timezone: company.timezone || "America/Sao_Paulo",
+      status: company.status as CompanyStatus,
+      ownerEmail: company.owner?.email ?? "",
+      planId: company.subscription?.plan?.id ?? "",
+    });
+    if (!plans.length) {
+      try {
+        const response = await apiFetch("/plans", { cache: "no-store" });
+        setPlans(await response.json());
+      } catch (err) {
+        setActionError(err instanceof Error ? err.message : "Não foi possível carregar os planos.");
+      }
+    }
+  }
+
+  async function saveCompany(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!editing || actionBusy) return;
+    setActionBusy(true);
+    setActionError("");
+    try {
+      await apiFetch(`/companies/${editing.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...editDraft,
+          ownerEmail: editDraft.ownerEmail || undefined,
+          planId: editing.subscription?.status === "TRIALING" ? editDraft.planId || undefined : undefined,
+        }),
+      });
+      await reloadCompanies();
+      setEditing(null);
+      setNotice("Empresa atualizada com sucesso.");
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Não foi possível atualizar a empresa.");
+    } finally {
+      setActionBusy(false);
+    }
+  }
+
+  async function deleteCompany() {
+    if (!deleteTarget || deleteConfirmation !== deleteTarget.name || actionBusy) return;
+    setActionBusy(true);
+    setActionError("");
+    try {
+      await apiFetch(`/companies/${deleteTarget.id}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ confirmationName: deleteConfirmation }),
+      });
+      setCompanies((current) => current.filter((company) => company.id !== deleteTarget.id));
+      setNotice("Empresa excluída com sucesso.");
+      setDeleteTarget(null);
+      setDeleteConfirmation("");
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Não foi possível excluir a empresa.");
+    } finally {
+      setActionBusy(false);
+    }
+  }
 
   const filteredCompanies = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -179,6 +255,7 @@ export default function CompaniesPage() {
 
   return (
     <main className="companies-admin-page">
+      {notice && <div className="company-action-notice" role="status">{notice}<button type="button" aria-label="Fechar mensagem" onClick={() => setNotice("")}><X size={16} /></button></div>}
 
       <section className="companies-main">
         <header className="companies-topbar">
@@ -469,6 +546,26 @@ export default function CompaniesPage() {
                             </td>
 
                             <td>
+                              <div className="company-row-actions">
+                              <button
+                                type="button"
+                                className="company-edit-button"
+                                title="Editar empresa"
+                                aria-label={`Editar empresa ${company.name}`}
+                                onClick={() => void openEdit(company)}
+                              >
+                                <Pencil size={15} />
+                                <span>Editar</span>
+                              </button>
+                              <button
+                                type="button"
+                                className="company-delete-button"
+                                title="Excluir empresa"
+                                aria-label={`Excluir empresa ${company.name}`}
+                                onClick={() => { setActionError(""); setDeleteConfirmation(""); setDeleteTarget(company); }}
+                              >
+                                <Trash2 size={15} />
+                              </button>
                               <button
                                 type="button"
                                 className="company-open-button"
@@ -483,6 +580,7 @@ export default function CompaniesPage() {
                                   size={18}
                                 />
                               </button>
+                              </div>
                             </td>
                           </tr>
                         )
@@ -494,6 +592,34 @@ export default function CompaniesPage() {
           </section>
         </div>
       </section>
+      {editing && (
+        <div className="company-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !actionBusy) setEditing(null); }}>
+          <section className="company-modal" role="dialog" aria-modal="true" aria-labelledby="company-edit-title">
+            <header><div><span>ADMINISTRAÇÃO</span><h2 id="company-edit-title">Editar empresa</h2></div><button type="button" aria-label="Fechar" disabled={actionBusy} onClick={() => setEditing(null)}><X size={19} /></button></header>
+            <form onSubmit={saveCompany}>
+              <label>Nome da empresa<input required maxLength={120} value={editDraft.name} onChange={(event) => setEditDraft({ ...editDraft, name: event.target.value })} /></label>
+              <label>Slug / subdomínio<div className="company-slug-input"><input required maxLength={63} value={editDraft.slug} onChange={(event) => setEditDraft({ ...editDraft, slug: event.target.value })} /><span>.kalend.tech</span></div></label>
+              <label>Responsável (e-mail de usuário existente)<input type="email" value={editDraft.ownerEmail} onChange={(event) => setEditDraft({ ...editDraft, ownerEmail: event.target.value })} /><small>Use o e-mail de um usuário ativo existente; deixe vazio para manter a situação atual.</small></label>
+              <label>Plano<select disabled={editing.subscription?.status !== "TRIALING"} value={editDraft.planId} onChange={(event) => setEditDraft({ ...editDraft, planId: event.target.value })}><option value="">Manter plano atual</option>{plans.filter((plan) => plan.isActive).map((plan) => <option key={plan.id} value={plan.id}>{plan.name}</option>)}</select><small>O plano pode ser ajustado aqui durante o teste grátis. Para assinaturas fora do teste, use a gestão de assinaturas para preservar a cobrança.</small></label>
+              <label>Status<select value={editDraft.status} onChange={(event) => setEditDraft({ ...editDraft, status: event.target.value as CompanyStatus })}><option value="TRIAL">Em teste</option><option value="ACTIVE">Ativa</option><option value="SUSPENDED">Suspensa</option><option value="CANCELED">Cancelada</option></select></label>
+              <label>Fuso horário<input required maxLength={80} value={editDraft.timezone} onChange={(event) => setEditDraft({ ...editDraft, timezone: event.target.value })} /></label>
+              {actionError && <p className="company-modal-error" role="alert">{actionError}</p>}
+              <footer><button type="button" className="company-modal-cancel" disabled={actionBusy} onClick={() => setEditing(null)}>Cancelar</button><button type="submit" className="company-modal-save" disabled={actionBusy}>{actionBusy ? <Loader2 size={16} className="plans-spinner" /> : <Check size={16} />}Salvar alterações</button></footer>
+            </form>
+          </section>
+        </div>
+      )}
+      {deleteTarget && (
+        <div className="company-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !actionBusy) setDeleteTarget(null); }}>
+          <section className="company-modal company-delete-modal" role="alertdialog" aria-modal="true" aria-labelledby="company-delete-title" aria-describedby="company-delete-warning">
+            <header><div><span>AÇÃO PERMANENTE</span><h2 id="company-delete-title">Excluir empresa</h2></div><button type="button" aria-label="Fechar" disabled={actionBusy} onClick={() => setDeleteTarget(null)}><X size={19} /></button></header>
+            <p id="company-delete-warning">Você está prestes a excluir <strong>{deleteTarget.name}</strong>. Esta ação é permanente e remove os dados vinculados à empresa, incluindo vínculos, assinatura, pagamentos, notificações, comunicação e configuração de integração. Usuários compartilhados permanecem na plataforma. A conexão Evolution da empresa é removida; conexões GLOBAL não são afetadas.</p>
+            <label>Digite exatamente <strong>{deleteTarget.name}</strong> para confirmar<input autoComplete="off" value={deleteConfirmation} onChange={(event) => setDeleteConfirmation(event.target.value)} /></label>
+            {actionError && <p className="company-modal-error" role="alert">{actionError}</p>}
+            <footer><button type="button" className="company-modal-cancel" disabled={actionBusy} onClick={() => setDeleteTarget(null)}>Cancelar</button><button type="button" className="company-modal-delete" disabled={actionBusy || deleteConfirmation !== deleteTarget.name} onClick={() => void deleteCompany()}>{actionBusy ? <Loader2 size={16} className="plans-spinner" /> : <Trash2 size={16} />}Excluir definitivamente</button></footer>
+          </section>
+        </div>
+      )}
     </main>
   );
 }
