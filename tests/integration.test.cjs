@@ -284,6 +284,40 @@ const regularizationFixture = () => ({ serverNow: "2026-10-01T12:00:00Z", trial:
   gateways: [{ provider: 'STRIPE', environment: 'SANDBOX', capabilities: gatewayFixture().capabilities }], pendingCheckout: null,
 });
 
+test('account plans page goes straight to plan selection and keeps management outside the page', () => {
+  let panelProps;
+  const profile = { user: { id: 'owner' }, systemRole: 'USER', selectedCompanyId: 'company', memberships: [{ role: 'OWNER', company: { id: 'company', name: 'Empresa QA' } }] };
+  const Page = load('components/plans/billing-page.tsx', {
+    'next/link': linkMock,
+    '@/components/auth-provider': { useAuth: () => ({ profile, loading: false, error: '', reload() {} }) },
+    '@/components/regularization-panel': { RegularizationPanel: props => { panelProps = props; return React.createElement('section', null, 'CATÁLOGO + CHECKOUT'); } },
+    '@/components/theme/theme-control': { ThemeControl: () => React.createElement('span', null, 'TEMA') },
+  }).BillingPage;
+  const html = textOf(React.createElement(Page));
+  assert.match(html, /Escolha seu plano/);
+  assert.match(html, /Encontre a opção ideal para o seu negócio/);
+  assert.match(html, /CATÁLOGO \+ CHECKOUT/);
+  assert.doesNotMatch(html, /Minha conta \/ Selecionar empresa|Escolha o plano para o próximo passo|Explorar planos|TEMA/);
+  assert.equal(panelProps.companyId, 'company');
+  assert.equal(panelProps.recovery, false);
+  assert.equal(panelProps.plansOnly, true);
+});
+
+test('plans-only regularization view hides subscription management while preserving account cancellation', () => {
+  const state = regularizationFixture();
+  const h = harness('components/regularization-panel.tsx', 'RegularizationPanel', {
+    '@/components/auth-provider': { useAuth: () => ({ profile: { user: { id: 'owner' } } }) },
+    '@/lib/api': { jsonBody: value => ({ body: JSON.stringify(value) }), tenantApi: async () => state },
+  });
+  const clean = textOf(h.render({ companyId: 'company', state, plansOnly: true }));
+  assert.match(clean, /Premium/);
+  assert.match(clean, /Teste disponível: 14 dias/);
+  assert.doesNotMatch(clean, /Assinatura e pagamentos|Atualizar estado|Em trial|Acesso comercial permitido|Sua sessão permanece autenticada|Cancelar assinatura imediatamente|não há troca com prorrata/);
+  const account = textOf(h.render({ companyId: 'company', state }));
+  assert.match(account, /Assinatura e pagamentos/);
+  assert.match(account, /Cancelar assinatura imediatamente/);
+});
+
 test('expired Premium trial allows explicit Pro checkout; no amount, company, status or inherited trial plan is sent', async () => {
   const calls = []; let data = regularizationFixture();
   const h = harness('components/regularization-panel.tsx', 'RegularizationPanel', { '@/lib/api': { jsonBody: value => ({ body: JSON.stringify(value) }), tenantApi: async (company, path, init) => {

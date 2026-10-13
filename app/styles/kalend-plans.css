@@ -2,6 +2,13 @@
 .k-public-header { padding: 16px max(16px,calc((100vw - 1280px)/2)); background: var(--kalend-surface); border-bottom: 1px solid var(--kalend-border); display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
 .k-public-header > a { font-size: 24px; font-weight: 700; text-decoration: none; }.k-public-header a { min-height: 44px; display: inline-flex; align-items: center; }
 .k-plans-container { width: min(100%,1280px); margin: 0 auto; padding: 24px 16px 48px; }
+.k-plan-selection-page { padding-top: 12px; }
+.k-plan-selection-heading { padding: 16px 0 8px; max-width: 760px; }
+.k-plan-selection-heading h1 { margin: 8px 0; font-size: clamp(30px,4vw,44px); letter-spacing: -.035em; }
+.k-plan-selection-heading p { margin: 0; color: var(--kalend-text-secondary); font-size: 17px; line-height: 1.55; }
+.k-billing-plans-only .commercial-panel { margin-top: 20px; }
+.k-billing-plans-only .commercial-form > fieldset { display: grid; gap: 16px; }
+.k-billing-plans-only .commercial-form > fieldset > label:not(.commercial-check) { max-width: 480px; }
 .k-plans-hero { padding: 48px 0; max-width: 800px; }
 .k-eyebrow { color: var(--kalend-primary); font-size: 12px; font-weight: 700; letter-spacing: .12em; }
 .k-plans-hero h1 { font-size: clamp(32px,5vw,60px); font-weight: 700; letter-spacing: -.04em; line-height: 1.08; margin: 20px 0; }
