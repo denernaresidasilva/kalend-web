@@ -7,7 +7,7 @@ import {
   LockKeyhole,
   Mail,
 } from "lucide-react";
-import { FormEvent, useState } from "react";
+import { FormEvent, useCallback, useState, useSyncExternalStore } from "react";
 
 import { KalendLogo } from "@/components/kalend-logo";
 import { ThemeControl } from "@/components/theme/theme-control";
@@ -26,6 +26,19 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const subscribeToLocation = useCallback((notify: () => void) => {
+    window.addEventListener("popstate", notify);
+    return () => window.removeEventListener("popstate", notify);
+  }, []);
+  const search = useSyncExternalStore(
+    subscribeToLocation,
+    () => window.location.search,
+    () => "",
+  );
+  const loginNotice = new URLSearchParams(search).get("reason") === "no-active-company"
+    ? "Esta conta não possui uma empresa vinculada."
+    : "";
+  const visibleError = error || loginNotice;
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -114,10 +127,10 @@ export default function LoginPage() {
           </div>
 
           {selection ? <>
-            {error && <p className="new-company-message error" role="alert">{error}</p>}
+            {visibleError && <p className="new-company-message error" role="alert">{visibleError}</p>}
             {linkedCompanies(selection).length > 1 ? <CompanySelector profile={selection} busy={loading} select={chooseCompany} /> : linkedCompanies(selection).length === 1 ? <button type="button" className="login-button" disabled={loading} onClick={() => void chooseCompany(linkedCompanies(selection)[0].company.id)}>{loading ? "Selecionando empresa…" : "Tentar acessar a empresa"}</button> : <p>Nenhuma empresa vinculada à sua conta.</p>}
           </> : <form onSubmit={handleSubmit}>
-            {error && <p className="new-company-message error" role="alert">{error}</p>}
+            {visibleError && <p className="new-company-message error" role="alert">{visibleError}</p>}
             <label htmlFor="email">E-mail</label>
 
             <div className="input-wrapper">

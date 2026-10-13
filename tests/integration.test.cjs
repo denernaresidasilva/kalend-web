@@ -133,11 +133,11 @@ test('login form loads me, navigates, clears password and handles invalid creden
     const calls = []; const messages = []; let cleared = false; let reset = false;
     const { api } = client(() => response(200));
     const Login = load('app/page.tsx', {
-      react: { ...React, useState: initial => [initial, value => messages.push(value)] },
+      react: { ...React, useState: initial => [initial, value => messages.push(value)], useEffect: () => {}, useCallback: fn => fn, useSyncExternalStore: () => "" },
       'next/navigation': { useRouter: () => ({ replace: path => calls.push(path) }) },
       '@/components/auth-provider': { useAuth: () => ({ reload: async () => { calls.push('me'); return { systemRole: 'SUPER_ADMIN', user: { id: 'admin-fixture' }, memberships: [], selectedCompanyId: null }; } }) },
       '@/lib/api': { ...api, api: async path => { calls.push(path); if (invalid) throw new api.ApiError(401); } },
-    }, { FormData: class { get(key) { return key === 'email' ? 'admin@example.test' : 'test-password'; } } }).default;
+    }, { FormData: class { get(key) { return key === 'email' ? 'admin@example.test' : 'test-password'; } }, URLSearchParams }).default;
     const tree = Login();
     function findForm(node) { if (!node || typeof node !== 'object') return; if (node.type === 'form') return node; for (const child of React.Children.toArray(node.props?.children)) { const found = findForm(child); if (found) return found; } }
     const password = { set value(value) { cleared = value === ''; } };
@@ -335,6 +335,45 @@ test('tenant access 403 refreshes the auth profile so stale company selection is
     error.status === 403 && error.errorCode === 'TENANT_ACCESS_REQUIRED');
   assert.equal(calls.length, 1);
   assert.deepEqual(events, ['kalend:tenant-changed']);
+});
+
+test('NO_ACTIVE_COMPANY ends local auth state and redirects protected routes to login with a friendly notice', async () => {
+  const redirects = [];
+  const { api, events } = client(() => response(403, {
+    code: 'NO_ACTIVE_COMPANY',
+    message: 'Esta conta não possui uma empresa vinculada.',
+  }), { window: { dispatchEvent: event => events.push(event.type), location: { pathname: '/conta', replace: value => redirects.push(value) } } });
+  await assert.rejects(api.api('/auth/me'), error =>
+    error.status === 403 && error.errorCode === 'NO_ACTIVE_COMPANY' && error.message === 'Esta conta não possui uma empresa vinculada.');
+  assert.ok(events.includes('kalend:session-ended'));
+  assert.deepEqual(redirects, ['/?reason=no-active-company']);
+});
+
+test('Super Admin user list shows access status for orphan accounts and keeps their management actions visible', () => {
+  const date = '2026-10-13T12:00:00.000Z';
+  const company = { id: 'company-a', name: 'Empresa A', slug: 'empresa-a', status: 'ACTIVE', isActive: true };
+  const users = [
+    { id: 'admin', name: 'Super Admin', email: 'admin@example.test', phone: null, isActive: true, accountActive: true, canAuthenticate: true, canAccessTenant: true, isSuperAdmin: true, createdAt: date, updatedAt: date, memberships: [] },
+    { id: 'orphan', name: 'Usuário órfão', email: 'orphan@example.test', phone: null, isActive: false, accountActive: true, canAuthenticate: false, canAccessTenant: false, isSuperAdmin: false, createdAt: date, updatedAt: date, memberships: [] },
+    { id: 'linked', name: 'OWNER ativo', email: 'owner@example.test', phone: null, isActive: true, accountActive: true, canAuthenticate: true, canAccessTenant: true, isSuperAdmin: false, createdAt: date, updatedAt: date, memberships: [{ id: 'membership', role: 'OWNER', isActive: true, hasAccess: true, isLinked: true, createdAt: date, company }] },
+  ];
+  const summary = { total: 3, active: 2, inactive: 1, superAdmins: 1, owners: 1, professionals: 0, clients: 0 };
+  let state = 0;
+  const stateValues = [users, summary, '', false, '', [], false, null, { name: '', phone: '', isActive: false, memberships: [] }, null, '', false, ''];
+  const react = { ...React, useState: () => [stateValues[state++], () => {}], useEffect: () => {}, useMemo: fn => fn(), useCallback: fn => fn };
+  const Page = load('app/super-admin/usuarios/page.tsx', {
+    react,
+    '@/lib/api': { apiFetch: async () => response(200, []) },
+  }).default;
+  const html = renderToStaticMarkup(React.createElement(Page));
+  assert.match(html, /Usuário órfão/);
+  assert.match(html, /orphan@example\.test/);
+  assert.match(html, /Sem empresa/);
+  assert.match(html, /Usuários ativos<\/span><strong>2/);
+  assert.match(html, /Inativos<\/span><strong>1/);
+  assert.match(html, /aria-label="Editar usuário Usuário órfão"/);
+  assert.match(html, /aria-label="Excluir usuário Usuário órfão"/);
+  assert.match(html, /Super Admin/);
 });
 
 test('reusable limit notice shows actual usage and grants commercial link only to managers', () => {

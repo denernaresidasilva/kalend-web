@@ -2,6 +2,7 @@ import { parseCommercialIssue, type CommercialIssue } from "./commercial-errors"
 // Public API base is supplied at build time. Never fall back to production.
 export const API_URL = (process.env.NEXT_PUBLIC_API_URL?.trim() || "").replace(/\/+$/, "");
 const communicationMessages: Record<string, string> = {
+  NO_ACTIVE_COMPANY: "Esta conta não possui uma empresa vinculada.",
   GLOBAL_PROVIDER_DISABLED: "O uso do WhatsApp para comunicação está desabilitado. Habilite o envio antes do teste.",
   CONNECTION_NOT_OPEN: "WhatsApp não conectado ou sessão fechada. Reconecte antes de enviar.",
   TEST_RECIPIENT_UNAVAILABLE: "Informe um telefone válido com DDI no seu perfil para receber o teste.",
@@ -48,6 +49,11 @@ function syncChannel() {
   }
   return channel;
 }
+function redirectToLogin(search = "") {
+  if (typeof window !== "undefined" && window.location.pathname !== "/") {
+    window.location.replace(`/${search}`);
+  }
+}
 export function endSession(broadcast = true) {
   ended = true;
   if (broadcast) syncChannel()?.postMessage("ended");
@@ -77,7 +83,11 @@ async function refresh(observed: number) {
       // A tab may have rotated while we waited for the shared lock. Probe access first.
       const probe = await transport("/auth/me");
       if (probe.ok) return;
-      if (probe.status !== 401) throw new ApiError(probe.status);
+      if (probe.status !== 401) {
+        const body = await probe.json().catch(() => null);
+        const code = body?.code ?? body?.message?.code;
+        throw new ApiError(probe.status, undefined, typeof code === "string" ? code : undefined);
+      }
       const response = await transport("/auth/refresh", { method: "POST" });
       if (!response.ok) throw new ApiError(response.status);
       generation++;
@@ -87,7 +97,11 @@ async function refresh(observed: number) {
     refreshFlight = (typeof navigator !== "undefined" && navigator.locks
       ? Promise.resolve(navigator.locks.request("kalend-session-rotation", rotate)).then(() => undefined)
       : Promise.reject(new ApiError(401)))
-      .catch((error) => { endSession(); throw error; })
+      .catch((error) => {
+        endSession();
+        redirectToLogin(error instanceof ApiError && error.errorCode === "NO_ACTIVE_COMPANY" ? "?reason=no-active-company" : "");
+        throw error;
+      })
       .finally(() => { refreshFlight = null; });
   }
   return refreshFlight;
@@ -104,7 +118,7 @@ export async function apiFetch(path: string, init: RequestInit = {}): Promise<Re
   if (response.status === 401 && canRefresh) {
     await refresh(observed);
     response = await transport(path, init);
-    if (response.status === 401) endSession();
+    if (response.status === 401) { endSession(); redirectToLogin(); }
   }
   if (!response.ok) {
     const body = await response.json().catch(() => null);
@@ -113,6 +127,10 @@ export async function apiFetch(path: string, init: RequestInit = {}): Promise<Re
     const candidateCode = body?.errorCode ?? body?.code ?? body?.message?.code ?? body?.message;
     const errorCode = typeof candidateCode === "string" && /^[A-Z_]{1,80}$/.test(candidateCode) ? candidateCode : undefined;
     if (response.status === 403 && errorCode === "TENANT_ACCESS_REQUIRED") tenantChanged();
+    if (response.status === 403 && errorCode === "NO_ACTIVE_COMPANY") {
+      endSession();
+      if (path !== "/auth/login") redirectToLogin("?reason=no-active-company");
+    }
     throw new ApiError(response.status, issue, errorCode);
   }
   return response;

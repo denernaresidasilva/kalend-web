@@ -18,7 +18,7 @@ function load(file, mocks = {}, globals = {}) {
       return load(['.ts', '.tsx'].map(ext => base + ext).find(candidate => fs.existsSync(candidate)), mocks, globals);
     }
     return require(id);
-  }, setTimeout, clearTimeout, Error, ...globals });
+  }, setTimeout, clearTimeout, Error, URLSearchParams, ...globals });
   return loaded.exports;
 }
 function profile(count, extra = {}) {
@@ -41,7 +41,7 @@ function fixture(count, options = {}) {
 }
 function harness(file, mocks) {
   const states = []; const effects = []; let cursor = 0;
-  const hooks = { ...React, useState(initial) { const i = cursor++; if (!(i in states)) states[i] = initial; return [states[i], next => states[i] = next]; }, useEffect(effect) { effects.push(effect); }, useRef(initial) { const i=cursor++; if (!(i in states)) states[i]={current:initial}; return states[i]; }, useSyncExternalStore(_subscribe,_get,server) { return server(); } };
+  const hooks = { ...React, useState(initial) { const i = cursor++; if (!(i in states)) states[i] = initial; return [states[i], next => states[i] = next]; }, useEffect(effect) { effects.push(effect); }, useRef(initial) { const i=cursor++; if (!(i in states)) states[i]={current:initial}; return states[i]; }, useCallback(fn) { return fn; }, useSyncExternalStore(_subscribe,_get,server) { return server(); } };
   const exports = load(file, { react: hooks, '@/lib/account-session':{logoutAllSessions:async()=>{}}, '@/components/super-admin/admin-shell':{AdminShell:({children})=>children}, 'next/navigation':{useRouter:()=>({replace(){}})}, '@/lib/commercial-navigation': { loginDestination: async profile => mocks['@/lib/company-selection'].accountDestination(profile) }, '@/components/commercial-entry': { CommercialEntry: ({ children }) => children }, ...mocks }, { FormData: class { get(key) { return key === 'email' ? 'fixture@example.test' : 'fixture-password'; } } });
   const account = file === "app/conta/page.tsx" ? load("components/account-content.tsx", { react: hooks, "@/lib/account-session": {logoutAllSessions:async()=>{}}, "@/components/super-admin/admin-shell":{AdminShell:({children})=>children}, "next/navigation":{useRouter:()=>({replace(){}})}, ...mocks }) : {};
   return { render(name, props) { cursor = 0; return (exports[name] || account[name])(props); }, runEffects() { return effects.map(effect => effect()); } };

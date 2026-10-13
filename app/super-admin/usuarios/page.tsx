@@ -2,8 +2,8 @@
 
 import { apiFetch } from "@/lib/api";
 
-import { Building2, CheckCircle2, Loader2, Search, ShieldCheck, UserCheck, UserRound, Users, UserX } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { Building2, CheckCircle2, Loader2, Pencil, Plus, Search, ShieldCheck, Trash2, UserCheck, UserRound, Users, UserX, X } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 type Company = {
   id: string;
@@ -17,6 +17,8 @@ type Membership = {
   id: string;
   role: string;
   isActive: boolean;
+  hasAccess: boolean;
+  isLinked: boolean;
   createdAt: string;
   company: Company;
 };
@@ -27,11 +29,18 @@ type User = {
   email: string;
   phone: string | null;
   isActive: boolean;
+  accountActive: boolean;
+  canAuthenticate: boolean;
+  canAccessTenant: boolean;
   isSuperAdmin: boolean;
   createdAt: string;
   updatedAt: string;
   memberships: Membership[];
 };
+
+type CompanyOption = { id: string; name: string; status: string; isActive?: boolean };
+type MembershipDraft = { companyId: string; role: string; isActive: boolean };
+const membershipRoles = ["OWNER", "ADMIN", "RECEPTIONIST", "PROFESSIONAL", "CLIENT"];
 
 type UsersSummary = {
   total: number;
@@ -80,9 +89,16 @@ export default function UsuariosPage() {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [companies, setCompanies] = useState<CompanyOption[]>([]);
+  const [companiesLoaded, setCompaniesLoaded] = useState(false);
+  const [editing, setEditing] = useState<User | null>(null);
+  const [editDraft, setEditDraft] = useState({ name: "", phone: "", isActive: false, memberships: [] as MembershipDraft[] });
+  const [deleteTarget, setDeleteTarget] = useState<User | null>(null);
+  const [deleteConfirmation, setDeleteConfirmation] = useState("");
+  const [actionBusy, setActionBusy] = useState(false);
+  const [actionError, setActionError] = useState("");
 
-  useEffect(() => {
-    async function loadData() {
+  const loadData = useCallback(async () => {
       try {
         setLoading(true);
         setError("");
@@ -124,10 +140,78 @@ export default function UsuariosPage() {
       } finally {
         setLoading(false);
       }
-    }
-
-    loadData();
   }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => { void loadData(); }, 0);
+    return () => clearTimeout(timer);
+  }, [loadData]);
+
+  async function openEdit(user: User) {
+    setActionError("");
+    setCompaniesLoaded(false);
+    setEditing(user);
+    setEditDraft({
+      name: user.name,
+      phone: user.phone ?? "",
+      isActive: user.accountActive,
+      memberships: user.memberships.map(({ company, role, isActive }) => ({ companyId: company.id, role, isActive })),
+    });
+    try {
+      const response = await apiFetch("/companies?limit=100", { cache: "no-store" });
+      if (!response.ok) throw new Error("Não foi possível carregar as empresas.");
+      const available: CompanyOption[] = await response.json();
+      const all = [...user.memberships.map(({ company }) => company), ...available];
+      setCompanies([...new Map(all.map((company) => [company.id, company])).values()]);
+      setCompaniesLoaded(true);
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Não foi possível carregar as empresas.");
+    }
+  }
+
+  async function saveUser(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!editing || actionBusy) return;
+    setActionBusy(true); setActionError("");
+    try {
+      const response = await apiFetch(`/users/${editing.id}`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: editDraft.name,
+          phone: editDraft.phone || null,
+          isActive: editDraft.isActive,
+          ...(!editing.isSuperAdmin ? { memberships: editDraft.memberships } : {}),
+        }),
+      });
+      if (!response.ok) {
+        const body = await response.json().catch(() => null);
+        throw new Error(body?.message || "Não foi possível atualizar o usuário.");
+      }
+      setEditing(null);
+      await loadData();
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Não foi possível atualizar o usuário.");
+    } finally { setActionBusy(false); }
+  }
+
+  async function deleteUser() {
+    if (!deleteTarget || actionBusy || deleteConfirmation !== deleteTarget.email) return;
+    setActionBusy(true); setActionError("");
+    try {
+      const response = await apiFetch(`/users/${deleteTarget.id}`, {
+        method: "DELETE", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ confirmationEmail: deleteConfirmation }),
+      });
+      if (!response.ok) {
+        const body = await response.json().catch(() => null);
+        throw new Error(body?.message || "Não foi possível excluir o usuário.");
+      }
+      setDeleteTarget(null); setDeleteConfirmation("");
+      await loadData();
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Não foi possível excluir o usuário.");
+    } finally { setActionBusy(false); }
+  }
 
   const filteredUsers = useMemo(() => {
     const term = search
@@ -321,6 +405,7 @@ export default function UsuariosPage() {
                       <th scope="col">Função</th>
                       <th scope="col">Status</th>
                       <th scope="col">Cadastro</th>
+                      <th scope="col">Ações</th>
                     </tr>
                   </thead>
 
@@ -329,7 +414,7 @@ export default function UsuariosPage() {
                       const activeMemberships =
                         user.memberships.filter(
                           (membership) =>
-                            membership.isActive,
+                            membership.isLinked,
                         );
 
                       return (
@@ -405,7 +490,7 @@ export default function UsuariosPage() {
                           </td>
 
                           <td>
-                            {user.isActive ? (
+                            {user.canAuthenticate ? (
                               <span className="finance-status finance-status-success">
                                 <CheckCircle2
                                   size={13}
@@ -424,6 +509,16 @@ export default function UsuariosPage() {
                               user.createdAt,
                             )}
                           </td>
+                          <td>
+                            <div className="company-row-actions">
+                              <button type="button" className="company-edit-button" onClick={() => void openEdit(user)} aria-label={`Editar usuário ${user.name}`}>
+                                <Pencil size={15} /><span>Editar</span>
+                              </button>
+                              {!user.isSuperAdmin && <button type="button" className="company-delete-button" onClick={() => { setActionError(""); setDeleteConfirmation(""); setDeleteTarget(user); }} aria-label={`Excluir usuário ${user.name}`} title="Excluir usuário">
+                                <Trash2 size={15} />
+                              </button>}
+                            </div>
+                          </td>
                         </tr>
                       );
                     })}
@@ -434,6 +529,42 @@ export default function UsuariosPage() {
           </section>
         </div>
       </section>
+      {editing && (
+        <div className="company-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !actionBusy) setEditing(null); }}>
+          <section className="company-modal user-admin-modal" role="dialog" aria-modal="true" aria-labelledby="user-edit-title">
+            <header><div><span>ADMINISTRAÇÃO</span><h2 id="user-edit-title">Editar usuário</h2></div><button type="button" aria-label="Fechar" disabled={actionBusy} onClick={() => setEditing(null)}><X size={19} /></button></header>
+            <form onSubmit={saveUser}>
+              <label>Nome<input required maxLength={120} value={editDraft.name} onChange={(event) => setEditDraft({ ...editDraft, name: event.target.value })} /></label>
+              <label>E-mail<input readOnly value={editing.email} /><small>O e-mail é o identificador de login e não pode ser alterado por este fluxo.</small></label>
+              <label>Telefone<input maxLength={32} value={editDraft.phone} onChange={(event) => setEditDraft({ ...editDraft, phone: event.target.value })} /></label>
+              <label>Status de acesso<select disabled={editing.isSuperAdmin} value={editDraft.isActive ? "active" : "inactive"} onChange={(event) => setEditDraft({ ...editDraft, isActive: event.target.value === "active" })}><option value="active">Ativo</option><option value="inactive">Inativo</option></select><small>Usuário comum sem empresa ativa não consegue acessar, mesmo que a conta esteja ativada.</small></label>
+              {editing.isSuperAdmin ? <p className="user-admin-note">Super Admin não pode ser desativado nem ter vínculos de tenant alterados nesta tela.</p> : <section className="user-membership-editor" aria-label="Empresas e funções">
+                <div className="user-membership-heading"><strong>Empresas e funções</strong><button type="button" className="company-edit-button" onClick={() => setEditDraft({ ...editDraft, memberships: [...editDraft.memberships, { companyId: "", role: "PROFESSIONAL", isActive: true }] })}><Plus size={15} />Adicionar empresa</button></div>
+                {editDraft.memberships.length === 0 && <p>Este usuário não possui empresas vinculadas.</p>}
+                {editDraft.memberships.map((membership, index) => <div className="user-membership-row" key={`${membership.companyId}:${index}`}>
+                  <label>Empresa<select required value={membership.companyId} onChange={(event) => setEditDraft({ ...editDraft, memberships: editDraft.memberships.map((item, row) => row === index ? { ...item, companyId: event.target.value } : item) })}><option value="">Selecione uma empresa</option>{companies.map((company) => <option key={company.id} value={company.id}>{company.name}{company.isActive === false || ["SUSPENDED", "CANCELED"].includes(company.status) ? " (inativa)" : ""}</option>)}</select></label>
+                  <label>Função<select value={membership.role} onChange={(event) => setEditDraft({ ...editDraft, memberships: editDraft.memberships.map((item, row) => row === index ? { ...item, role: event.target.value } : item) })}>{membershipRoles.map((role) => <option key={role} value={role}>{roleLabel(role)}</option>)}</select></label>
+                  <label className="user-membership-active"><input type="checkbox" checked={membership.isActive} onChange={(event) => setEditDraft({ ...editDraft, memberships: editDraft.memberships.map((item, row) => row === index ? { ...item, isActive: event.target.checked } : item) })} /> Vínculo ativo</label>
+                  <button type="button" className="company-delete-button" aria-label="Remover vínculo" onClick={() => setEditDraft({ ...editDraft, memberships: editDraft.memberships.filter((_, row) => row !== index) })}><Trash2 size={15} /></button>
+                </div>)}
+              </section>}
+              {actionError && <p className="company-modal-error" role="alert">{actionError}</p>}
+              <footer><button type="button" className="company-modal-cancel" disabled={actionBusy} onClick={() => setEditing(null)}>Cancelar</button><button type="submit" className="company-modal-save" disabled={actionBusy || (!editing.isSuperAdmin && !companiesLoaded)}>{actionBusy ? <Loader2 size={16} className="plans-spinner" /> : <CheckCircle2 size={16} />}Salvar alterações</button></footer>
+            </form>
+          </section>
+        </div>
+      )}
+      {deleteTarget && (
+        <div className="company-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !actionBusy) setDeleteTarget(null); }}>
+          <section className="company-modal company-delete-modal user-delete-modal" role="alertdialog" aria-modal="true" aria-labelledby="user-delete-title" aria-describedby="user-delete-warning">
+            <header><div><span>AÇÃO DE DESATIVAÇÃO</span><h2 id="user-delete-title">Excluir usuário</h2></div><button type="button" aria-label="Fechar" disabled={actionBusy} onClick={() => setDeleteTarget(null)}><X size={19} /></button></header>
+            <p id="user-delete-warning">A conta de <strong>{deleteTarget.name}</strong> ({deleteTarget.email}) será desativada. Todas as memberships serão desativadas e as sessões revogadas. O histórico será preservado; esta operação não apaga registros históricos.</p>
+            <label>Digite exatamente o e-mail <strong>{deleteTarget.email}</strong> para confirmar<input autoComplete="off" value={deleteConfirmation} onChange={(event) => setDeleteConfirmation(event.target.value)} /></label>
+            {actionError && <p className="company-modal-error" role="alert">{actionError}</p>}
+            <footer><button type="button" className="company-modal-cancel" disabled={actionBusy} onClick={() => setDeleteTarget(null)}>Cancelar</button><button type="button" className="company-modal-delete" disabled={actionBusy || deleteConfirmation !== deleteTarget.email} onClick={() => void deleteUser()}>{actionBusy ? <Loader2 size={16} className="plans-spinner" /> : <Trash2 size={16} />}Excluir definitivamente</button></footer>
+          </section>
+        </div>
+      )}
     </main>
   );
 }
