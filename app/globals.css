@@ -4016,9 +4016,18 @@ button:disabled { opacity: .55; cursor: not-allowed; }
 .company-modal form > footer button, .company-modal > footer button { min-height: 40px; padding: 0 14px; border-radius: 9px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; font-size: 12px; font-weight: 700; cursor: pointer; }
 .company-modal-cancel { border: 1px solid #dedbe4; background: white; color: #504d57; }
 .company-modal-save { border: 1px solid #97772a; background: #171717; color: #f2d58c; }
-.company-delete-modal > p { color: #5f5a62; font-size: 13px; line-height: 1.7; }
-.company-delete-modal > label { margin-top: 20px; }
-.company-modal-delete { border: 1px solid #b42318; background: #b42318; color: white; }
+.company-delete-modal > header h2 { color: #171717; font-weight: 750; }
+.company-delete-modal > p { color: #37343b; font-size: 13px; line-height: 1.7; }
+.company-delete-modal > p strong { color: #211b0b; font-weight: 750; }
+.company-delete-modal > label { margin-top: 20px; color: #29272f; font-size: 13px; font-weight: 700; }
+.company-delete-modal > label strong { display: inline-block; margin: 2px 2px 2px 0; padding: 3px 8px; border: 1px solid #b89a52; border-radius: 6px; background: #fbf4df; color: #3f310c; font-weight: 800; }
+.company-delete-modal input { border-color: #77717d; background: #fff; color: #211f25; font-size: 14px; font-weight: 600; }
+.company-delete-modal input::placeholder { color: #59545e; opacity: 1; }
+.company-delete-modal input:focus { border-color: #82651e; outline: 3px solid #d8bd714d; outline-offset: 1px; }
+.company-delete-modal .company-modal-cancel { border-color: #77717d; background: #fff; color: #29272f; }
+.company-delete-modal .company-modal-cancel:hover { border-color: #4b4650; background: #f7f6f8; }
+.company-delete-modal .company-modal-delete { border-color: #991b1b; background: #991b1b; color: #fff; }
+.company-delete-modal .company-modal-delete:disabled { opacity: .72; }
 .company-modal button:disabled { opacity: .55; cursor: not-allowed; }
 .company-modal-error { grid-column: 1 / -1; margin: 0; color: #b42318; font-size: 12px; }
 @media (max-width: 640px) { .company-modal-backdrop { padding: 12px; } .company-modal { padding: 18px; } .company-modal form { grid-template-columns: 1fr; } .company-row-actions .company-edit-button { width: 34px; padding: 0; } .company-row-actions .company-edit-button span { display: none; } }
