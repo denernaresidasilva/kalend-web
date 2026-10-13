@@ -326,6 +326,17 @@ test('commercial 403 is sanitized, dispatched once and never refreshes or logs o
   assert.equal(calls.length, 1); assert.deepEqual(events, ['kalend:commercial-issue']);
 });
 
+test('tenant access 403 refreshes the auth profile so stale company selection is removed', async () => {
+  const { api, calls, events } = client(() => response(403, {
+    code: 'TENANT_ACCESS_REQUIRED',
+    message: 'Selecione uma empresa autorizada.',
+  }));
+  await assert.rejects(api.api('/tenant/resource'), error =>
+    error.status === 403 && error.errorCode === 'TENANT_ACCESS_REQUIRED');
+  assert.equal(calls.length, 1);
+  assert.deepEqual(events, ['kalend:tenant-changed']);
+});
+
 test('reusable limit notice shows actual usage and grants commercial link only to managers', () => {
   const { PlanLimitNotice } = load('components/commercial-notice.tsx', { 'next/link': linkMock, './auth-provider': {} });
   const issue = { code: 'PLAN_LIMIT_REACHED', feature: 'professionals', current: 5, limit: 5, upgradeRequired: true };

@@ -110,8 +110,9 @@ export async function apiFetch(path: string, init: RequestInit = {}): Promise<Re
     const body = await response.json().catch(() => null);
     const issue = response.status === 403 ? parseCommercialIssue(body) : undefined;
     if (issue && typeof window !== "undefined") window.dispatchEvent(new CustomEvent("kalend:commercial-issue", { detail: issue }));
-    const candidateCode = body?.errorCode ?? body?.message;
+    const candidateCode = body?.errorCode ?? body?.code ?? body?.message?.code ?? body?.message;
     const errorCode = typeof candidateCode === "string" && /^[A-Z_]{1,80}$/.test(candidateCode) ? candidateCode : undefined;
+    if (response.status === 403 && errorCode === "TENANT_ACCESS_REQUIRED") tenantChanged();
     throw new ApiError(response.status, issue, errorCode);
   }
   return response;
