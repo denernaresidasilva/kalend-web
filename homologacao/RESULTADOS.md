@@ -135,3 +135,43 @@ Antes de alterar produto, Chrome registrou `permission=granted`, um convite vis�
 Regressão de login, trial, modal de plano, checkout, conta/notificações/PWA e três tamanhos de tela passou. Nenhuma validação de recebimento Push, Safari/iOS real ou dispositivo do usuário foi realizada. Matriz Push atualizada somente na camada local; BUG-01 permanece aberto e gate REPROVADO. As evidências de outros módulos acima são da execução anterior, não desta correção.
 
 [Relatório completo do Bloco 2](/home/guest/Projetos/Kalend/correcao-bloco2-2026-10-09/RELATORIO.md) · [Playwright local](/home/guest/Projetos/Kalend/correcao-bloco2-2026-10-09/evidencias/playwright-local-final.json) · [Reprodução antes](/home/guest/Projetos/Kalend/correcao-bloco2-2026-10-09/evidencias/reproducao-antes.json) · [DEV skipped](/home/guest/Projetos/Kalend/correcao-bloco2-2026-10-09/evidencias/playwright-dev-real.log).
+
+## Bloco 3 — Outbox, provider, retry e visibilidade (13/10/2026)
+
+Este registro cobre somente o Bloco 3. Trial e popup Push não foram reabertos nem retestados aqui; a correção Push já foi confirmada pelo usuário em DEV. Nenhuma integração real, conta, provider ou dado DEV/produção foi alterado.
+
+### Causa e mudança
+
+Antes da correção, a expansão da Outbox ignorava o canal quando resolveProvider() retornava null e, ao final do evento, preenchia expandedAt sem criar entrega nem erro. O worker passava a ignorar permanentemente aquele evento, inclusive após a configuração GLOBAL ser corrigida. A regressão automatizada confirmou esse estado antes da mudança: expandedAt preenchido, lastError nulo, nenhuma delivery e nenhum retry possível.
+
+Agora, provider ausente/desativado, escopo inválido, adapter indisponível ou incompatibilidade template/provider deixam a Outbox não expandida, registram um código seguro (NO_ACTIVE_PROVIDER, PROVIDER_DISABLED, PROVIDER_SCOPE_INVALID, PROVIDER_UNAVAILABLE ou TEMPLATE_PROVIDER_MISMATCH) e aparecem numa consulta dedicada de Falhas. A expansão reavalia o mesmo evento em execuções subsequentes. Ao retornar o provider, a restrição única existente na delivery evita criar novamente um destinatário/canal que já tenha sido expandido.
+
+Falhas de envio temporárias, rate limit e desconhecidas usam a política existente: até cinco tentativas, nextAttemptAt com backoff 60/120/240/480 segundos. Falhas permanentes/configuração não entram em retry. Após restart, um SENDING órfão há mais de cinco minutos vira UNCERTAIN e não é reenviado automaticamente, evitando duplicação quando o ACK externo pode ter se perdido. O worker usa claim atômico por status/tentativas; o teste concorrente local verificou um envio no fixture.
+
+ACCEPTED significa aceite/submissão pelo provider. DELIVERED/READ só podem representar callback efetivo quando o canal o fornece; a API e UI mantêm essa distinção. Provider ausente, retry pendente, falha ou processamento incerto não aparecem como sucesso. Logs guardam IDs de delivery/Outbox, ação, código e tentativa, sem exception bruta ou segredo.
+
+### Evidências desta execução
+
+| Verificação | Resultado | Camada |
+|---|---|---|
+| Reprodução do provider ausente antes da correção | BUG reproduzido: evento era consumido sem delivery e sem erro | Teste unitário de regressão |
+| API focada de comunicação | 84 testes passaram antes do ajuste de tipos dos fixtures; após o ajuste, engine 33/33 passou | TESTE UNITÁRIO |
+| API completa | 40 arquivos, 699 testes passaram | TESTE UNITÁRIO |
+| API E2E | 7 arquivos, 128 testes passaram | TESTE E2E LOCAL; fixtures/serviços simulados |
+| Restart em processo separado e PGlite em disco | 10 asserções passaram; Outbox/retry persistem e SENDING vira UNCERTAIN | TESTE INTEGRAÇÃO LOCAL |
+| Web unitários | 17 arquivos passaram | TESTE UNITÁRIO |
+| Playwright Outbox | 3/3 passaram (desktop, tablet, mobile) | TESTE E2E LOCAL; API fixture .invalid |
+| Lint, TypeScript, build webpack, Prisma validate | passaram | Verificações locais |
+| Providers externos e recibos reais | não executados; não houve envio | NÃO TESTADO / DEV REAL |
+
+Há uma execução completa da API e E2E anterior à correção final de anotações de tipo nos fixtures; após esse ajuste, rodaram TypeScript, lint e 33 testes do engine. A implementação de runtime não mudou depois da execução completa.
+
+### Limites e itens pendentes
+
+- A Outbox bloqueada por configuração é reavaliada em cada execução do worker; o schema não tem contador/nextAttemptAt para falha de expansão. A frequência real é determinada pelo agendador externo e não foi confirmada em DEV. Não foi criada migration.
+- A concorrência PostgreSQL multi-instância não foi testada; o unitário valida compare-and-swap e a consulta de expansão mantém FOR UPDATE SKIP LOCKED.
+- O cenário de restart não testa o processo de envio real após provider aceitar e perder ACK. O resultado continua conservador (UNCERTAIN) e não promete exactly-once.
+- SMTP, Evolution, Meta e Push não foram contatados. ACCEPTED validado aqui veio de provider mockado.
+- Os itens OUTBOX-01 a OUTBOX-13 foram adicionados à matriz com o nível de evidência correspondente. Nenhuma linha DEV REAL foi marcada como aprovada.
+
+Status deste bloco: **PARCIAL**. O bug de provider ausente e a semântica local da fila foram corrigidos e testados. A homologação DEV real de providers, frequência do worker e concorrência com PostgreSQL continua pendente.

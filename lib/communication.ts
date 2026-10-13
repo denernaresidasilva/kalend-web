@@ -26,6 +26,10 @@ export interface MetaTemplate {
 export interface Outbox {
   id: string; event: string; expandedAt: string | null; lastError: string | null; createdAt: string;
 }
+export interface OutboxFailure {
+  id: string; event: string; companyId: string | null; expandedAt: null;
+  lastError: string; createdAt: string;
+}
 export interface Delivery {
   id: string; outboxId: string; channel: Channel; provider: ProviderName; environment: Environment;
   recipientMasked: string; status: string; attempts: number; nextAttemptAt: string; lastError: string | null; createdAt: string;
@@ -84,6 +88,7 @@ export const communication = {
   templates: (signal?: AbortSignal) => api<InternalTemplate[]>("/communication/templates", { signal }),
   metaTemplates: (signal?: AbortSignal) => api<MetaTemplate[]>("/communication/meta/templates", { signal }),
   outbox: (signal?: AbortSignal) => api<Outbox[]>("/communication/outbox", { signal }),
+  outboxFailures: (signal?: AbortSignal) => api<OutboxFailure[]>("/communication/outbox/failures", { signal }),
   deliveries: (signal?: AbortSignal) => api<Delivery[]>("/communication/deliveries", { signal }),
   failures: (signal?: AbortSignal) => api<Delivery[]>("/communication/failures", { signal }),
   logs: (signal?: AbortSignal) => api<CommunicationLog[]>("/communication/logs", { signal }),

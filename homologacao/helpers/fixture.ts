@@ -4,7 +4,7 @@ export async function installFixture(context: BrowserContext, options: { offset?
   const company = { id: `QA-E2E-${runId}`, name: `QA-E2E-${runId}`, slug: `qa-e2e-${runId}`, status: 'TRIAL', isActive: true };
   const profile = { user: { id: `qa-${runId}`, name: 'OWNER QA', email: `qa+${runId}@example.invalid`, isSuperAdmin: !!options.admin }, systemRole: options.admin ? 'SUPER_ADMIN' : 'USER', selectedCompanyId: options.admin ? null : company.id, memberships: options.membership === false ? [] : [{ id: `membership-${runId}`, role: 'OWNER', company }], session: { expiresAt: '2030-01-01', refreshExpiresAt: '2030-01-02' } };
   const plan = { id: `qa-plan-${runId}`, name: 'Plano QA', code: 'qa', monthlyPriceCents: 9900, yearlyPriceCents: 99000, trialEnabled: true, trialDays: 7, isActive: true, isPublic: true, isFeatured: false, displayOrder: 1, features: [], description: 'Fixture; sem cobrança externa' };
-  const state = { offset: options.offset ?? -300000, authenticated: options.authenticated ?? true, approved: false, pending: false, fail: false, checkout: [] as unknown[], calls: [] as string[] };
+  const state = { offset: options.offset ?? -300000, authenticated: options.authenticated ?? true, approved: false, pending: false, fail: false, checkout: [] as unknown[], calls: [] as string[], communication: { outbox: [] as unknown[], outboxFailures: [] as unknown[], deliveries: [] as unknown[], failures: [] as unknown[], logs: [] as unknown[], providers: [] as unknown[], events: [] as unknown[], templates: [] as unknown[], metaTemplates: [] as unknown[] } };
   await context.route('https://api.kalend.invalid/**', async route => {
     const path = new URL(route.request().url()).pathname;
     state.calls.push(path);
@@ -16,6 +16,15 @@ export async function installFixture(context: BrowserContext, options: { offset?
     else if (path === '/auth/tenant') { data = profile; }
     else if (path === '/billing/checkout') { state.pending = true; state.checkout.push(route.request().postDataJSON()); data = { id: 'qa-payment', status: 'PENDING', creationState: 'CREATED' }; }
     else if (path === '/plans/public') data = [plan];
+    else if (path === '/communication/outbox/failures') data = state.communication.outboxFailures;
+    else if (path === '/communication/outbox') data = state.communication.outbox;
+    else if (path === '/communication/deliveries') data = state.communication.deliveries;
+    else if (path === '/communication/failures') data = state.communication.failures;
+    else if (path === '/communication/logs') data = state.communication.logs;
+    else if (path === '/communication/providers') data = state.communication.providers;
+    else if (path === '/communication/events') data = state.communication.events;
+    else if (path === '/communication/templates') data = state.communication.templates;
+    else if (path === '/communication/meta/templates') data = state.communication.metaTemplates;
     else if (path === '/billing/regularization') {
       const expired = !state.approved && state.offset >= 0;
       status = state.fail ? 503 : 200;
