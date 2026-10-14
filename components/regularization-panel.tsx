@@ -1,5 +1,5 @@
 "use client";
-import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
+import { FormEvent, type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { jsonBody, tenantApi } from "@/lib/api";
 import { getCommercialState } from "@/lib/commercial-state";
 import { useAuth } from "./auth-provider";
@@ -8,14 +8,18 @@ import { PlanCatalog } from "./plans/plan-catalog";
 import { PlanFaq } from "./plans/plan-faq";
 import { selectPlanInterval } from "@/lib/plan-presentation";
 import { commercialStatuses, date, gatewayNames, money, safeHttpsUrl } from "@/lib/commercial";
-export function PendingPayment({ payment }: { payment: PendingCheckout }) {
+function PaymentStep({ compact, children }: { compact: boolean; children: ReactNode }) {
+  return compact ? <section className="k-owner-payment" aria-label="Pagamento do plano selecionado">{children}</section> : <>{children}</>;
+}
+export function PendingPayment({ payment, compact = false }: { payment: PendingCheckout; compact?: boolean }) {
   const url = payment.creationState === "CREATED" ? safeHttpsUrl(payment.checkoutUrl) : null;
+  if (compact) return <section className="commercial-panel k-owner-payment" aria-label="Pagamento pendente"><h2>Pagamento pendente</h2><p>Aguardando a confirmação do pagamento para regularizar seu acesso.</p>{url && <a className="commercial-primary" href={url} target="_blank" rel="noopener noreferrer">Continuar pagamento ↗</a>}</section>;
   return <section className="commercial-panel"><h2>Pagamento pendente</h2><p>Referência: {payment.id}</p><p>{gatewayNames[payment.gateway as keyof typeof gatewayNames] ?? payment.gateway} · {payment.billingInterval === "YEARLY" ? "Anual" : "Mensal"}</p>
     {url ? <a className="commercial-primary" href={url} target="_blank" rel="noopener noreferrer">Continuar pagamento ↗</a> : <p>O pagamento aguarda confirmação ou reconciliação. Atualize o estado antes de tentar outra compra. Se continuar pendente, entre em contato com o responsável pelo atendimento.</p>}
     <p>O retorno do provedor não confirma pagamento. A assinatura será atualizada após confirmação pelo backend.</p>
   </section>;
 }
-export function RegularizationPanel({ companyId, state, recovery = false, plansOnly = false }: { companyId: string; state?: Regularization; recovery?: boolean; plansOnly?: boolean }) {
+export function RegularizationPanel({ companyId, state, recovery = false, plansOnly = false, compactRecovery = false }: { companyId: string; state?: Regularization; recovery?: boolean; plansOnly?: boolean; compactRecovery?: boolean }) {
   const { profile } = useAuth();
   const userId = profile?.user.id ?? "";
   const [localData, setData] = useState<Regularization | null>(null);
@@ -67,23 +71,23 @@ export function RegularizationPanel({ companyId, state, recovery = false, plansO
     catch (err) { const failure = (err as Error).message; await load(); setError(failure); }
     finally { operation.current = false; setBusy(false); }
   }
-  return <div className={`kalend-ui k-billing-page${plansOnly ? " k-billing-plans-only" : ""}`}>{!plansOnly && <header className="commercial-heading"><div><h2>Assinatura e pagamentos</h2><p>Escolha o plano adequado à empresa. O plano do trial não limita sua escolha.</p></div><button disabled={loading || busy} onClick={() => void load()}>Atualizar estado</button></header>}
+  return <div className={`kalend-ui k-billing-page${plansOnly ? " k-billing-plans-only" : ""}${compactRecovery ? " k-billing-recovery" : ""}`}>{!plansOnly && !compactRecovery && <header className="commercial-heading"><div><h2>Assinatura e pagamentos</h2><p>Escolha o plano adequado à empresa. O plano do trial não limita sua escolha.</p></div><button disabled={loading || busy} onClick={() => void load()}>Atualizar estado</button></header>}
     {loading && !state ? <div role="status" className="commercial-skeleton">Carregando assinatura e planos…</div> : <>
       {error && <div className="commercial-notice" role="alert"><p>{error}</p><button disabled={busy} onClick={() => void load()}>Tentar novamente</button></div>}
-      {data && <>{!plansOnly && <section className="commercial-panel"><h2>{commercialStatuses[data.financial.status ?? "NO_SUBSCRIPTION"] ?? data.financial.status ?? "Sem assinatura"}</h2><p>{!data.financial.requiresAction && !data.trial.expired ? "Acesso comercial permitido pela assinatura." : data.trial.expired ? "Seu período de teste terminou. Escolha um plano para regularizar a assinatura." : "Sua assinatura precisa de regularização para liberar o acesso comercial."}</p><p>Sua sessão permanece autenticada.</p>
+      {data && <>{!plansOnly && !compactRecovery && <section className="commercial-panel"><h2>{commercialStatuses[data.financial.status ?? "NO_SUBSCRIPTION"] ?? data.financial.status ?? "Sem assinatura"}</h2><p>{!data.financial.requiresAction && !data.trial.expired ? "Acesso comercial permitido pela assinatura." : data.trial.expired ? "Seu período de teste terminou. Escolha um plano para regularizar a assinatura." : "Sua assinatura precisa de regularização para liberar o acesso comercial."}</p><p>Sua sessão permanece autenticada.</p>
         {data.subscription && <><dl className="commercial-details"><div><dt>Plano atual</dt><dd>{data.subscription.planName}</dd></div><div><dt>Intervalo</dt><dd>{data.subscription.billingInterval === "YEARLY" ? "Anual" : "Mensal"}</dd></div><div><dt>Fim do trial</dt><dd>{date(data.subscription.trialEndsAt)}</dd></div><div><dt>Fim do período</dt><dd>{date(data.subscription.currentPeriodEnd)}</dd></div>{data.subscription.graceEndsAt && <div><dt>Fim do período de graça</dt><dd>{date(data.subscription.graceEndsAt)}</dd></div>}<div><dt>Cancelamento ao fim do período</dt><dd>{data.subscription.cancelAtPeriodEnd ? "Solicitado" : "Não solicitado"}</dd></div></dl>{!recovery && data.subscription.status !== "CANCELED" && <button disabled={busy} onClick={() => void cancel()}>Cancelar assinatura imediatamente</button>}</>}
       </section>}
-      {data.pendingCheckout ? <PendingPayment payment={data.pendingCheckout} /> : <form id="escolher-plano" className="commercial-panel commercial-form" onSubmit={checkout}>{!plansOnly && <><h2>Escolher um plano</h2><p>Confira os recursos e valores disponíveis. As condições finais serão apresentadas antes de iniciar o pagamento.</p></>}<fieldset disabled={busy}>
-        <PlanCatalog plans={(data.plans ?? [])} interval={interval} onInterval={setInterval} selectedId={planId} disabled={busy} onSelect={p => { setPlanId(p.id); setInterval(selectPlanInterval(p, interval)); }} />
-        <label>Meio de pagamento<select value={gateway} onChange={e => { setGateway(e.target.value); setRecurring(false); setTaxId(""); }} required><option value="">Selecione um provedor</option>{(data.gateways ?? []).filter(g => g.capabilities.checkout).map(g => <option key={g.provider} value={g.provider}>{gatewayNames[g.provider]}{!plansOnly ? ` · ${g.environment === "SANDBOX" ? "Sandbox" : "Produção"}` : ""}</option>)}</select></label>
+      {data.pendingCheckout ? <PendingPayment payment={data.pendingCheckout} compact={compactRecovery} /> : <form id="escolher-plano" className="commercial-panel commercial-form" onSubmit={checkout}>{!plansOnly && !compactRecovery && <><h2>Escolher um plano</h2><p>Confira os recursos e valores disponíveis. As condições finais serão apresentadas antes de iniciar o pagamento.</p></>}{compactRecovery && <h2>Escolha seu plano</h2>}<fieldset disabled={busy}>
+        <PlanCatalog compact={compactRecovery} plans={(data.plans ?? [])} interval={interval} onInterval={setInterval} selectedId={planId} disabled={busy} onSelect={p => { setPlanId(p.id); setInterval(selectPlanInterval(p, interval)); }} />
+        {(!compactRecovery || plan) && <PaymentStep compact={compactRecovery}>{compactRecovery && plan && <h3>Plano selecionado: {plan.name}</h3>}<label>Meio de pagamento<select value={gateway} onChange={e => { setGateway(e.target.value); setRecurring(false); setTaxId(""); }} required><option value="">Selecione um provedor</option>{(data.gateways ?? []).filter(g => g.capabilities.checkout).map(g => <option key={g.provider} value={g.provider}>{gatewayNames[g.provider]}{!plansOnly && !compactRecovery ? ` · ${g.environment === "SANDBOX" ? "Sandbox" : "Produção"}` : ""}</option>)}</select></label>
         {!(data.gateways ?? []).length && <p>Nenhum provedor habilitado para pagamento no momento.</p>}
         {provider?.capabilities.limitation && <p className="commercial-notice">{provider.capabilities.limitation}</p>}
         {provider?.capabilities.recurring && <label className="commercial-check"><input type="checkbox" checked={recurring} onChange={e => setRecurring(e.target.checked)} />Pagamento recorrente</label>}
         {gateway === "ASAAS" && <label>CPF ou CNPJ do pagador<input required inputMode="numeric" autoComplete="off" maxLength={18} value={taxId} onChange={e => setTaxId(e.target.value)} /><small>Enviado apenas para iniciar esta cobrança.</small></label>}
-        {plan && <p>{checkoutPriceAvailable ? <>Total selecionado: {money(selectedPrice!)}. O backend valida o valor ao criar a compra.</> : "Preço não configurado para este intervalo."}</p>}
-        <button className="commercial-primary" disabled={!plan || !provider || !provider.capabilities.checkout || !checkoutPriceAvailable}>Iniciar checkout</button>
+        {plan && <p>{checkoutPriceAvailable ? <>Total selecionado: {money(selectedPrice!)}.{!compactRecovery && " O backend valida o valor ao criar a compra."}</> : "Preço não configurado para este intervalo."}</p>}
+        <button className="commercial-primary" disabled={!plan || !provider || !provider.capabilities.checkout || !checkoutPriceAvailable}>{compactRecovery ? "Continuar para pagamento" : "Iniciar checkout"}</button></PaymentStep>}
       </fieldset></form>}
       </>}
-    {!plansOnly && <PlanFaq />}{!plansOnly && data && !data.pendingCheckout && (data.plans ?? []).length > 0 && <section className="k-plans-final"><h2>Pronto para escolher?</h2><p>Revise o plano, o período e o meio de pagamento antes de continuar.</p><a className="k-link-button" href="#escolher-plano">Revisar escolha e continuar</a></section>}</>}{busy && <p role="status">Processando solicitação…</p>}{message && <p className="commercial-notice" role="status">{message}</p>}
+    {!plansOnly && !compactRecovery && <PlanFaq />}{!plansOnly && !compactRecovery && data && !data.pendingCheckout && (data.plans ?? []).length > 0 && <section className="k-plans-final"><h2>Pronto para escolher?</h2><p>Revise o plano, o período e o meio de pagamento antes de continuar.</p><a className="k-link-button" href="#escolher-plano">Revisar escolha e continuar</a></section>}</>}{busy && <p role="status">Processando solicitação…</p>}{message && <p className="commercial-notice" role="status">{message}</p>}
   </div>;
 }

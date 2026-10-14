@@ -12,11 +12,11 @@ import { AccountSecurity } from "./account-security";
 import { CompanySelector } from "./company-selector";
 import { Button } from "./ui/button";
 
-export function TrialExpiredModal({ profile, data, error }: { profile: AuthMe; data: Regularization; error?: string }) {
+export function TrialExpiredModal({ profile, data, error, accountOnly = false, onBack }: { profile: AuthMe; data: Regularization; error?: string; accountOnly?: boolean; onBack?: () => void }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const router = useRouter();
   const { logout, reload } = useAuth();
-  const [account, setAccount] = useState(false);
+  const [account, setAccount] = useState(accountOnly);
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState("");
   const operation = useRef(false);
@@ -51,9 +51,9 @@ export function TrialExpiredModal({ profile, data, error }: { profile: AuthMe; d
     finally { operation.current = false; setBusy(false); }
   }
   return createPortal(<dialog ref={dialog} className="kalend-ui k-trial-expired-modal" aria-modal="true" aria-labelledby="trial-expired-title" aria-describedby="trial-expired-description" onCancel={event => event.preventDefault()}>
-    <header className="commercial-heading"><div><h2 id="trial-expired-title">Teste gratuito encerrado</h2><p id="trial-expired-description">Escolha um plano para continuar usando sua empresa. O acesso será restaurado após a confirmação do pagamento.</p></div></header>
+    <header className="commercial-heading"><div><h2 id="trial-expired-title">{accountOnly ? "Minha conta" : "Teste gratuito encerrado"}</h2><p id="trial-expired-description">{accountOnly ? "Consulte seu perfil e as configurações de segurança." : "Escolha um plano para continuar usando sua empresa. O acesso será restaurado após a confirmação do pagamento."}</p></div></header>
     {(error || failure) && <p role="alert">{failure || error}</p>}
-    <div className="k-actions"><Button variant={account ? "secondary" : "primary"} onClick={() => setAccount(false)}>Escolher plano</Button><Button variant={account ? "primary" : "secondary"} onClick={() => setAccount(true)}>Minha conta</Button><Button variant="ghost" disabled={busy} onClick={() => void leave()}>Sair</Button></div>
+    <div className="k-actions">{accountOnly ? <Button variant="secondary" onClick={onBack}>Voltar aos planos</Button> : <><Button variant={account ? "secondary" : "primary"} onClick={() => setAccount(false)}>Escolher plano</Button><Button variant={account ? "primary" : "secondary"} onClick={() => setAccount(true)}>Minha conta</Button><Button variant="ghost" disabled={busy} onClick={() => void leave()}>Sair</Button></>}</div>
     {account ? <><AccountProfile profile={profile} /><AccountSecurity profile={profile} leaving={busy} onLogout={() => void leave()} onLogoutAll={() => void leave(true)} /><CompanySelector profile={profile} busy={busy} select={select} /></> : manages && profile.selectedCompanyId ? <RegularizationPanel companyId={profile.selectedCompanyId} state={data} recovery /> : <p>Solicite ao proprietário ou administrador da empresa a escolha de um plano. Você pode consultar sua conta, trocar de empresa ou sair.</p>}
   </dialog>, document.body);
 }

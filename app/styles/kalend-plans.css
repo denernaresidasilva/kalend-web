@@ -36,3 +36,36 @@
 .k-trial-notice > div { display: flex; flex-wrap: wrap; gap: 12px; }
 .k-trial-notice button { cursor: pointer; min-height: 44px; padding: 8px 12px; }
 .k-trial-notice :focus-visible, .k-trial-notice:focus-visible { outline: 3px solid var(--kalend-primary); outline-offset: 3px; }
+
+/* Only the blocked owner dashboard opts into compact recovery. */
+body:has(.k-owner-recovery) .k-push-prompt { display: none; }
+.k-owner-recovery { width: min(100%, 1120px); margin: 0 auto; padding: 32px 24px; min-height: 100dvh; overflow-wrap: anywhere; }
+.k-owner-recovery-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; margin-bottom: 28px; }
+.k-owner-recovery-heading h1 { margin: 0 0 8px; font-size: clamp(28px, 4vw, 38px); line-height: 1.2; letter-spacing: -.025em; }
+.k-owner-recovery-heading p { margin: 0; color: var(--kalend-text-secondary); line-height: 1.5; }
+.k-owner-recovery-heading > button { flex-shrink: 0; }
+.k-owner-recovery .k-billing-recovery { min-height: 0; }
+.k-owner-recovery .commercial-form { padding: 0; margin: 0; border: 0; background: transparent; box-shadow: none; }
+.k-owner-recovery .commercial-form > h2 { margin: 0 0 12px; font-size: 23px; }
+.k-owner-recovery .k-plan-grid { gap: 20px; }
+.k-owner-recovery .k-plan { padding: 22px; gap: 12px; min-width: 0; }
+.k-owner-recovery .k-plan > .k-actions:empty { display: none; }
+.k-owner-recovery .k-plan > p:not(.k-plan-inheritance) { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.k-owner-recovery .k-plan-inheritance { font-weight: 600; color: var(--kalend-text-primary); }
+.k-owner-recovery .k-plan-features { line-height: 1.6; }
+.k-owner-recovery .k-plan-limits { font-size: 14px; padding-top: 12px; }
+.k-owner-recovery .k-owner-interval { margin: 0 0 16px; font-size: 14px; }
+.k-owner-recovery .k-interval { margin: 0 0 16px; }
+.k-owner-recovery .k-plan-choice { justify-content: center; width: 100%; background: var(--kalend-surface); color: var(--kalend-text-primary); }
+.k-owner-recovery .k-plan-choice[aria-pressed="true"] { background: var(--kalend-primary-soft); border-color: var(--kalend-primary); }
+.k-owner-recovery .k-owner-payment { display: grid; gap: 16px; padding: 22px; border: 1px solid var(--kalend-border); border-radius: var(--kalend-radius); background: var(--kalend-surface); margin-top: 24px; }
+.k-owner-recovery .k-owner-payment h3, .k-owner-recovery .k-owner-payment p { margin: 0; }
+.k-owner-recovery .k-owner-payment > label { max-width: 480px; }
+.k-owner-recovery .k-owner-payment .commercial-primary { width: fit-content; min-height: 48px; }
+@media (max-width: 640px) {
+  .k-owner-recovery { padding: 24px 16px; }
+  .k-owner-recovery-heading { flex-direction: column; gap: 16px; margin-bottom: 24px; }
+  .k-owner-recovery .k-plan-grid { grid-template-columns: minmax(0, 1fr); }
+  .k-owner-recovery .k-owner-payment { padding: 18px; }
+  .k-owner-recovery .k-owner-payment .commercial-primary { width: 100%; }
+}

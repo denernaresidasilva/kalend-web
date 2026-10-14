@@ -9,6 +9,7 @@ import { accountDestination } from "@/lib/company-selection";
 import { Loading } from "./ui/loading";
 import { TrialNotice } from "./trial-notice";
 import { TrialExpiredModal } from "./trial-expired-modal";
+import { OwnerRecovery } from "./owner-recovery";
 
 // Recovery screens never grant product access. The API independently enforces deadlines.
 export const commercialRecoveryRoutes = ["/conta", "/conta/planos", "/conta/regularizar", "/conta/configuracoes/seguranca", "/planos"];
@@ -62,11 +63,14 @@ export function CommercialEntry({ children }: { children: React.ReactNode }) {
     return () => clearTimeout(timer);
   }, [required, data, state?.error, attempt]);
   const expired = !!data && (data.accessStatus === "TRIAL_EXPIRED" || data.trial.expired);
+  const ownerPanelRecovery = pathname === "/painel/proprietario" && !!data &&
+    profile?.memberships.some(m => m.company.id === companyId && m.role === "OWNER") &&
+    (expired || data.accessAllowed !== true && data.financial.requiresAction);
   useEffect(() => {
     if (wasBlocked.current && data?.accessAllowed === true && !expired) void reload(false);
-    wasBlocked.current = expired;
-  }, [expired, data?.accessAllowed, reload]);
-  const destination = required && data && profile ? commercialRedirect(data, pathname, accountDestination(profile)) : null;
+    wasBlocked.current = expired || !!ownerPanelRecovery;
+  }, [expired, ownerPanelRecovery, data?.accessAllowed, reload]);
+  const destination = ownerPanelRecovery ? null : required && data && profile ? commercialRedirect(data, pathname, accountDestination(profile)) : null;
   useEffect(() => {
     const signature = `${key}:${pathname}:${destination}`;
     if (destination && lastRedirect.current !== signature) { lastRedirect.current = signature; router.replace(destination); }
@@ -75,6 +79,7 @@ export function CommercialEntry({ children }: { children: React.ReactNode }) {
   if (loading) return <Loading>Verificando sessão…</Loading>;
   if (!required) return children;
   if (!data) return <section className="commercial-page" aria-label="Verificação comercial">{state?.key === key && state.error ? <><p role="alert">{state.error}</p><button onClick={() => setAttempt(value => value + 1)}>Tentar novamente</button></> : <Loading>Verificando acesso comercial…</Loading>}</section>;
+  if (ownerPanelRecovery && profile) return <OwnerRecovery key={key} profile={profile} data={data} error={state?.error} />;
   if (expired && profile && companyId) return <>
     <main className="commercial-page"><h1>Seu teste gratuito encerrou</h1><p>Regularize a assinatura para continuar usando a empresa.</p></main>
     <TrialExpiredModal key={key} profile={profile} data={data} error={state?.error} />
