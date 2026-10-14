@@ -6,7 +6,7 @@ export type ProviderName = "SMTP" | "META" | "EVOLUTION" | "GMAIL" | "PUSH_PENDI
 export type Channel = "EMAIL" | "WHATSAPP" | "PUSH";
 export type Environment = "SANDBOX" | "PRODUCTION";
 export interface CommunicationProvider {
-  provider: ProviderName; scope: "GLOBAL"; environment: Environment; enabled: boolean;
+  provider: ProviderName; scope: "GLOBAL"; environment: Environment | "DEV"; enabled: boolean;
   config: Record<string, string>; configured: boolean; status: string; revision: number;
   adapterAvailable: boolean; lastVerifiedAt: string | null; lastSentAt: string | null; lastError: string | null;
 }

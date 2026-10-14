@@ -11,8 +11,9 @@ import { Feedback, ResourceState, useCommunicationResource } from "./communicati
 export function ProviderCards({ providers, select }: { providers: CommunicationProvider[]; select?: (provider: ProviderName) => void }) {
   return <div className="gateway-grid">{(Object.keys(providerNames) as ProviderName[]).filter(name => name !== "GMAIL").map(name => {
     const row = providers.find(item => item.provider === name);
+    const environmentLabel = name === "PUSH_PENDING" || row?.environment === "PRODUCTION" ? "Produção" : row?.environment === "DEV" ? "DEV" : "Sandbox";
     return <section className="gateway-card" key={name}><h2>{providerNames[name]}</h2><p>{providerState(row)}</p>
-      {row && <><div className="commercial-badges"><span>Credencial: {row.configured ? "salva" : "não configurada"}</span><span>{row.enabled ? "Habilitado" : "Desabilitado"}</span><span>{name !== "PUSH_PENDING" && name !== "EVOLUTION" && row.environment === "SANDBOX" ? "Sandbox" : "Produção"}</span></div><p>Adapter: {row.adapterAvailable ? "disponível" : "indisponível"}</p></>}
+      {row && <><div className="commercial-badges"><span>Credencial: {row.configured ? "salva" : "não configurada"}</span><span>{row.enabled ? "Habilitado" : "Desabilitado"}</span><span>{environmentLabel}</span></div><p>Adapter: {row.adapterAvailable ? "disponível" : "indisponível"}</p></>}
       {name === "PUSH_PENDING" && <Link href="/conta/notificacoes#preferencias">Gerenciar notificações e dispositivos</Link>}
       {select && availableProvider(name) && <button onClick={() => select(name)}>Configurar</button>}
     </section>;
@@ -26,14 +27,14 @@ function MetaTest({ choose }: { choose: (value: MetaTemplate | undefined) => voi
 export function ProviderEditor({ initial, name, close }: { initial?: CommunicationProvider; name: ProviderName; close: () => void; }) {
   const [row, setRow] = useState(initial);
   const [config, setConfig] = useState<Record<string, string>>({ ...(initial?.config ?? {}), ...(name === "SMTP" && !initial ? { port: "587", secure: "false" } : {}) });
-  const [environment, setEnvironment] = useState<Environment>(initial?.environment ?? "SANDBOX");
+  const [environment, setEnvironment] = useState<Environment>(initial?.environment === "PRODUCTION" ? "PRODUCTION" : "SANDBOX");
   const [hasSecretInput, setHasSecretInput] = useState(false);
   const { busy, setBusy, lockRef } = useCommunicationMutation();
   const [stale, setStale] = useState(false);
   const [error, setError] = useState(""); const [message, setMessage] = useState("");
   const [qr, setQr] = useState<string | null>(null);
   const [metaTest, setMetaTest] = useState<MetaTemplate>();
-  const dirty = environment !== (row?.environment ?? "SANDBOX") || Object.entries(config).some(([key, value]) => value !== (row?.config[key] ?? "")) || hasSecretInput;
+  const dirty = environment !== (row?.environment === "PRODUCTION" ? "PRODUCTION" : "SANDBOX") || Object.entries(config).some(([key, value]) => value !== (row?.config[key] ?? "")) || hasSecretInput;
   async function run(action: "save" | "test" | "send-test" | "pair" | "enable", form?: HTMLFormElement) {
     if (lockRef.current || stale || (action !== "save" && dirty)) return;
     let body: ReturnType<typeof providerPatch> | undefined;
@@ -42,7 +43,7 @@ export function ProviderEditor({ initial, name, close }: { initial?: Communicati
       // Read secrets only at submission; their values never enter React state or props.
       const secrets = Object.fromEntries(secretFields[name].map(([key]) => [key, (form.elements.namedItem(key) as HTMLInputElement | null)?.value ?? ""]));
       try { body = providerPatch(name, config, secrets, environment); } catch (err) { setError((err as Error).message); return; }
-      if (row && row.environment !== environment && !window.confirm("Trocar o ambiente? Novas credenciais serão necessárias e o canal será desabilitado. O backend pode recusar se houver histórico.")) return;
+      if (row && (row.environment === "PRODUCTION" ? "PRODUCTION" : "SANDBOX") !== environment && !window.confirm("Trocar o ambiente? Novas credenciais serão necessárias e o canal será desabilitado. O backend pode recusar se houver histórico.")) return;
     }
     if (action === "enable" && !window.confirm(row?.enabled ? "Desabilitar envios globais neste canal?" : "Habilitar envios globais aos proprietários neste canal?")) return;
     if (form) {
@@ -52,7 +53,7 @@ export function ProviderEditor({ initial, name, close }: { initial?: Communicati
     lockRef.current = true; setBusy(true); setError(""); setMessage(""); setQr(null);
     try {
       if (action === "save") {
-        const saved = await communication.patchProvider(name, body!); setRow(saved); setConfig(saved.config); setEnvironment(saved.environment); setMetaTest(undefined);
+        const saved = await communication.patchProvider(name, body!); setRow(saved); setConfig(saved.config); setEnvironment(saved.environment === "PRODUCTION" ? "PRODUCTION" : "SANDBOX"); setMetaTest(undefined);
         setMessage("Configuração salva. Alterações exigem nova validação antes de habilitar o canal.");
       } else if (action === "test") {
         const result = await communication.test(name); setMessage(result.connected ? "Conexão validada. Este teste não comprova entrega nem homologação completa." : "A conexão falhou. Confira a configuração e as credenciais.");

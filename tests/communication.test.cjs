@@ -68,6 +68,9 @@ test('providers show real states, configurable Web Push and SMTP-only email mana
   const html = renderToStaticMarkup(React.createElement(ProviderCards, { providers: [provider(), provider('META', { status: 'CONNECTED' }), provider('EVOLUTION', { status: 'FAILED' }), provider('GMAIL', { adapterAvailable: false }), provider('PUSH_PENDING', { adapterAvailable: false })], select() {} }));
   assert.match(html, /Validação pendente/); assert.match(html, /Conectado/); assert.match(html, /Falha/); assert.doesNotMatch(html, /OAuth ainda não configurado/); assert.equal((html.match(/>Configurar</g) ?? []).length, 4);
   assert.match(html, /Push Web/);
+  const evolutionDev = renderToStaticMarkup(React.createElement(ProviderCards, { providers: [provider('EVOLUTION', { environment: 'DEV', status: 'CONNECTED' })] }));
+  assert.match(evolutionDev, />DEV</);
+  assert.doesNotMatch(evolutionDev, /Produção/);
   assert.match(contract.providerState(), /não retornado/);
 });
 test('Web Push always displays production without changing other provider environments', () => {
