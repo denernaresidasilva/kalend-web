@@ -3,7 +3,8 @@ import { installFixture } from '../helpers/fixture';
 test('CHECKOUT-annual: preço, plano, referência e chave de intento', async ({ page, context }) => {
   await context.grantPermissions(['notifications']);
   const { state, plan } = await installFixture(context, { offset: 1000 });
-  await page.goto('/painel/proprietario'); const dialog = page.locator('.k-trial-expired-modal'); await expect(dialog).toBeVisible();
+  // Full account recovery retains the detailed modal; owner recovery is intentionally compact.
+  await page.goto('/conta'); const dialog = page.locator('.k-trial-expired-modal'); await expect(dialog).toBeVisible();
   await dialog.locator('input[name=plan]').check();
   await expect(dialog.locator('.k-plan-price')).toContainText('99,00');
   await dialog.getByLabel('Anual', { exact: true }).check();
