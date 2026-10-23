@@ -1,94 +1,37 @@
-name: Deploy Kalend Web DEV
+name: DEV manual version gate (no deployment)
 
 on:
-  push:
-    branches:
-      - develop
+  workflow_dispatch:
+    inputs:
+      api_sha:
+        description: Approved API application commit (40 hex)
+        required: true
+        type: string
+      web_sha:
+        description: Approved Web application commit (40 hex)
+        required: true
+        type: string
+
+permissions:
+  contents: read
 
 concurrency:
-  group: kalend-web-dev
-  cancel-in-progress: true
+  group: kalend-dev-manual-version-gate
+  cancel-in-progress: false
 
 jobs:
-  deploy:
-    name: Deploy para DEV
+  verify-inputs-only:
     runs-on: ubuntu-latest
-
+    timeout-minutes: 2
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1.2.2
-        with:
-          host: ${{ secrets.DEV_SSH_HOST }}
-          username: ${{ secrets.DEV_SSH_USER }}
-          key: ${{ secrets.DEV_SSH_KEY }}
-          port: 22
-          script_stop: true
-
-          script: |
-            set -e
-
-            echo "========================================="
-            echo "   KALEND WEB DEV - DEPLOY"
-            echo "========================================="
-
-            export NVM_DIR="$HOME/.nvm"
-
-            if [ -s "$NVM_DIR/nvm.sh" ]; then
-              . "$NVM_DIR/nvm.sh"
-            fi
-
-            nvm use 24.21.0
-
-            echo ""
-            echo "=== Ambiente ==="
-            echo "Node: $(node --version)"
-            echo "NPM:  $(npm --version)"
-            echo "PM2:  $(pm2 --version)"
-
-            echo ""
-            echo "=== Diretório do projeto ==="
-
-            cd /home/kalend-dev/htdocs/dev.kalend.tech/app
-
-            pwd
-
-            echo ""
-            echo "=== Git ==="
-
-            git fetch origin develop
-
-            git checkout develop
-
-            git reset --hard origin/develop
-
-            echo ""
-            echo "Commit atual:"
-            git log -1 --oneline
-
-            echo ""
-            echo "=== Dependências ==="
-
-            npm ci
-
-            echo ""
-            echo "=== Build ==="
-
-            npm run build -- --webpack
-
-            echo ""
-            echo "=== Reiniciando PM2 ==="
-
-            /home/kalend-dev/.nvm/versions/node/v24.21.0/bin/pm2 restart kalend-web-dev
-
-            echo ""
-            echo "=== Status PM2 ==="
-
-            /home/kalend-dev/.nvm/versions/node/v24.21.0/bin/pm2 status
-
-            echo ""
-            echo "========================================="
-            echo "       DEPLOY DEV CONCLUÍDO"
-            echo "========================================="
+      - name: Validate version references only
+        env:
+          API_SHA: ${{ inputs.api_sha }}
+          WEB_SHA: ${{ inputs.web_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_EVENT_NAME" = workflow_dispatch
+          [[ "$API_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$WEB_SHA" =~ ^[0-9a-f]{40}$ ]]
+          echo "Input syntax valid. No backup, migration, SSH, build or deployment executed."
