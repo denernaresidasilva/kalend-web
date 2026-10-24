@@ -492,3 +492,23 @@ test('administrative identity comes from the authenticated shared shell', () => 
   const header = fs.readFileSync('components/super-admin/header.tsx', 'utf8');
   assert.match(header, /profile\.user\.name/); assert.doesNotMatch(header, /notification-button|<strong>Administrador<\/strong>/);
 });
+
+
+test('hosted gateway forms require only provider-specific secrets and preserve legacy public metadata', async () => {
+  const labels = { STRIPE: 'Nova chave secreta de API', MERCADO_PAGO: 'Novo access token', ASAAS: 'Nova API key', PAGBANK: 'Novo token de checkout' };
+  for (const [gateway, label] of Object.entries(labels)) {
+    let submitted;
+    const h = harness('components/gateway-form.tsx', 'GatewayForm', { '@/lib/api': { API_URL: 'https://api-dev.kalend.tech', jsonBody: value => ({ body: JSON.stringify(value) }), api: async (_path, init) => { submitted = JSON.parse(init.body); return gatewayFixture(gateway); } } });
+    const props = { gateway: gatewayFixture(gateway, { publicId: 'legacy-preserved' }), saved() {} };
+    let tree = h.render(props);
+    assert.match(textOf(tree), new RegExp(label));
+    assert.doesNotMatch(textOf(tree), /Identificação pública/);
+    assert.equal(input(tree, 'text').length, 0);
+    input(tree, 'password')[0].props.onChange({ target: { value: 'write-only-fixture' } });
+    tree = h.render(props);
+    await nodes(tree, n => n.type === 'form')[0].props.onSubmit({ preventDefault() {} });
+    assert.equal(submitted.publicId, 'legacy-preserved');
+    assert.equal(submitted.credentials, 'write-only-fixture');
+    assert.equal('webhookSecret' in submitted, false);
+  }
+});
