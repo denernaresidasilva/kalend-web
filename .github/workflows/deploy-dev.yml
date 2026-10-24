@@ -30,6 +30,9 @@ jobs:
           script: |
             set -e
 
+            test "$(hostname -s)" = srv1119527
+            test "$(id -un)" = kalend-dev
+
             echo "========================================="
             echo "   KALEND WEB DEV - DEPLOY"
             echo "========================================="
