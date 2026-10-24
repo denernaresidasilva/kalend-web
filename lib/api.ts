@@ -50,7 +50,7 @@ function syncChannel() {
   return channel;
 }
 function redirectToLogin(search = "") {
-  if (typeof window !== "undefined" && window.location.pathname !== "/") {
+  if (typeof window !== "undefined" && !["/", "/planos"].includes(window.location.pathname)) {
     window.location.replace(`/${search}`);
   }
 }
