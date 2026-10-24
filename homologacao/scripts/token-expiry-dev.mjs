@@ -1,0 +1,10 @@
+import{request}from'@playwright/test';import{readFileSync,writeFileSync}from'node:fs';import{dirname,join}from'node:path';
+process.umask(0o077);const file=process.env.QA_IDENTITY_FILE,p=JSON.parse(readFileSync(file,'utf8'));if(!p.provisioned||p.api!=='https://api-dev.kalend.tech')throw Error('QA_SCOPE');
+const a=p.accounts.find(a=>a.role==='OWNER_B'),c=await request.newContext({extraHTTPHeaders:{Origin:p.web}});const login=await c.post(p.api+'/auth/login',{data:{email:a.email,password:a.password}});if(login.status()!==200)throw Error('LOGIN');
+const cookie=(await c.storageState()).cookies.find(x=>x.name==='__Host-kalend_access');const exp=JSON.parse(Buffer.from(cookie.value.split('.')[1],'base64url').toString()).exp;const delay=exp*1000-Date.now()+2000;
+if(!(delay>0&&delay<720000))throw Error('UNEXPECTED_EXPIRY');
+if((await c.get(p.api+'/auth/me')).status()!==200)throw Error('INITIAL_SESSION');
+console.log('QA_TOKEN_EXPIRY_WAIT_SCHEDULED');await new Promise(resolve=>setTimeout(resolve,delay));
+const expired=await c.get(p.api+'/auth/me',{headers:{Cookie:`__Host-kalend_access=${cookie.value}`}});const refresh=await c.post(p.api+'/auth/refresh',{data:{}});const current=await c.get(p.api+'/auth/me');
+const r={layer:'DEV real signed token, elapsed wall clock, isolated QA session',expiredRejected:expired.status()===401,refreshAccepted:refresh.status()===200,newAccessAccepted:current.status()===200};
+await c.post(p.api+'/auth/logout',{data:{}});await c.dispose();writeFileSync(join(dirname(file),'token-expiry.sanitized.json'),JSON.stringify(r,null,2)+'\n',{mode:0o600});console.log(JSON.stringify(r));process.exitCode=Object.values(r).includes(false)?1:0;

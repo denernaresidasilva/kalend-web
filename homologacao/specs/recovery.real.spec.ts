@@ -8,7 +8,7 @@ test('DEV-trial-expired: request direto, recovery, URL e reload reais', async ({
   const response = await context.request.get(`${api}/billing/regularization`); expect(response.status()).toBe(200); const state = await response.json();
   expect(state).toMatchObject({ accessAllowed: false, accessStatus: 'TRIAL_EXPIRED' });
   expect((await context.request.get(`${api}/auth/tenant`)).status()).toBe(403);
-  for (const path of ['/painel/proprietario','/conta/planos','/conta/configuracoes/email']) { await page.goto(path); await expect(page.locator('.k-trial-expired-modal')).toBeVisible(); }
+  for (const path of ['/painel/proprietario','/conta/planos','/conta/configuracoes/email']) { await page.goto(path); if(path==='/painel/proprietario'){await expect(page.locator('.k-owner-recovery')).toBeVisible();await expect(page.locator('.k-admin-shell')).toHaveCount(0);}else await expect(page.locator('.k-trial-expired-modal')).toBeVisible(); }
   await page.reload(); await expect(page.locator('.k-trial-expired-modal')).toBeVisible();
 });
 test('DEV-checkout: sandbox em tenant QA expirado', async ({ context }, info) => {
