@@ -7,8 +7,6 @@ import type { FormEvent } from "react";
 import { API_URL } from "@/lib/api";
 import type { PublicPlan } from "@/lib/contracts";
 import { money } from "@/lib/commercial";
-import { sessionStarted } from "@/lib/api";
-import { useAuth } from "@/components/auth-provider";
 import { useRouter } from "next/navigation";
 import { trackMarketingEvent, rememberAttribution, getCampaignAttribution, MarketingConsent } from "@/lib/landing-tracking";
 import { KalendLogo } from "@/components/kalend-logo";
@@ -81,8 +79,14 @@ export function LandingPage() {
   const firstField = useRef<HTMLInputElement>(null);
   const signupStarted = useRef(false);
   const [showPassword, setShowPassword] = useState(false);
-  const { reload } = useAuth();
+  const [signupSuccess, setSignupSuccess] = useState(false);
   const router = useRouter();
+
+  useEffect(() => {
+    if (!signupSuccess) return;
+    const timer = window.setTimeout(() => router.replace("/"), 2400);
+    return () => window.clearTimeout(timer);
+  }, [router, signupSuccess]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -148,18 +152,15 @@ export function LandingPage() {
         headers: { "Content-Type": "application/json" }, body: JSON.stringify(data),
       });
       if (!response.ok) {
-        if (response.status === 409 || response.status === 403) throw new Error("Não foi possível concluir o cadastro com esses dados. Se você já possui uma conta, entre para continuar.");
+        if (response.status === 409 || response.status === 403) throw new Error("Não foi possível concluir o cadastro com esses dados. Se você já tem uma conta, acesse Entrar ou contate o suporte para recuperar o acesso. O Kalend não substitui identidades existentes.");
         if (response.status === 429) throw new Error("Muitas tentativas. Aguarde um pouco e tente novamente.");
         throw new Error("Não foi possível criar sua conta agora. Confira os dados e tente novamente.");
       }
       const result = await response.json();
-      sessionStarted();
-      const profile = await reload();
-      if (!profile || profile.user.id !== result.user.id || profile.selectedCompanyId !== result.company.id) throw new Error("Conta criada. Entre com seu e-mail e senha para continuar.");
-      trackMarketingEvent("trial_signup_success", { plan_id: selectedPlan.id, signup_id: result.company.id });
-      trackMarketingEvent("onboarding_started", { plan_id: selectedPlan.id });
-      if (message) { message.textContent = "Sua conta Kalend foi criada! Vamos preparar seu negócio."; message.dataset.state = "success"; }
-      router.replace("/onboarding");
+      if (result.created !== true) throw new Error("Não foi possível confirmar o cadastro. Tente entrar antes de enviar novamente.");
+      form.reset();
+      trackMarketingEvent("trial_signup_success", { plan_id: selectedPlan.id });
+      setSignupSuccess(true);
     } catch (error) {
       if (message) { message.textContent = error instanceof Error ? error.message : "Não foi possível criar sua conta."; message.dataset.state = "error"; }
       trackMarketingEvent("trial_signup_error", { plan_id: selectedPlan.id });
@@ -200,7 +201,7 @@ export function LandingPage() {
     <dialog ref={modal} className="lp-modal" onClick={event=>{if(event.target===modal.current)closeSignup();}} onCancel={closeSignup} aria-labelledby="lp-modal-title">
       <button type="button" className="lp-modal-close" aria-label="Fechar cadastro" onClick={closeSignup}><X/></button>
       <div className="lp-modal-heading"><span className="lp-kicker">TESTE GRÁTIS · SEM CARTÃO</span><h2 id="lp-modal-title">Sua jornada com o Kalend começa aqui.</h2><p>Crie sua conta e conheça os recursos disponíveis para sua empresa.</p>{selectedPlan&&<div className="lp-selected-plan"><span>Plano selecionado</span><b>{selectedPlan.name}</b><small>{selectedPlan.trialDays} dias de teste · plano mensal de {money(selectedPlan.monthlyPriceCents)} após contratação, conforme condições do plano</small></div>}</div>
-      <form className="lp-signup-form" onSubmit={submitSignup} onInput={event=>{const target=event.target as HTMLInputElement;if(target.name==="confirmPassword")target.setCustomValidity("");if(target.name&&!signupStarted.current){signupStarted.current=true;trackMarketingEvent("trial_signup_started",{plan_id:selectedPlan?.id});}}}>
+      {signupSuccess ? <section className="lp-signup-success" role="status" aria-live="polite"><span className="lp-kicker">TESTE GRÁTIS · SEM CARTÃO</span><h3>Conta criada com sucesso!</h3><p>Sua empresa já está cadastrada no Kalend. Agora entre com seu e-mail e senha para acessar o sistema.</p><Link className="lp-button lp-submit" href="/" onClick={event=>{event.preventDefault();router.replace("/");}}>Ir para login <ArrowRight size={17}/></Link><small>Você será direcionado ao login em instantes.</small></section> : <form className="lp-signup-form" onSubmit={submitSignup} onInput={event=>{const target=event.target as HTMLInputElement;if(target.name==="confirmPassword")target.setCustomValidity("");if(target.name&&!signupStarted.current){signupStarted.current=true;trackMarketingEvent("trial_signup_started",{plan_id:selectedPlan?.id});}}}>
         <label>Nome da empresa<input ref={firstField} name="companyName" autoComplete="organization" maxLength={120} required/></label>
         <label>Nome do responsável<input name="ownerName" autoComplete="name" maxLength={120} required/></label>
         <label>WhatsApp<input name="whatsapp" type="tel" inputMode="tel" autoComplete="tel" placeholder="+55 (11) 99999-9999" maxLength={22} onChange={event=>{event.currentTarget.value=formatPhone(event.currentTarget.value)}} required/></label>
@@ -213,7 +214,7 @@ export function LandingPage() {
         <p className="lp-form-message" data-form-message role="status" aria-live="polite"/>
         <button type="submit" className="lp-button lp-submit">Criar minha conta grátis <ArrowRight size={17}/></button>
         <small className="lp-modal-foot">Nenhum cartão será solicitado para iniciar o período de teste. Se este e-mail já possui uma conta, entre para continuar; ele não será associado automaticamente.</small>
-      </form>
+      </form>}
     </dialog>
   </main>;
 }
