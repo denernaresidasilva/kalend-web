@@ -11,6 +11,22 @@ function load(file, mocks = {}) {
 }
 const fixture = (days=3, expired=false, requiresAction=false, status='TRIALING', companyId='company') => ({serverNow:'2026-10-01T12:00:00Z',trial:{active:!expired,endsAt:'2026-10-04T12:00:00Z',remainingDays:days,expired},financial:{requiresAction,status},context:{companyId,role:'OWNER'}});
 const nav = load('lib/commercial-navigation.ts');
+const commercial = load('lib/commercial.ts', {'./contracts':{}});
+const pagbankGateway = (recurring=false) => ({gateway:'PAGBANK',environment:'SANDBOX',webhookUrl:null,webhookPath:'/webhooks/pagbank',capabilities:{recurring}});
+const pagbankValues = (overrides={}) => ({environment:'PRODUCTION',publicId:'',credentials:'checkout-token',webhookSecret:'',recurringCredentials:'',recurringEnabled:false,...overrides});
+test('PagBank checkout-only environment change replaces checkout token and clears old-environment recurring token',()=>{
+ const patch=commercial.gatewayPatch(pagbankGateway(false),pagbankValues());
+ assert.equal(patch.credentials,'checkout-token');assert.equal(patch.recurringCredentials,null);assert.equal('recurringEnabled' in patch,false);
+});
+test('PagBank environment change with recurrence enabled requires and sends a target-environment recurring token',()=>{
+ assert.throws(()=>commercial.gatewayPatch(pagbankGateway(false),pagbankValues({recurringEnabled:true})),/credenciais necessárias/);
+ const patch=commercial.gatewayPatch(pagbankGateway(false),pagbankValues({recurringEnabled:true,recurringCredentials:'new-recurring-token'}));
+ assert.equal(patch.recurringCredentials,'new-recurring-token');assert.equal(patch.recurringEnabled,true);
+});
+test('PagBank switching environment while recurrence is disabled does not send a stale recurring secret',()=>{
+ const patch=commercial.gatewayPatch(pagbankGateway(true),pagbankValues({recurringEnabled:false}));
+ assert.equal(patch.recurringCredentials,null);assert.equal(patch.recurringEnabled,false);
+});
 test('expired trial stays on initial route for the mandatory recovery modal',()=>{
  assert.equal(nav.commercialDestination(fixture(0,true,true,'ACTIVE'),'/conta'),'/conta');
  assert.equal(nav.commercialDestination(fixture(0,true,false),'/conta'),'/conta');
