@@ -118,7 +118,11 @@ test('security audit: no token storage and gateway secrets are write-only', () =
   const files = [];
   function walk(dir) { for (const entry of fs.readdirSync(dir, { withFileTypes: true })) { if (entry.isDirectory()) walk(`${dir}/${entry.name}`); else files.push(`${dir}/${entry.name}`); } }
   ['app', 'components', 'lib'].forEach(walk);
-  const source = files.filter(file => /\.(tsx?|jsx?)$/.test(file) && !['lib/theme.ts', 'components/theme/theme-provider.tsx', 'components/trial-notice.tsx'].includes(file)).map(file => fs.readFileSync(file, 'utf8')).join('\n');
+  const tracking = fs.readFileSync('lib/landing-tracking.tsx', 'utf8');
+  assert.match(tracking, /CONSENT_KEY = "kalend:marketing-consent:v1"/);
+  assert.match(tracking, /ATTRIBUTION_KEY = "kalend:campaign-attribution:v1"/);
+  assert.doesNotMatch(tracking, /Bearer|document\.cookie|password|email|phone|token/i);
+  const source = files.filter(file => /\.(tsx?|jsx?)$/.test(file) && !['lib/theme.ts', 'lib/landing-tracking.tsx', 'components/theme/theme-provider.tsx', 'components/trial-notice.tsx'].includes(file)).map(file => fs.readFileSync(file, 'utf8')).join('\n');
   assert.doesNotMatch(source, /localStorage|sessionStorage|Bearer|document\.cookie/);
   const trialPreference = fs.readFileSync("components/trial-notice.tsx", "utf8");
   assert.doesNotMatch(trialPreference, /Bearer|document\.cookie|localStorage|token/i);
