@@ -17,7 +17,7 @@ export function webhookUrl(gateway: Gateway, base: string) {
   if (provided) return provided;
   return /^\/webhooks\/[a-z-]+$/.test(gateway.webhookPath) ? safeHttpsUrl(`${base}${gateway.webhookPath}`) : null;
 }
-export function gatewayPatch(gateway: Gateway, values: { environment: Gateway["environment"]; publicId: string; credentials: string; webhookSecret: string; recurringCredentials: string; recurringEnabled: boolean }) {
+export function gatewayPatch(gateway: Gateway, values: { environment: Gateway["environment"]; credentials: string; webhookSecret: string; recurringCredentials: string; recurringEnabled: boolean }) {
   const changed = gateway.environment !== values.environment;
   const recurringRequired = gateway.gateway === "PAGBANK" && values.recurringEnabled;
   if (changed && (!values.credentials || (gateway.gateway === "PAGBANK" ? recurringRequired && !values.recurringCredentials : !values.webhookSecret))) {
@@ -26,7 +26,7 @@ export function gatewayPatch(gateway: Gateway, values: { environment: Gateway["e
       : "Ao trocar de ambiente, substitua as credenciais necessárias para as capacidades habilitadas. A API bloqueia a troca quando existe histórico financeiro.");
   }
   return {
-    environment: values.environment, publicId: values.publicId.trim() || null,
+    environment: values.environment,
     ...(values.credentials ? { credentials: values.credentials } : {}),
     ...(gateway.gateway !== "PAGBANK" && values.webhookSecret ? { webhookSecret: values.webhookSecret } : {}),
     ...(gateway.gateway === "PAGBANK" ? {

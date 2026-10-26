@@ -7,7 +7,7 @@ export type AuthMe = {
 };
 export type Gateway = {
   gateway: "MERCADO_PAGO" | "STRIPE" | "PAGBANK" | "ASAAS";
-  enabled: boolean; environment: "SANDBOX" | "PRODUCTION"; publicId: string | null;
+  enabled: boolean; environment: "SANDBOX" | "PRODUCTION";
   provider: Gateway["gateway"]; capabilities: Capabilities; recurringConfigured: boolean;
   webhookUrl: string | null; webhookStatus: "REMOTE_KEY_UNVERIFIED" | "CONFIGURED_UNVERIFIED" | "NOT_CONFIGURED";
   configured: boolean; webhookConfigured: boolean;

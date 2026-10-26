@@ -13,10 +13,17 @@ const fixture = (days=3, expired=false, requiresAction=false, status='TRIALING',
 const nav = load('lib/commercial-navigation.ts');
 const commercial = load('lib/commercial.ts', {'./contracts':{}});
 const pagbankGateway = (recurring=false) => ({gateway:'PAGBANK',environment:'SANDBOX',webhookUrl:null,webhookPath:'/webhooks/pagbank',capabilities:{recurring}});
-const pagbankValues = (overrides={}) => ({environment:'PRODUCTION',publicId:'',credentials:'checkout-token',webhookSecret:'',recurringCredentials:'',recurringEnabled:false,...overrides});
-test('PagBank checkout-only environment change replaces checkout token and clears old-environment recurring token',()=>{
+const pagbankValues = (overrides={}) => ({environment:'PRODUCTION',credentials:'checkout-token',webhookSecret:'',recurringCredentials:'',recurringEnabled:false,...overrides});
+test('PagBank checkout-only environment change replaces checkout token and clears old-environment recurring token without legacy publicId',()=>{
  const patch=commercial.gatewayPatch(pagbankGateway(false),pagbankValues());
  assert.equal(patch.credentials,'checkout-token');assert.equal(patch.recurringCredentials,null);assert.equal('recurringEnabled' in patch,false);
+ assert.equal('publicId' in patch,false);
+});
+test('hosted gateway patch only transmits the required write-only secrets and environment',()=>{
+ const gateway={gateway:'STRIPE',environment:'SANDBOX',capabilities:{recurring:true}};
+ const patch=commercial.gatewayPatch(gateway,{environment:'SANDBOX',credentials:'sk_test_private',webhookSecret:'whsec_private',recurringCredentials:'',recurringEnabled:true});
+ assert.deepEqual(Object.keys(patch).sort(),['credentials','environment','webhookSecret']);
+ assert.equal(patch.publicId,undefined);
 });
 test('PagBank environment change with recurrence enabled requires and sends a target-environment recurring token',()=>{
  assert.throws(()=>commercial.gatewayPatch(pagbankGateway(false),pagbankValues({recurringEnabled:true})),/credenciais necessárias/);

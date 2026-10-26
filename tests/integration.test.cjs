@@ -166,7 +166,7 @@ test('two independent tabs serialize rotation through the shared lock', async ()
 const commercial = load('lib/commercial.ts');
 const linkMock = ({ children, href, ...props }) => React.createElement('a', { href, ...props }, children);
 const gatewayFixture = (gateway = 'STRIPE', extra = {}) => ({
-  gateway, provider: gateway, enabled: false, environment: 'SANDBOX', publicId: null,
+  gateway, provider: gateway, enabled: false, environment: 'SANDBOX',
   configured: true, webhookConfigured: true, status: 'CONNECTED', lastValidatedAt: null,
   adapterAvailable: true, webhookPath: `/webhooks/${gateway.toLowerCase().replaceAll('_', '-')}`,
   webhookUrl: null, webhookStatus: gateway === 'PAGBANK' ? 'REMOTE_KEY_UNVERIFIED' : 'CONFIGURED_UNVERIFIED',
@@ -209,7 +209,7 @@ test('four gateway cards link to individual configuration, without invented stat
 });
 
 test('gateway patch omits empty secrets; environment switch demands replacements; PagBank never sends webhook secret', () => {
-  const values = { environment: 'SANDBOX', publicId: '', credentials: '', webhookSecret: '', recurringCredentials: '', recurringEnabled: false };
+  const values = { environment: 'SANDBOX', credentials: '', webhookSecret: '', recurringCredentials: '', recurringEnabled: false };
   const patch = commercial.gatewayPatch(gatewayFixture(), values);
   assert.equal('credentials' in patch, false); assert.equal('webhookSecret' in patch, false);
   assert.throws(() => commercial.gatewayPatch(gatewayFixture(), { ...values, environment: 'PRODUCTION' }));
@@ -498,12 +498,12 @@ test('administrative identity comes from the authenticated shared shell', () => 
 });
 
 
-test('hosted gateway forms require only provider-specific secrets and preserve legacy public metadata', async () => {
-  const labels = { STRIPE: 'Nova chave secreta de API', MERCADO_PAGO: 'Novo access token', ASAAS: 'Nova API key', PAGBANK: 'Novo token de checkout' };
+test('hosted gateway forms show only provider-specific server credentials and webhook instructions', async () => {
+  const labels = { STRIPE: 'Chave secreta da API Stripe', MERCADO_PAGO: 'Access Token do Mercado Pago', ASAAS: 'Chave de API Asaas', PAGBANK: 'Token de API do Checkout PagBank' };
   for (const [gateway, label] of Object.entries(labels)) {
     let submitted;
     const h = harness('components/gateway-form.tsx', 'GatewayForm', { '@/lib/api': { API_URL: 'https://api-dev.kalend.tech', jsonBody: value => ({ body: JSON.stringify(value) }), api: async (_path, init) => { submitted = JSON.parse(init.body); return gatewayFixture(gateway); } } });
-    const props = { gateway: gatewayFixture(gateway, { publicId: 'legacy-preserved' }), saved() {} };
+    const props = { gateway: gatewayFixture(gateway, { publicId: 'legacy-hidden' }), saved() {} };
     let tree = h.render(props);
     assert.match(textOf(tree), new RegExp(label));
     assert.doesNotMatch(textOf(tree), /Identificação pública/);
@@ -511,8 +511,17 @@ test('hosted gateway forms require only provider-specific secrets and preserve l
     input(tree, 'password')[0].props.onChange({ target: { value: 'write-only-fixture' } });
     tree = h.render(props);
     await nodes(tree, n => n.type === 'form')[0].props.onSubmit({ preventDefault() {} });
-    assert.equal(submitted.publicId, 'legacy-preserved');
+    assert.equal(submitted.publicId, undefined);
     assert.equal(submitted.credentials, 'write-only-fixture');
     assert.equal('webhookSecret' in submitted, false);
+    assert.doesNotMatch(textOf(tree), /legacy-hidden/);
   }
+  const stripe = harness('components/gateway-form.tsx', 'GatewayForm', { '@/lib/api': { API_URL: 'https://api-dev.kalend.tech' } });
+  const stripeHtml = textOf(stripe.render({ gateway: gatewayFixture('STRIPE'), saved() {} }));
+  assert.match(stripeHtml, /whsec_/); assert.match(stripeHtml, /checkout\.session\.completed/);
+  assert.match(stripeHtml, /https:\/\/api-dev\.kalend\.tech\/webhooks\/stripe/);
+  const asaas = harness('components/gateway-form.tsx', 'GatewayForm', { '@/lib/api': { API_URL: 'https://api-dev.kalend.tech' } });
+  const asaasTree = asaas.render({ gateway: gatewayFixture('ASAAS', { webhookConfigured: false }), saved() {}, webhookMode: true });
+  const asaasToken = input(asaasTree, 'password').find(field => field.props.maxLength === 255);
+  assert.equal(asaasToken.props.minLength, 32); assert.equal(asaasToken.props.required, true); assert.equal(asaasToken.props.pattern, "\\S+");
 });
