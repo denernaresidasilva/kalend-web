@@ -8,7 +8,6 @@ import "./styles/kalend-plans.css";
 import "./styles/landing.css";
 import "./styles/onboarding.css";
 import "./styles/landing-controls.css";
-import "./styles/redesign.css";
 import { ThemeProvider } from "@/components/theme/theme-provider";
 import { themeScript } from "@/lib/theme";
 import { CommercialNotice } from "@/components/commercial-notice";
@@ -35,7 +34,7 @@ export const metadata: Metadata = {
   icons: { apple: "/icons/kalend-180.png" },
 };
 
-export const viewport: Viewport = { width: "device-width", initialScale: 1, themeColor: "#0b0d10" };
+export const viewport: Viewport = { width: "device-width", initialScale: 1, themeColor: "#090a0c" };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
