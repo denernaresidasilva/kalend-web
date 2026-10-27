@@ -57,9 +57,9 @@
 @media (prefers-reduced-motion: reduce) { .kalend-ui *, .kalend-ui *::before, .kalend-ui *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }
 
 .k-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-.k-logo { display: inline-flex; align-items: center; gap: 12px; color: #e6bf67; }
-.k-logo-symbol { width: 44px; height: 44px; display: grid; place-items: center; border-radius: 12px; background: #090a0c; border: 1px solid #805a10; box-shadow: 0 0 18px #e6bf6718; flex-shrink: 0; }
-.k-logo-word { font-weight: 700; letter-spacing: .13em; color: var(--kalend-primary); text-shadow: 0 0 20px #e6bf6725; }
+.k-logo { display: inline-flex; align-items: center; gap: 12px; color: var(--kalend-primary); }
+.k-logo-symbol { width: 44px; height: 44px; display: grid; place-items: center; border-radius: 12px; background: var(--kalend-surface-elevated); color: var(--kalend-primary); border: 1px solid var(--kalend-border); box-shadow: var(--kalend-shadow); flex-shrink: 0; }
+.k-logo-word { font-weight: 700; letter-spacing: .13em; color: var(--kalend-primary); }
 .k-dashboard-metrics { margin-bottom: 24px; }
 .k-dashboard-metrics .k-metric { border-top: 2px solid var(--kalend-primary); }
 .k-dashboard-charts { display: grid; gap: 16px; grid-template-columns: minmax(0,1fr); margin-bottom: 24px; }

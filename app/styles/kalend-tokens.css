@@ -1,47 +1,62 @@
 :root, .kalend-ui {
-  --kalend-primary: #805a10;
-  --kalend-primary-hover: #674709;
-  --kalend-primary-soft: #faf2df;
-  --kalend-secondary: #475569;
-  --kalend-background: #f6f4ef;
+  --kalend-background: #f5f7fb;
   --kalend-surface: #ffffff;
   --kalend-surface-elevated: #ffffff;
-  --kalend-border: #e3dfd5;
-  --kalend-text-primary: #201d17;
-  --kalend-text-secondary: #4b5568;
-  --kalend-text-muted: #647084;
-  --kalend-success: #16734b;
-  --kalend-warning: #8a5200;
-  --kalend-danger: #b42332;
-  --kalend-info: #225cb0;
+  --kalend-sidebar: #f0f2f6;
+  --kalend-border: #e2e8f0;
+  --kalend-text-primary: #172033;
+  --kalend-text-secondary: #475569;
+  --kalend-text-muted: #64748b;
+  --kalend-primary: #1d4ed8;
+  --kalend-primary-hover: #1e40af;
+  --kalend-primary-soft: #dbeafe;
+  --kalend-secondary: #475569;
+  --kalend-success: #15803d;
+  --kalend-warning: #a16207;
+  --kalend-danger: #b91c1c;
+  --kalend-info: #1d4ed8;
   --kalend-on-primary: #ffffff;
   --kalend-control-border: #7c879a;
-  --kalend-overlay: #090a0c80;
-  --kalend-shadow: 0 8px 32px #201d170d;
-  --kalend-radius: 12px;
+  --kalend-overlay: #0f172a80;
+  --kalend-shadow: 0 12px 34px #1720330a;
+  --kalend-radius: 14px;
   color-scheme: light;
   color: var(--kalend-text-primary);
   background: var(--kalend-background);
   font-family: var(--font-geist-sans), Arial, sans-serif;
 }
-html[data-theme="dark"], html[data-theme="dark"] .kalend-ui, .kalend-theme-root[data-theme="dark"] .kalend-ui, .kalend-ui[data-theme="dark"] {
-  --kalend-primary: #e6bf67;
-  --kalend-primary-hover: #f3d38a;
-  --kalend-primary-soft: #302719;
+
+html[data-theme="dark"],
+html[data-theme="dark"] .kalend-ui,
+.kalend-theme-root[data-theme="dark"] .kalend-ui,
+.kalend-ui[data-theme="dark"] {
+  --kalend-background: #0b0d10;
+  --kalend-surface: #12161c;
+  --kalend-surface-elevated: #1b2028;
+  --kalend-sidebar: #101318;
+  --kalend-border: #303640;
+  --kalend-text-primary: #f9fafb;
+  --kalend-text-secondary: #c2c8d0;
+  --kalend-text-muted: #9ca3af;
+  --kalend-primary: #f97316;
+  --kalend-primary-hover: #ea580c;
+  --kalend-primary-soft: #3a2418;
   --kalend-secondary: #cbd5e1;
-  --kalend-background: #090a0c;
-  --kalend-surface: #141518;
-  --kalend-surface-elevated: #1c1d21;
-  --kalend-border: #343438;
-  --kalend-text-primary: #f5f3ee;
-  --kalend-text-secondary: #c6c3bd;
-  --kalend-text-muted: #a6a39d;
-  --kalend-success: #67d8a4;
-  --kalend-warning: #f4c16b;
-  --kalend-danger: #ff939c;
-  --kalend-info: #8dbbff;
-  --kalend-on-primary: #201d17;
-  --kalend-control-border: #827e76;
-  --kalend-shadow: 0 8px 32px #00000033;
+  --kalend-success: #4ade80;
+  --kalend-warning: #fbbf24;
+  --kalend-danger: #f87171;
+  --kalend-info: #60a5fa;
+  --kalend-on-primary: #16110d;
+  --kalend-control-border: #7c879a;
+  --kalend-shadow: 0 14px 38px #00000030;
   color-scheme: dark;
 }
+
+.kalend-ui { min-width: 0; overflow-wrap: anywhere; }
+.kalend-ui :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 3px solid var(--kalend-primary);
+  outline-offset: 3px;
+}
+.kalend-ui a { color: var(--kalend-primary); }
+.kalend-ui button, .kalend-ui input, .kalend-ui select, .kalend-ui textarea { font: inherit; }
+.kalend-ui :where(button, input, select, textarea):disabled { cursor: not-allowed; opacity: .65; }

@@ -415,7 +415,7 @@ export default function FinanceiroPage() {
                       {filteredPayments.map(
                         (payment) => (
                           <tr key={payment.id}>
-                            <td>
+                            <td data-label="Empresa">
                               <div className="company-owner">
                                 <strong>
                                   {payment.company
@@ -432,7 +432,7 @@ export default function FinanceiroPage() {
                               </div>
                             </td>
 
-                            <td>
+                            <td data-label="Plano">
                               <span className="company-plan">
                                 {payment.plan
                                   ?.name ||
@@ -440,7 +440,7 @@ export default function FinanceiroPage() {
                               </span>
                             </td>
 
-                            <td>
+                            <td data-label="Valor">
                               <strong>
                                 {formatMoney(
                                   payment.amountCents
@@ -448,7 +448,7 @@ export default function FinanceiroPage() {
                               </strong>
                             </td>
 
-                            <td>
+                            <td data-label="Status">
                               <span
                                 className={`company-status ${statusClass(
                                   payment.status
@@ -460,21 +460,21 @@ export default function FinanceiroPage() {
                               </span>
                             </td>
 
-                            <td>
+                            <td data-label="Gateway">
                               <span className="company-muted">
                                 {payment.gateway ||
                                   "—"}
                               </span>
                             </td>
 
-                            <td>
+                            <td data-label="Pagamento">
                               <span className="company-muted">
                                 {payment.externalPaymentId ||
                                   "—"}
                               </span>
                             </td>
 
-                            <td>
+                            <td data-label="Data">
                               <span className="company-date">
                                 {formatDate(
                                   payment.paidAt ||
@@ -482,7 +482,7 @@ export default function FinanceiroPage() {
                                 )}
                               </span>
                             </td>
-                            <td>{payment.subscription && <Link href={`/super-admin/assinaturas/${payment.subscription.id}`}>Ver assinatura e estornos</Link>}</td>
+                            <td data-label="Detalhes">{payment.subscription && <Link href={`/super-admin/assinaturas/${payment.subscription.id}`}>Ver assinatura e estornos</Link>}</td>
                           </tr>
                         )
                       )}

@@ -345,7 +345,7 @@ export default function SubscriptionsPage() {
                       {filteredSubscriptions.map(
                         (subscription) => (
                           <tr key={subscription.id}>
-                            <td>
+                            <td data-label="Empresa">
                               <div className="company-name-cell">
                                 <div>
                                   <Building2
@@ -372,7 +372,7 @@ export default function SubscriptionsPage() {
                               </div>
                             </td>
 
-                            <td>
+                            <td data-label="Plano">
                               <span className="company-plan">
                                 {
                                   subscription.plan
@@ -381,7 +381,7 @@ export default function SubscriptionsPage() {
                               </span>
                             </td>
 
-                            <td>
+                            <td data-label="Status">
                               <span
                                 className={`subscription-status ${statusClass(
                                   subscription.status
@@ -404,7 +404,7 @@ export default function SubscriptionsPage() {
                                 )}
                             </td>
 
-                            <td>
+                            <td data-label="Período">
                               <div className="subscription-period">
                                 <span>
                                   {formatDate(
@@ -422,7 +422,7 @@ export default function SubscriptionsPage() {
                               </div>
                             </td>
 
-                            <td>
+                            <td data-label="Preço mensal">
                               <strong className="subscription-value">
                                 {formatMoney(
                                   subscription.plan
@@ -435,7 +435,7 @@ export default function SubscriptionsPage() {
                               </small>
                             </td>
 
-                            <td>
+                            <td data-label="Último pagamento">
                               {subscription.lastPayment ? (
                                 <div className="subscription-payment">
                                   <strong>
@@ -461,14 +461,14 @@ export default function SubscriptionsPage() {
                               )}
                             </td>
 
-                            <td>
+                            <td data-label="Cadastro">
                               <span className="company-date">
                                 {formatDate(
                                   subscription.createdAt
                                 )}
                               </span>
                             </td>
-                            <td><Link href={`/super-admin/assinaturas/${subscription.id}`}>Ver detalhes</Link></td>
+                            <td data-label="Detalhes"><Link href={`/super-admin/assinaturas/${subscription.id}`}>Ver detalhes</Link></td>
                           </tr>
                         )
                       )}

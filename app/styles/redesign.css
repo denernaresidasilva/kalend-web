@@ -1,0 +1,147 @@
+/* Shared KALEND visual system. Existing page behavior and domain components stay intact. */
+html { background: var(--kalend-background); scroll-behavior: smooth; }
+body { background: var(--kalend-background) !important; color: var(--kalend-text-primary); font-family: var(--font-geist-sans), Arial, sans-serif; }
+::selection { background: var(--kalend-primary-soft); color: var(--kalend-text-primary); }
+
+.kalend-ui { background: var(--kalend-background); color: var(--kalend-text-primary); }
+.k-admin-shell { min-height: 100dvh; background: var(--kalend-background); }
+.k-admin-sidebar { background: var(--kalend-sidebar); border-color: var(--kalend-border); }
+.k-admin-workspace { min-height: 100dvh; background: var(--kalend-background); }
+.k-admin-sidebar > div { height: calc(100dvh - 32px); top: 16px; display: flex; flex-direction: column; }
+.k-admin-sidebar nav { flex: 1; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+.k-admin-sidebar .k-nav-brand { margin: 0 0 20px; padding: 6px 8px; border-radius: 12px; }
+.k-admin-sidebar .k-nav-brand:hover { background: color-mix(in srgb, var(--kalend-primary-soft) 60%, transparent); }
+.k-nav-group { margin: 18px 0; }
+.k-nav-group h2 { margin: 0 12px 8px; color: var(--kalend-text-muted); font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+.kalend-ui .k-nav-link { min-height: 46px; border-radius: 10px; font-weight: 550; transition: background .16s ease, color .16s ease, transform .16s ease; }
+.kalend-ui .k-nav-link:hover { color: var(--kalend-text-primary); background: var(--kalend-surface); }
+.kalend-ui .k-nav-link[aria-current="page"] { color: var(--kalend-primary); background: var(--kalend-primary-soft); box-shadow: none; }
+.k-nav-link[aria-current="page"] svg { stroke-width: 2.3; }
+.k-admin-sidebar .k-nav-collapse { margin: 10px auto 0; color: var(--kalend-text-secondary); }
+.k-admin-header { position: sticky; top: 0; z-index: 25; min-height: 68px; padding: 10px clamp(16px, 2vw, 30px); background: color-mix(in srgb, var(--kalend-surface) 92%, transparent); border-color: var(--kalend-border); backdrop-filter: blur(14px); }
+.k-admin-context { gap: 12px; }
+.k-admin-context strong { font-size: 15px; letter-spacing: -.01em; }
+.k-admin-main { width: 100%; padding: clamp(20px, 3vw, 36px) clamp(16px, 3vw, 40px) 56px; }
+.k-admin-main > * { min-width: 0; }
+.k-admin-main :is(h1,h2,h3) { letter-spacing: -.025em; }
+.k-admin-main h1 { font-size: clamp(24px, 2.2vw, 32px); }
+.k-admin-main :is(.companies-panel,.companies-summary article,.companies-summary-card,.finance-secondary-stats > div,.commercial-panel,.gateway-card,.admin-plan-card,.plans-summary article,.new-company-section,.plan-form-card,.plan-preview-card,.plan-publish-card,.k-card) { border-radius: var(--kalend-radius); }
+.k-admin-main :is(input,select,textarea) { border-radius: 10px; }
+.k-admin-main :is(button,.new-company-submit,.commercial-primary,.new-plan-button,.plan-save-button,.new-company-button) { border-radius: 10px; transition: transform .15s ease, background .15s ease, box-shadow .15s ease; }
+.k-admin-main :is(.new-company-submit,.commercial-primary,.new-plan-button,.plan-save-button,.new-company-button):hover { filter: brightness(1.04); box-shadow: 0 6px 16px color-mix(in srgb, var(--kalend-primary) 18%, transparent); }
+.k-dashboard-metrics .k-metric { border: 1px solid var(--kalend-border); border-top: 2px solid var(--kalend-primary); border-radius: var(--kalend-radius); background: var(--kalend-surface); box-shadow: var(--kalend-shadow); }
+.k-dashboard-metrics .k-metric strong { letter-spacing: -.045em; }
+.k-dashboard-charts > *, .k-dashboard-details, .k-dashboard-details > * { min-width: 0; }
+.k-status-chart { border: 1px solid var(--kalend-border); border-radius: var(--kalend-radius); background: var(--kalend-surface); padding: 20px; box-shadow: var(--kalend-shadow); }
+.k-admin-main table { border-collapse: separate; border-spacing: 0; }
+.k-admin-main :is(th,td) { padding: 13px 14px; }
+.k-admin-main th { color: var(--kalend-text-secondary); font-size: 12px; font-weight: 650; letter-spacing: .025em; }
+.k-admin-main tbody tr:hover { background: color-mix(in srgb, var(--kalend-primary-soft) 52%, transparent); }
+.k-admin-main :is(.empty-state,.k-empty) { border: 1px dashed var(--kalend-border); border-radius: var(--kalend-radius); }
+.k-admin-main :is(dialog,.modal,.company-modal,.k-push-modal,.k-trial-expired-modal) { color: var(--kalend-text-primary); background: var(--kalend-surface-elevated); border-color: var(--kalend-border); border-radius: 18px; box-shadow: var(--kalend-shadow); }
+.k-admin-main dialog::backdrop { background: var(--kalend-overlay); backdrop-filter: blur(3px); }
+.k-admin-main :is(button,a,input,select,textarea) { -webkit-tap-highlight-color: transparent; }
+.login-brand { background: radial-gradient(ellipse at 12% 18%, color-mix(in srgb, var(--kalend-primary) 24%, transparent), transparent 52%), linear-gradient(145deg, #0b0d10 0%, #171c24 58%, #101318 100%); }
+.login-brand .k-logo-word, .brand-message h1 strong, .brand-pill { color: var(--kalend-primary); }
+.login-brand .k-logo-symbol { background: #171c24; color: var(--kalend-primary); border-color: color-mix(in srgb, var(--kalend-primary) 35%, var(--kalend-border)); }
+.login-button { background: var(--kalend-primary); color: var(--kalend-on-primary); }
+.login-button:hover { background: var(--kalend-primary-hover); }
+.login-heading h2, .login-card label { color: var(--kalend-text-primary); }
+.login-area, .login-page { background: var(--kalend-background); }
+.login-card { background: var(--kalend-surface); color: var(--kalend-text-primary); border-color: var(--kalend-border); box-shadow: var(--kalend-shadow); }
+.input-wrapper { background: var(--kalend-surface); border-color: var(--kalend-control-border); }
+.input-wrapper input { color: var(--kalend-text-primary); }
+
+/* Sidebar: compact rail at tablet, fixed full-height navigation on wide desktop. */
+@media (min-width: 768px) {
+  .k-admin-shell { grid-template-columns: 72px minmax(0,1fr); }
+  .k-admin-sidebar { position: sticky; top: 0; height: 100dvh; padding: 16px 10px; }
+  .k-admin-sidebar > div { position: static; }
+  .k-admin-sidebar .k-nav-brand { justify-content: center; padding: 4px; }
+  .k-admin-sidebar .k-nav-group { margin: 12px 0; }
+  .k-admin-sidebar .k-nav-link { justify-content: center; padding: 10px; }
+}
+@media (min-width: 1024px) {
+  .k-admin-shell:not(.k-admin-collapsed) { grid-template-columns: 252px minmax(0,1fr); }
+  .k-admin-shell:not(.k-admin-collapsed) .k-admin-sidebar { padding: 20px 14px; }
+  .k-admin-shell:not(.k-admin-collapsed) .k-admin-sidebar .k-nav-brand { justify-content: flex-start; padding: 6px 8px; }
+  .k-admin-shell:not(.k-admin-collapsed) .k-admin-sidebar .k-nav-link { justify-content: flex-start; padding: 10px 12px; }
+  .k-admin-shell:not(.k-admin-collapsed) .k-admin-sidebar .k-nav-group { margin: 18px 0; }
+}
+@media (max-width: 767px) {
+  .k-admin-header { min-height: 60px; padding: 7px 10px; }
+  .k-admin-header .k-actions { gap: 0; }
+  .k-admin-header .k-actions > :is(a,button) { min-width: 40px; padding: 7px; }
+  .k-admin-main { padding: 20px 14px calc(36px + env(safe-area-inset-bottom)); }
+  .k-admin-main .k-page-header { margin-bottom: 22px; }
+  .k-admin-main .k-page-header .k-actions { width: 100%; }
+  .k-admin-main .k-page-header .k-actions > * { flex: 1 1 auto; }
+  .k-admin-main :is(.companies-table-wrapper,.companies-table-wrap,.commercial-table-wrap,.k-table-scroll) { margin-inline: -2px; overscroll-behavior-x: contain; }
+  .k-drawer { padding: max(18px, env(safe-area-inset-top)) 16px max(20px, env(safe-area-inset-bottom)); background: var(--kalend-sidebar); }
+}
+@media (max-width: 640px) {
+  .k-admin-main :is(.companies-table-wrapper,.companies-table-wrap,.commercial-table-wrap,.k-table-scroll) { overflow: visible; }
+  .k-admin-main .companies-table { display: block; width: 100%; min-width: 0; }
+  .k-admin-main .companies-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; }
+  .k-admin-main .companies-table tbody { display: grid; gap: 12px; }
+  .k-admin-main .companies-table tbody tr { display: grid; gap: 0; padding: 8px 14px; border: 1px solid var(--kalend-border); border-radius: var(--kalend-radius); background: var(--kalend-surface); box-shadow: var(--kalend-shadow); }
+  .k-admin-main .companies-table tbody td { display: grid; grid-template-columns: minmax(90px, .38fr) minmax(0, 1fr); align-items: start; gap: 12px; padding: 11px 0; border-bottom: 1px solid var(--kalend-border); overflow-wrap: anywhere; }
+  .k-admin-main .companies-table tbody td:last-child { border-bottom: 0; }
+  .k-admin-main .companies-table tbody td::before { content: attr(data-label); color: var(--kalend-text-muted); font-size: 11px; font-weight: 650; letter-spacing: .04em; text-transform: uppercase; }
+  .k-admin-main .companies-table tbody td[data-label="Empresa"] { display: block; padding-top: 8px; }
+  .k-admin-main .companies-table tbody td[data-label="Empresa"]::before { content: none; }
+  .k-admin-main .companies-table tbody td[data-label="Ações"], .k-admin-main .companies-table tbody td[data-label="Detalhes"] { grid-template-columns: 1fr; }
+  .k-admin-main .companies-table tbody td[data-label="Ações"]::before, .k-admin-main .companies-table tbody td[data-label="Detalhes"]::before { content: none; }
+  .k-admin-main .companies-table tbody td :is(.company-owner,.company-subscription,.subscription-period,.subscription-payment,.company-name-cell,.company-row-actions) { min-width: 0; }
+}
+@media (max-width: 374px) {
+  .k-admin-context strong { display: none; }
+  .k-admin-header .k-actions > :is(a,button) { min-width: 36px; }
+  .k-admin-main { padding-inline: 12px; }
+  .k-dashboard-metrics { grid-template-columns: minmax(0,1fr); }
+}
+@media (min-width: 375px) and (max-width: 414px) {
+  .k-admin-context strong { display: block; max-width: 72px; font-size: 12px; }
+}
+
+/* Public landing follows the same theme while retaining its conversion flow. */
+.lp-root { --lp-paper: var(--kalend-background); --lp-ink: var(--kalend-text-primary); --lp-muted: var(--kalend-text-secondary); --lp-border: var(--kalend-border); --lp-gold: var(--kalend-primary); --lp-gold-light: var(--kalend-primary-hover); background: var(--kalend-background); color: var(--kalend-text-primary); }
+.lp-header { background: color-mix(in srgb, var(--kalend-surface) 94%, transparent); border-color: var(--kalend-border); }
+.lp-header .k-logo-word, .lp-footer .k-logo-word { color: var(--kalend-text-primary); }
+.lp-header .k-logo-symbol, .lp-footer .k-logo-symbol { background: var(--kalend-surface-elevated); color: var(--kalend-primary); border-color: var(--kalend-border); }
+.lp-nav a, .lp-header-actions > a:first-child { color: var(--kalend-text-secondary); }
+.lp-nav a:hover, .lp-header-actions > a:first-child:hover { color: var(--kalend-primary); }
+.lp-button { background: var(--kalend-primary); color: var(--kalend-on-primary); border-color: var(--kalend-primary); box-shadow: none; }
+.lp-button:hover { background: var(--kalend-primary-hover); color: var(--kalend-on-primary); }
+.lp-button-quiet { color: var(--kalend-text-primary); border-color: var(--kalend-border); background: var(--kalend-surface); }
+.lp-button-quiet:hover { background: var(--kalend-surface-elevated); }
+.lp-root :is(.lp-benefits,.lp-section,.lp-pricing,.lp-faq) { background-color: var(--kalend-background); color: var(--kalend-text-primary); }
+.lp-root :is(.lp-hero,.lp-features,.lp-agenda,.lp-automation,.lp-audience,.lp-how) { background: var(--kalend-background); color: var(--kalend-text-primary); }
+.lp-root :is(.lp-hero h1,.lp-section-heading h2,.lp-split-copy h2,.lp-faq-layout h2,.lp-feature-card h3,.lp-plan h3,.lp-steps h3) { color: var(--kalend-text-primary); }
+.lp-root :is(.lp-hero-copy > p,.lp-section-heading p,.lp-split-copy > p,.lp-feature-card p,.lp-plan-top p,.lp-steps p,.lp-faq-list p) { color: var(--kalend-text-secondary); }
+.lp-root :is(.lp-kicker,.lp-hero h1 em,.lp-text-link,.lp-plan li svg,.lp-proof svg) { color: var(--kalend-primary); }
+.lp-root :is(.lp-feature-card,.lp-plan,.lp-audience-grid article,.lp-steps article,.lp-faq-list article,.lp-benefit-grid article) { background: var(--kalend-surface); border-color: var(--kalend-border); color: var(--kalend-text-primary); box-shadow: var(--kalend-shadow); }
+.lp-root :is(.lp-plan-featured,.lp-plan.selected) { border-color: var(--kalend-primary); }
+.lp-root :is(.lp-plan ul,.lp-plan li,.lp-proof,.lp-benefit-grid p,.lp-audience-grid small) { color: var(--kalend-text-secondary); }
+.lp-root :is(.lp-modal,.lp-consent-banner) { background: var(--kalend-surface-elevated); color: var(--kalend-text-primary); border-color: var(--kalend-border); }
+.lp-root :is(.lp-modal-heading h2,.lp-selected-plan b,.lp-consent-banner b) { color: var(--kalend-text-primary); }
+.lp-root :is(.lp-modal-heading > p,.lp-selected-plan small,.lp-signup-form label small,.lp-modal-foot,.lp-consent-banner p) { color: var(--kalend-text-secondary); }
+.lp-root .lp-signup-form input:not([type=checkbox]) { background: var(--kalend-surface); color: var(--kalend-text-primary); border-color: var(--kalend-control-border); }
+.lp-root .lp-selected-plan { background: var(--kalend-primary-soft); border-color: var(--kalend-border); }
+.lp-root .lp-footer { background: var(--kalend-sidebar); color: var(--kalend-text-secondary); border-color: var(--kalend-border); }
+.lp-root .lp-footer p, .lp-root .lp-footer nav a { color: var(--kalend-text-secondary); }
+.lp-root .lp-dark-section, .lp-root .lp-final { background: #12161c; color: #f9fafb; }
+.lp-root .lp-dark-section :is(h2,p), .lp-root .lp-final :is(h2,p) { color: #f9fafb; }
+.lp-root .lp-dark-section p, .lp-root .lp-final p { color: #c2c8d0; }
+.lp-menu-toggle { color: var(--kalend-text-primary); }
+@media (max-width: 760px) {
+  .lp-header { padding-inline: 14px; }
+  .lp-nav { background: var(--kalend-surface); border-color: var(--kalend-border); box-shadow: var(--kalend-shadow); }
+  .lp-root .lp-container { width: min(100% - 32px, 1160px); }
+  .lp-root .lp-hero { padding-top: 58px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .kalend-ui *, .lp-root *, .kalend-ui *::before, .lp-root *::before, .kalend-ui *::after, .lp-root *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}

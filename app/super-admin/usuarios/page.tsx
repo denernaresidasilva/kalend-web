@@ -431,7 +431,7 @@ export default function UsuariosPage() {
 
                       return (
                         <tr key={user.id}>
-                          <td>
+                          <td data-label="Usuário">
                             <div>
                               <strong>
                                 {user.name}
@@ -443,7 +443,7 @@ export default function UsuariosPage() {
                             </div>
                           </td>
 
-                          <td>
+                          <td data-label="Empresa">
                             {activeMemberships.length >
                             0 ? (
                               <div>
@@ -474,7 +474,7 @@ export default function UsuariosPage() {
                             )}
                           </td>
 
-                          <td>
+                          <td data-label="Função">
                             {user.isSuperAdmin ? (
                               <span className="finance-status finance-status-success">
                                 Super Admin
@@ -501,7 +501,7 @@ export default function UsuariosPage() {
                             )}
                           </td>
 
-                          <td>
+                          <td data-label="Status">
                             {user.canAuthenticate ? (
                               <span className="finance-status finance-status-success">
                                 <CheckCircle2
@@ -516,12 +516,12 @@ export default function UsuariosPage() {
                             )}
                           </td>
 
-                          <td>
+                          <td data-label="Cadastro">
                             {formatDate(
                               user.createdAt,
                             )}
                           </td>
-                          <td>
+                          <td data-label="Ações">
                             <div className="company-row-actions">
                               <button type="button" className="company-edit-button" onClick={() => void openEdit(user)} aria-label={`Editar usuário ${user.name}`}>
                                 <Pencil size={15} /><span>Editar</span>

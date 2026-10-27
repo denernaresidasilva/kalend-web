@@ -439,7 +439,7 @@ export default function CompaniesPage() {
                       {filteredCompanies.map(
                         (company) => (
                           <tr key={company.id}>
-                            <td>
+                            <td data-label="Empresa">
                               <div className="company-name-cell">
                                 <div>
                                   <Building2
@@ -470,7 +470,7 @@ export default function CompaniesPage() {
                               </div>
                             </td>
 
-                            <td>
+                            <td data-label="Responsável">
                               <div className="company-owner">
                                 <strong>
                                   {company.owner
@@ -485,7 +485,7 @@ export default function CompaniesPage() {
                               </div>
                             </td>
 
-                            <td>
+                            <td data-label="Plano">
                               <span className="company-plan">
                                 {company.subscription
                                   ?.plan?.name ||
@@ -493,7 +493,7 @@ export default function CompaniesPage() {
                               </span>
                             </td>
 
-                            <td>
+                            <td data-label="Assinatura">
                               {company.subscription ? (
                                 <div className="company-subscription">
                                   <span
@@ -530,14 +530,14 @@ export default function CompaniesPage() {
                               )}
                             </td>
 
-                            <td>
+                            <td data-label="Usuários">
                               <div className="company-users-count">
                                 <Users size={15} />
                                 {company.usersCount}
                               </div>
                             </td>
 
-                            <td>
+                            <td data-label="Cadastro">
                               <span className="company-date">
                                 {formatDate(
                                   company.createdAt
@@ -545,7 +545,7 @@ export default function CompaniesPage() {
                               </span>
                             </td>
 
-                            <td>
+                            <td data-label="Ações">
                               <div className="company-row-actions">
                               <button
                                 type="button"
