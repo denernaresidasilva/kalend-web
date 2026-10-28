@@ -143,3 +143,35 @@ body { background: var(--kalend-background); color: var(--kalend-text-primary); 
 .k-trial-expired-modal { width: min(1120px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); overflow: auto; border: 1px solid var(--kalend-border); border-radius: 16px; padding: 24px; color: var(--kalend-text-primary); background: var(--kalend-surface); }
 .k-trial-expired-modal::backdrop { background: #0009; }
 @media (max-width: 600px) { .k-trial-expired-modal { padding: 16px; } }
+/* Tenant booking operations share the approved Kalend theme tokens. */
+.k-ops-page { display: grid; gap: 22px; min-width: 0; }
+.k-ops-page .k-page-heading, .k-ops-page .k-section-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.k-ops-page .k-page-heading h1 { margin: 4px 0 8px; }
+.k-ops-page .k-page-heading p, .k-ops-page .k-section-heading p { color: var(--kalend-text-secondary); margin: 0; }
+.k-ops-page .k-eyebrow { color: var(--kalend-primary); font-size: .74rem; font-weight: 700; letter-spacing: .08em; margin: 0; }
+.k-ops-page .k-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.k-ops-page .k-grid .k-card { display: grid; gap: 8px; }
+.k-ops-page .k-ops-metric { font-size: 1.8rem; }
+.k-ops-page h2 { margin-top: 0; }
+.k-ops-page .k-ops-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.k-ops-page .k-ops-form > label { display: grid; gap: 6px; font-weight: 600; }
+.k-ops-page .k-ops-form input, .k-ops-page .k-ops-form select { min-width: 0; width: 100%; min-height: 42px; padding: 9px 11px; border: 1px solid var(--kalend-border); border-radius: 9px; background: var(--kalend-surface); color: var(--kalend-text); font: inherit; }
+.k-ops-page .k-ops-form fieldset { border: 1px solid var(--kalend-border); border-radius: 9px; padding: 10px; }
+.k-ops-page .k-ops-days { display: flex; gap: 8px; flex-wrap: wrap; }
+.k-ops-page .k-ops-days label { display: flex; align-items: center; gap: 4px; }
+.k-ops-page .k-ops-form > button { align-self: end; justify-self: start; }
+.k-ops-page .k-ops-service-list { display: grid; gap: 10px; }
+.k-ops-page .k-ops-service-list > div { display: flex; justify-content: space-between; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--kalend-border); }
+.k-ops-page .k-ops-service-list span { color: var(--kalend-text-secondary); }
+.k-ops-page .k-ops-requests { display: grid; gap: 12px; }
+.k-ops-page .k-ops-request-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+.k-ops-page .k-ops-request-top h3 { margin: 0 0 8px; }
+.k-ops-page .k-ops-request-top small { color: var(--kalend-text-secondary); }
+.k-ops-page .k-ops-requests ul { display: grid; gap: 8px; list-style: none; padding: 0; }
+.k-ops-page .k-ops-requests li { display: grid; grid-template-columns: 1.3fr 1fr 1.2fr auto; gap: 8px; align-items: center; padding: 9px 0; border-top: 1px solid var(--kalend-border); }
+.k-ops-page .k-ops-requests li > * { min-width: 0; }
+.k-ops-page .k-ops-requests .k-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.k-ops-page .k-badge { display: inline-block; padding: 4px 8px; border-radius: 999px; background: var(--kalend-surface-elevated); font-size: .78rem; }
+.k-ops-page .k-badge-success { color: var(--kalend-success); }
+.k-ops-page .k-badge-warning { color: var(--kalend-warning); }
+@media (max-width: 720px) { .k-ops-page .k-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }.k-ops-page .k-ops-form { grid-template-columns: 1fr; }.k-ops-page .k-ops-requests li { grid-template-columns: 1fr 1fr; }.k-ops-page .k-ops-service-list > div { flex-direction: column; }.k-ops-page .k-page-heading { align-items: flex-start; } }

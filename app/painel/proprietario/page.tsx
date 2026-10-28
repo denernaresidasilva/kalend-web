@@ -1,3 +1,2 @@
-export default function Page() {
-  return <section aria-label="Área de conteúdo do painel" />;
-}
+import { TenantOperations } from "@/components/bookings/tenant-operations";
+export default function Page() { return <TenantOperations setup />; }
