@@ -24,7 +24,7 @@ export function CommercialEntry({ children }: { children: React.ReactNode }) {
   const companyId = profile?.selectedCompanyId;
   const userId = profile?.user.id;
   const key = `${userId}:${companyId}`;
-  const required = !!profile && profile.systemRole !== "SUPER_ADMIN" && !!companyId;
+  const required = !pathname.startsWith("/agendar/") && pathname !== "/ativar-cliente" && !!profile && profile.systemRole !== "SUPER_ADMIN" && !!companyId;
   useEffect(() => {
     const invalidate = () => { clearCommercialState(); setState(null); setAttempt(value => value + 1); };
     // Refresh without unmounting an existing recovery modal or its checkout form.

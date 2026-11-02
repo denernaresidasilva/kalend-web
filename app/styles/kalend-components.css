@@ -192,3 +192,5 @@ body { background: var(--kalend-background); color: var(--kalend-text-primary); 
 .k-ops-page .k-section-heading > label { display: grid; gap: 6px; flex-shrink: 0; }
 .k-ops-page input[type=date] { min-height: 44px; padding: 8px; border: 1px solid var(--kalend-border); border-radius: 8px; background: var(--kalend-surface); color: var(--kalend-text-primary); font: inherit; }
 @media (max-width: 480px) { .k-ops-page .k-page-heading, .k-ops-page .k-section-heading { flex-direction: column; }.k-ops-page .k-ops-form > button { width: 100%; }.k-ops-page .k-section-heading > label { width: 100%; } }
+
+.k-invitation-link { display: block; width: 100%; min-width: 0; padding: 12px; margin: 8px 0; border: 1px solid var(--kalend-border); border-radius: 8px; background: var(--kalend-surface); color: var(--kalend-text-primary); }

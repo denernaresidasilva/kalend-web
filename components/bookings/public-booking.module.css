@@ -54,3 +54,5 @@
 .success p { color: #c3c9d2; line-height: 1.6; }
 @media (max-width: 760px) { .content { padding: 24px 14px; }.columns { grid-template-columns: 1fr; }.panel { position: static; order: -1; }.service { align-items: stretch; flex-direction: column; }.service .primary { width: 100%; }.catalog, .panel { padding: 17px; }.sectionHead { align-items: flex-start; flex-direction: column; }.header { padding-inline: 16px; } }
 @media (prefers-reduced-motion: reduce) { .page *, .page *::before, .page *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; } }
+
+.slots button:disabled { opacity: .35; cursor: not-allowed; }
