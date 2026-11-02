@@ -155,7 +155,7 @@ body { background: var(--kalend-background); color: var(--kalend-text-primary); 
 .k-ops-page h2 { margin-top: 0; }
 .k-ops-page .k-ops-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
 .k-ops-page .k-ops-form > label { display: grid; gap: 6px; font-weight: 600; }
-.k-ops-page .k-ops-form input, .k-ops-page .k-ops-form select { min-width: 0; width: 100%; min-height: 42px; padding: 9px 11px; border: 1px solid var(--kalend-border); border-radius: 9px; background: var(--kalend-surface); color: var(--kalend-text); font: inherit; }
+.k-ops-page .k-ops-form input, .k-ops-page .k-ops-form select { min-width: 0; width: 100%; min-height: 42px; padding: 9px 11px; border: 1px solid var(--kalend-border); border-radius: 9px; background: var(--kalend-surface); color: var(--kalend-text-primary); font: inherit; }
 .k-ops-page .k-ops-form fieldset { border: 1px solid var(--kalend-border); border-radius: 9px; padding: 10px; }
 .k-ops-page .k-ops-days { display: flex; gap: 8px; flex-wrap: wrap; }
 .k-ops-page .k-ops-days label { display: flex; align-items: center; gap: 4px; }
@@ -177,7 +177,18 @@ body { background: var(--kalend-background); color: var(--kalend-text-primary); 
 @media (max-width: 720px) { .k-ops-page .k-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }.k-ops-page .k-ops-form { grid-template-columns: 1fr; }.k-ops-page .k-ops-requests li { grid-template-columns: 1fr 1fr; }.k-ops-page .k-ops-service-list > div { flex-direction: column; }.k-ops-page .k-page-heading { align-items: flex-start; } }
 
 .k-agenda-list { list-style: none; padding: 0; display: grid; gap: 12px; }
-.k-agenda-list li { display: flex; gap: 20px; padding: 14px; border: 1px solid var(--k-border, #555); border-radius: 12px; }
+.k-agenda-list li { display: flex; gap: 20px; padding: 14px; border: 1px solid var(--kalend-border); border-radius: 12px; }
 .k-agenda-list time { white-space: nowrap; font-weight: 700; }
 .k-agenda-list p { margin: 4px 0 0; }
 @media (max-width: 480px) { .k-agenda-list li { flex-direction: column; gap: 8px; } }
+
+.k-ops-page .k-button-primary, .k-ops-page .k-button-secondary { flex-shrink: 0; min-height: 44px; padding: 10px 16px; border-radius: 9px; border: 1px solid var(--kalend-border); font: inherit; font-weight: 600; cursor: pointer; }
+.k-ops-page .k-button-primary { background: var(--kalend-primary); color: var(--kalend-on-primary); }
+.k-ops-page .k-button-secondary { background: var(--kalend-surface); color: var(--kalend-text-primary); }
+.k-ops-page button:disabled { opacity: .6; cursor: wait; }
+.k-ops-page .k-ops-days label { white-space: nowrap; min-width: 64px; }
+.k-ops-page .k-ops-days input[type=checkbox] { width: 18px; min-height: 18px; height: 18px; flex: 0 0 18px; padding: 0; }
+.k-ops-page .k-section-heading > div { min-width: 0; }
+.k-ops-page .k-section-heading > label { display: grid; gap: 6px; flex-shrink: 0; }
+.k-ops-page input[type=date] { min-height: 44px; padding: 8px; border: 1px solid var(--kalend-border); border-radius: 8px; background: var(--kalend-surface); color: var(--kalend-text-primary); font: inherit; }
+@media (max-width: 480px) { .k-ops-page .k-page-heading, .k-ops-page .k-section-heading { flex-direction: column; }.k-ops-page .k-ops-form > button { width: 100%; }.k-ops-page .k-section-heading > label { width: 100%; } }
