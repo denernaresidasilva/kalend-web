@@ -8,7 +8,7 @@ export function accountSection(hash: string): AccountSection {
 }
 export const membershipRoles: Record<AuthMe["memberships"][number]["role"], string> = {
   OWNER: "Proprietário", ADMIN: "Administrador", PROFESSIONAL: "Profissional",
-  RECEPTIONIST: "Recepcionista", CLIENT: "Cliente",
+  RECEPTIONIST: "Recepcionista", CLIENT: "Cliente", ACCOUNTANT: "Contador",
 };
 export function accountMembership(profile: AuthMe) {
   return profile.memberships.find(row => row.company.id === profile.selectedCompanyId);

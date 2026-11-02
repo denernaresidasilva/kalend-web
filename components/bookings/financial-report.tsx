@@ -1,0 +1,24 @@
+"use client";
+import { useCallback, useEffect, useState } from "react";
+import { useAuth } from "@/components/auth-provider";
+import { tenantApi } from "@/lib/api";
+import { Card } from "@/components/ui/card";
+import { Alert } from "@/components/ui/alert";
+import { money } from "./operations-board";
+type Report = { period: { from: string; to: string; timezone: string }; totals: { receivedCents: number; refundedCents: number; netReceivedCents: number; commissionPaidCents: number }; receipts: Array<{ id: string; saleId: string; createdAt: string; method: string; amountCents: number; reference: string | null }>; refunds: Array<{ id: string; createdAt: string; amountCents: number; reason: string }>; payouts: Array<{ id: string; createdAt: string; amountCents: number; method: string }>; cashSessions: Array<{ id: string; openedAt: string; closedAt: string | null; expectedCents: number | null; countedCents: number | null; differenceCents: number | null }>; truncated: boolean };
+export function FinancialReport() {
+ const { profile } = useAuth(), companyId = profile?.selectedCompanyId ?? "", userId = profile?.user.id ?? "";
+ return <ReportContent key={`${companyId}:${userId}`} companyId={companyId} userId={userId} />;
+}
+function ReportContent({ companyId, userId }: { companyId: string; userId: string }) {
+ const [period, setPeriod] = useState<{ from?: string; to?: string }>({}), [report, setReport] = useState<Report | null>(null), [error, setError] = useState("");
+ const load = useCallback(async () => tenantApi<Report>(companyId, `/operations/financial-report?${new URLSearchParams(Object.entries(period).filter(([, v]) => v) as [string, string][])}`, undefined, userId), [companyId, userId, period]);
+ useEffect(() => { if (!companyId) return; let live = true; void load().then(r => { if (live) { setReport(r); setError(""); } }).catch(e => { if (live) setError(e instanceof Error ? e.message : "Não foi possível ler o relatório."); }); return () => { live = false; }; }, [load, companyId]);
+ function download() {
+  if (!report) return;
+  const cell = (value: unknown) => { let s = String(value ?? ""); if (/^[=+@\-\t\r]/.test(s)) s = "'" + s; return '"' + s.replaceAll('"', '""') + '"'; };
+  const rows = [["tipo", "id", "data", "valor_centavos", "referencia"], ...report.receipts.map(r => ["recebimento", r.id, r.createdAt, r.amountCents, r.reference]), ...report.refunds.map(r => ["estorno", r.id, r.createdAt, r.amountCents, r.reason]), ...report.payouts.map(r => ["comissao_paga", r.id, r.createdAt, r.amountCents, r.method])];
+  const url = URL.createObjectURL(new Blob(["\uFEFF" + rows.map(r => r.map(cell).join(";")).join("\r\n")], { type: "text/csv;charset=utf-8" })), a = document.createElement("a"); a.href = url; a.download = `kalend-operacional-${report.period.from}-${report.period.to}.csv`; a.click(); URL.revokeObjectURL(url);
+ }
+ return <section id="relatorio" className="k-ops-page"><header><h1>Financeiro operacional</h1><p>Consulta de recebimentos, estornos, caixas e comissões. Acesso de contador somente leitura.</p></header><Card><form className="k-ops-form" onSubmit={e => { e.preventDefault(); const d = new FormData(e.currentTarget); setPeriod({ from: String(d.get("from")), to: String(d.get("to")) }); }}><label>De<input name="from" type="date" defaultValue={report?.period.from} required /></label><label>Até<input name="to" type="date" defaultValue={report?.period.to} required /></label><button className="k-button-secondary">Consultar período</button></form></Card>{error && <Alert tone="danger">{error}</Alert>}{!report ? <p role="status">Carregando relatório…</p> : <><section className="k-grid"><Card>Recebido<strong>{money(report.totals.receivedCents)}</strong></Card><Card>Estornado<strong>{money(report.totals.refundedCents)}</strong></Card><Card>Recebido líquido<strong>{money(report.totals.netReceivedCents)}</strong></Card><Card>Comissões pagas<strong>{money(report.totals.commissionPaidCents)}</strong></Card></section><Card><p>Período: {report.period.from} a {report.period.to} · {report.period.timezone}</p><button className="k-button-secondary" onClick={download}>Exportar lançamentos CSV</button>{report.truncated && <p>Os totais incluem todos os lançamentos; a listagem e o CSV exibem até 200 de cada tipo. Reduza o período para exportar o detalhe completo.</p>}<h2>Recebimentos do estabelecimento</h2>{report.receipts.length ? <ul>{report.receipts.map(r => <li key={r.id}>{new Intl.DateTimeFormat("pt-BR", { timeZone: report.period.timezone, dateStyle: "short", timeStyle: "short" }).format(new Date(r.createdAt))} · {r.method} · {money(r.amountCents)}</li>)}</ul> : <p>Nenhum recebimento no período.</p>}<h2>Fechamentos de caixa</h2>{report.cashSessions.map(c => <p key={c.id}>{c.closedAt ? "Fechado" : "Aberto"} · Esperado {money(c.expectedCents ?? 0)} · Contado {money(c.countedCents ?? 0)} · Diferença {money(c.differenceCents ?? 0)}</p>)}</Card></>}</section>;
+}

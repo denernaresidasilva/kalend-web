@@ -8,7 +8,7 @@ export function linkedCompanies(profile: AuthMe) {
     !!membership.company.id && memberships.findIndex(row => row.company.id === membership.company.id) === index);
 }
 // Membership from the authenticated session determines the dashboard.
-export const roleDestinations = { OWNER: "/painel/proprietario", ADMIN: "/painel/proprietario", RECEPTIONIST: "/painel/recepcionista", PROFESSIONAL: "/painel/profissional", CLIENT: "/painel/cliente" } as const;
+export const roleDestinations = { OWNER: "/painel/proprietario", ADMIN: "/painel/proprietario", RECEPTIONIST: "/painel/recepcionista", PROFESSIONAL: "/painel/profissional", CLIENT: "/painel/cliente", ACCOUNTANT: "/painel/contador" } as const;
 export function accountDestination(profile: AuthMe) {
   if (profile.systemRole === "SUPER_ADMIN") return "/super-admin";
   const membership = profile.memberships.find(row => row.company.id === profile.selectedCompanyId);

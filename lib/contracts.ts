@@ -1,7 +1,7 @@
 export type AuthMe = {
   user: { id: string; name: string; email: string; isSuperAdmin: boolean };
   systemRole: "SUPER_ADMIN" | "USER";
-  memberships: Array<{ id: string; role: "OWNER" | "ADMIN" | "RECEPTIONIST" | "PROFESSIONAL" | "CLIENT"; company: { id: string; name: string; slug: string; status: "TRIAL" | "ACTIVE" | "SUSPENDED" | "CANCELED"; isActive: boolean } }>;
+  memberships: Array<{ id: string; role: "OWNER" | "ADMIN" | "RECEPTIONIST" | "PROFESSIONAL" | "CLIENT" | "ACCOUNTANT"; company: { id: string; name: string; slug: string; status: "TRIAL" | "ACTIVE" | "SUSPENDED" | "CANCELED"; isActive: boolean } }>;
   selectedCompanyId: string | null;
   session: { expiresAt: string; refreshExpiresAt: string };
 };
