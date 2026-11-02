@@ -9,9 +9,11 @@ const React = require('react');
 test('palette persists only a validated browser preference and never injects arbitrary values', () => {
  const p = loader()('lib/palette.ts'), values = new Map();
  const storage = { getItem: key => values.get(key) ?? null, setItem: (key, value) => values.set(key, value) };
+ assert.ok(Object.keys(p.palettes).length>=20);
  for (const value of Object.keys(p.palettes)) { p.persistPalette(storage, value); assert.equal(p.readPalette(storage), value); }
  assert.deepEqual([...values.keys()], ['kalend:palette']);assert.equal(p.paletteValue('constructor'), 'gold');assert.equal(p.paletteValue('red; background:url(https://example.test)'), 'gold');assert.equal(p.readPalette({getItem(){throw Error('blocked');}}),'gold');
  const dataset = {};vm.runInNewContext(p.paletteScript, { localStorage: { getItem: () => 'ocean' }, document: { documentElement: { dataset } } });assert.equal(dataset.palette,'ocean');
+ for(const value of Object.keys(p.palettes)){vm.runInNewContext(p.paletteScript,{localStorage:{getItem:()=>value},document:{documentElement:{dataset}}});assert.equal(dataset.palette,value);}
 });
 test('all extra palettes preserve contrast for text on primary and primary-soft in both themes', () => {
  const css = fs.readFileSync('app/styles/kalend-palettes.css','utf8');
