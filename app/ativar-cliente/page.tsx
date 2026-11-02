@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { API_URL } from "@/lib/api";
 import styles from "@/components/bookings/public-booking.module.css";
@@ -8,7 +8,10 @@ export default function ActivateCustomer() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [activated, setActivated] = useState(false);
+  const captured = useRef(false);
   useEffect(() => {
+    if (captured.current) return;
+    captured.current = true;
     const value = new URLSearchParams(window.location.hash.slice(1)).get("token") ?? "";
     queueMicrotask(() => setToken(value));
     window.history.replaceState(null, "", window.location.pathname);

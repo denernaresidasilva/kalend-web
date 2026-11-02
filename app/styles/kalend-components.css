@@ -194,3 +194,5 @@ body { background: var(--kalend-background); color: var(--kalend-text-primary); 
 @media (max-width: 480px) { .k-ops-page .k-page-heading, .k-ops-page .k-section-heading { flex-direction: column; }.k-ops-page .k-ops-form > button { width: 100%; }.k-ops-page .k-section-heading > label { width: 100%; } }
 
 .k-invitation-link { display: block; width: 100%; min-width: 0; padding: 12px; margin: 8px 0; border: 1px solid var(--kalend-border); border-radius: 8px; background: var(--kalend-surface); color: var(--kalend-text-primary); }
+
+.k-ops-page details { padding-block: 10px; border-bottom: 1px solid var(--kalend-border); }.k-ops-page summary { cursor: pointer; padding: 8px 0; }.k-ops-page details h2 { margin-top: 24px; }
