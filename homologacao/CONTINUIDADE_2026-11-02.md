@@ -10,9 +10,9 @@ O prompt mestre continua parcialmente concluído. Este documento registra entreg
 | Eventos de solicitações | c97595c / 41500520503 | bfb1fca / 41500699812 | 4 casos, pedido visível em 184 ms, agenda após aprovação, isolamento A/B/profissional |
 | Ativação e painel cliente | ae53eaa / 41501945778 | bddc7d3 / 41502210805 | 6 casos, convite único, login CLIENT, histórico próprio, catálogo público anônimo |
 | Gestão de serviços/profissionais | 9a502a2 / 41502863490 | c88e68c / 41503118740 tentativa 2 | 3 casos mobile/HTTP: persistência, permissões/tenant e snapshots |
-| Paletas e navegação mobile | Sem mudança API | Commit e Actions conferidos ao concluir | Validação posterior ao deploy |
+| Paletas e navegação mobile | Sem mudança API | 3aa695a / 41504102092 | 12 casos: dez combinações claro/escuro, persistência e barras fixas mobile/desktop |
 
-Todos os runs das quatro primeiras fases terminaram com sucesso. A tentativa inicial do run Web da gestão falhou por timeout TCP/SSH antes de executar comandos remotos; somente o job falho foi repetido pelo GitHub, sem deploy manual. Não houve reset destrutivo nem force push; ambos os workflows agora atualizam DEV por merge --ff-only.
+Todos os runs das cinco fases terminaram com sucesso. A tentativa inicial do run Web da gestão falhou por timeout TCP/SSH antes de executar comandos remotos; somente o job falho foi repetido pelo GitHub, sem deploy manual. Não houve reset destrutivo nem force push; ambos os workflows agora atualizam DEV por merge --ff-only.
 
 O núcleo anterior ca6f0dc/c27385b foi preservado e publicado com as correções comprovadas. Arquivos históricos não rastreados e caches Python preexistentes permanecem na API, fora dos commits desta tarefa.
 
@@ -28,7 +28,7 @@ A agenda e os eventos respeitam a empresa selecionada e filtram itens de pedidos
 
 27 cenários PostgreSQL nativos distintos foram aprovados: 26 na última bateria operacional e o caso adicional de duplicata isoladamente; não somar execuções repetidas. Última suíte unitária API completa: 927 casos; mudanças posteriores de gestão tiveram 47 testes direcionados e verificações nativas. E2E: 215 casos dos demais arquivos passaram; cinco falhas no arquivo financeiro foram rastreadas a fixture dependente de subtrair 30 dias como mês. Ajustada apenas a fixture; seus 38 casos passaram na reexecução. Não se alterou regra comercial para acomodar testes.
 
-Builds/lints/tipos aprovados com Node 24.21.0. Web tinha 407 testes antes dos três casos de paleta; resultado final é acrescentado ao concluir. Migration operacional e migration de ativação tiveram ledger/checksum conferidos em kalend_dev. PaymentEvidence preservado com 5 registros, 3 APPLIED. Backups DEV privados foram atualizados e restaurados em clusters isolados antes das publicações; último inventário anterior à gestão: 38 tabelas e 23 migrations.
+Builds/lints/tipos aprovados com Node 24.21.0. Web: 410 testes passaram na última suíte completa; o caso adicional de composição dos scripts de tema/paleta passou depois, junto com os outros três testes direcionados de paleta. Migration operacional e migration de ativação tiveram ledger/checksum conferidos em kalend_dev. PaymentEvidence preservado com 5 registros, 3 APPLIED. Backups DEV privados foram atualizados e restaurados em clusters isolados antes das publicações; último inventário anterior à gestão: 38 tabelas e 23 migrations.
 
 Identidades efetivas: runtime kalend_dev_runtime e migration kalend_dev_migrator. SSH API kalend-api-dev e Web kalend-dev, em srv1119527 e diretórios DEV existentes. Sem alteração de PROD, outros projetos, sudoers/SSH/autenticação compartilhada, cobranças ou envios externos.
 
@@ -51,6 +51,14 @@ Identidades efetivas: runtime kalend_dev_runtime e migration kalend_dev_migrator
 | Follow-up por serviço | Ainda não implementado | Regras, consentimento, agendamento e execução por serviço |
 | Configurações/permissões | Papéis/tenant/limites e gestão operacional | Permissões granulares e configurações comerciais restantes |
 | Paletas | Cinco opções locais, sem dados de conta em storage | Branding persistido da empresa ainda não implementado |
-| PWA mobile | Manifest/SW existentes, nova navegação fixa em validação | Instalação em aparelho real e rotinas operacionais offline não homologadas |
+| PWA mobile | Manifest/SW existentes, barras superior/inferior fixas e atalhos por papel, validados em DEV | Instalação em aparelho real e rotinas operacionais offline não homologadas |
 
 Próxima fase funcional: atendimento interno e cancelamento/reagendamento, seguidos de PDV/comandas/caixa/comissões e painel do contador. Não há alegação de sistema completo ou liberação oficial de todos os painéis.
+
+## Encerramento das verificações desta rodada
+
+A recepção também foi exercitada com membership QA exclusivamente na empresa B: autorização/negações, pedido por SSE e aceitação mobile com entrada na agenda. Três casos aprovados; nenhuma nova permissão em empresa real. [Evidência](evidencias/2026-11-02-continuacao/reception-dev.json).
+
+Cinco paletas em claro/escuro tiveram tokens e contraste testados localmente e dez combinações verificadas no navegador DEV. Preferência persiste somente neste navegador e não representa branding da empresa. Barras superior/inferior permaneceram fixas após scroll em 390 px; atalhos mobile não aparecem no desktop. [Evidência](evidencias/2026-11-02-continuacao/palettes-mobile-dev.json). Manifest, service worker, controle de atualização e permissões Push foram preservados. A instalação em aparelho físico não foi declarada testada.
+
+Após a captura visual, o setup inicial foi condicionado ao término da leitura dos serviços para evitar exibi-lo provisoriamente enquanto os dados carregam. Registro final dos SHAs e estado dos repositórios pode ser consultado pelo Git; nenhum arquivo anterior não rastreado foi removido.

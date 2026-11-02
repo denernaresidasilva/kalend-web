@@ -1,0 +1,53 @@
+{
+  "environment": "DEV",
+  "results": [
+    {
+      "name": "palette_light_gold",
+      "status": "PASS"
+    },
+    {
+      "name": "palette_light_ocean",
+      "status": "PASS"
+    },
+    {
+      "name": "palette_light_emerald",
+      "status": "PASS"
+    },
+    {
+      "name": "palette_light_rose",
+      "status": "PASS"
+    },
+    {
+      "name": "palette_light_violet",
+      "status": "PASS"
+    },
+    {
+      "name": "palette_dark_gold",
+      "status": "PASS"
+    },
+    {
+      "name": "palette_dark_ocean",
+      "status": "PASS"
+    },
+    {
+      "name": "palette_dark_emerald",
+      "status": "PASS"
+    },
+    {
+      "name": "palette_dark_rose",
+      "status": "PASS"
+    },
+    {
+      "name": "palette_dark_violet",
+      "status": "PASS"
+    },
+    {
+      "name": "mobile_fixed_top_bottom_navigation_and_persisted_palette",
+      "status": "PASS"
+    },
+    {
+      "name": "desktop_navigation_preserved",
+      "status": "PASS"
+    }
+  ]
+}

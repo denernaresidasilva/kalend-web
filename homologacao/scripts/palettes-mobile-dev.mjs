@@ -16,7 +16,7 @@ try{
   }
  }
  await page.reload();await page.locator('.k-palette-control select').waitFor();must(await page.locator('.k-palette-control select').inputValue()==='violet','PALETTE_NOT_PERSISTED');
- await page.goto(p.web+'/painel/proprietario');await page.getByRole('heading',{name:'Painel do proprietário',exact:true}).waitFor();await page.evaluate(()=>scrollTo(0,600));
+ await page.goto(p.web+'/painel/proprietario');await page.getByRole('heading',{name:'Painel do proprietário',exact:true}).waitFor();await page.locator('.k-ops-service-list').waitFor();await page.evaluate(()=>scrollTo(0,600));
  const geometry=await page.evaluate(()=>({header:document.querySelector('.k-admin-header').getBoundingClientRect().top,bottom:document.querySelector('.k-mobile-bottom').getBoundingClientRect().bottom,viewport:innerHeight,overflow:document.documentElement.scrollWidth>innerWidth}));must(geometry.header===0&&Math.abs(geometry.bottom-geometry.viewport)<2&&!geometry.overflow,'FIXED_MOBILE_BARS');
  results.push({name:'mobile_fixed_top_bottom_navigation_and_persisted_palette',status:'PASS'});await page.screenshot({path:'/tmp/kalend-palette-mobile.png',fullPage:false});
  await page.setViewportSize({width:1366,height:900});must(await page.locator('.k-mobile-bottom').evaluate(el=>getComputedStyle(el).display)==='none','MOBILE_NAV_ON_DESKTOP');results.push({name:'desktop_navigation_preserved',status:'PASS'});

@@ -1,0 +1,17 @@
+{
+  "environment": "DEV",
+  "results": [
+    {
+      "name": "reception_role_and_tenant_permissions",
+      "status": "PASS"
+    },
+    {
+      "name": "reception_receives_new_request_via_SSE",
+      "status": "PASS"
+    },
+    {
+      "name": "reception_mobile_approval_and_confirmed_agenda",
+      "status": "PASS"
+    }
+  ]
+}
