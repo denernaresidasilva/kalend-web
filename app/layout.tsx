@@ -9,6 +9,8 @@ import "./styles/landing.css";
 import "./styles/onboarding.css";
 import "./styles/landing-controls.css";
 import { ThemeProvider } from "@/components/theme/theme-provider";
+import { paletteScript } from "@/lib/palette";
+import "./styles/kalend-palettes.css";
 import { themeScript } from "@/lib/theme";
 import { CommercialNotice } from "@/components/commercial-notice";
 import { PwaProvider } from "@/components/pwa-provider";
@@ -27,8 +29,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Kalend · Super Admin",
-  description: "Administração da plataforma Kalend",
+  title: "Kalend · Agenda e gestão",
+  description: "Agendamentos e gestão para estabelecimentos e clientes",
   applicationName: "Kalend",
   appleWebApp: { capable: true, title: "Kalend", statusBarStyle: "default" },
   icons: { apple: "/icons/kalend-180.png" },
@@ -43,7 +45,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <head><script dangerouslySetInnerHTML={{ __html: themeScript }} /></head>
+      <head><script dangerouslySetInnerHTML={{ __html: themeScript + ";" + paletteScript }} /></head>
       <body className="min-h-full flex flex-col"><ThemeProvider><AuthProvider><PwaProvider /><PushNotificationPrompt /><CommercialNotice /><CommercialEntry>{children}</CommercialEntry></AuthProvider></ThemeProvider></body>
     </html>
   );

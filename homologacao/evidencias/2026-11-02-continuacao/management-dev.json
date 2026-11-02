@@ -1,0 +1,17 @@
+{
+  "environment": "DEV",
+  "results": [
+    {
+      "name": "management_role_and_company_isolation",
+      "status": "PASS"
+    },
+    {
+      "name": "mobile_service_edit_persisted_in_database",
+      "status": "PASS"
+    },
+    {
+      "name": "unpublish_preserves_confirmed_booking_snapshots",
+      "status": "PASS"
+    }
+  ]
+}

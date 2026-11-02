@@ -26,7 +26,7 @@ export function TenantAgenda({ companyId, userId, revision }: { companyId: strin
     return () => { live = false; window.clearInterval(timer); };
   }, [companyId, userId, date, revision]);
   const time = (value: string) => new Intl.DateTimeFormat("pt-BR", { timeZone: agenda?.timezone, timeStyle: "short" }).format(new Date(value));
-  return <section aria-labelledby="internal-agenda-title"><Card>
+  return <section id="agenda" aria-labelledby="internal-agenda-title"><Card>
     <div className="k-section-heading"><div><h2 id="internal-agenda-title">Agenda interna</h2><p>Agendamentos confirmados{agenda ? ` · ${agenda.timezone}` : ""}</p></div><label>Dia da agenda<input aria-label="Dia da agenda" type="date" value={date} required onChange={(event) => { if (event.target.value) setDate(event.target.value); }} /></label></div>
     {error && <Alert tone="danger">{error}</Alert>}
     {loading ? <p role="status">Carregando agenda…</p> : !error && agenda?.items.length === 0 ? <p>Nenhum agendamento confirmado para este dia.</p> : <ol className="k-agenda-list">{agenda?.items.map((item) => <li key={item.id}><time dateTime={item.startsAt}>{time(item.startsAt)} – {time(item.endsAt)}</time><div><strong>{item.serviceName}</strong><p>{item.request.customer.name} · {item.professional.displayName}</p></div></li>)}</ol>}

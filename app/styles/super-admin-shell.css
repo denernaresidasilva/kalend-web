@@ -126,3 +126,14 @@
   .communication-page .commercial-actions :is(button, a) { flex: 1 1 100%; white-space: normal; }
   .communication-page .commercial-details { grid-template-columns: minmax(0, 1fr); }
 }
+
+.k-mobile-bottom { display: none; }
+@media (max-width: 767px) {
+  .k-tenant-mobile .k-admin-header { position: fixed; top: 0; left: 0; right: 0; z-index: 45; padding-top: max(8px, env(safe-area-inset-top)); }
+  .k-tenant-mobile .k-admin-main { padding-top: calc(84px + env(safe-area-inset-top)); padding-bottom: calc(100px + env(safe-area-inset-bottom)); }
+  .k-mobile-bottom { position: fixed; display: grid; grid-template-columns: repeat(4, 1fr); bottom: 0; left: 0; right: 0; z-index: 45; padding: 8px 10px max(8px, env(safe-area-inset-bottom)); background: var(--kalend-surface); border-top: 1px solid var(--kalend-border); }
+  .k-mobile-bottom a { min-height: 48px; display: grid; place-content: center; justify-items: center; gap: 4px; color: var(--kalend-text-primary); font-size: .72rem; text-decoration: none; }
+  #agenda, #solicitacoes { scroll-margin-top: 90px; }
+}
+
+@media (max-width: 767px) { .pwa-banner { position: relative; z-index: 46; } }

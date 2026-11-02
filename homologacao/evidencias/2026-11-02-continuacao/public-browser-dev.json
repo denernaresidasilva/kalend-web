@@ -1,0 +1,17 @@
+{
+  "environment": "DEV",
+  "results": [
+    {
+      "name": "anonymous_catalog_professionals_slots_and_multi_service_cart",
+      "status": "PASS"
+    },
+    {
+      "name": "public_browser_customer_identification_and_request_persisted",
+      "status": "PASS"
+    },
+    {
+      "name": "establishment_acceptance_updates_real_agenda",
+      "status": "PASS"
+    }
+  ]
+}

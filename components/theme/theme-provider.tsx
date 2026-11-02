@@ -1,5 +1,6 @@
 "use client";
-import { createContext, useContext, useSyncExternalStore } from "react";
+import { createContext, useContext, useEffect, useSyncExternalStore } from "react";
+import { readPalette, paletteValue, persistPalette, type Palette } from "@/lib/palette";
 import { persistTheme, readTheme, themePreference, resolvedTheme, type ThemePreference } from "@/lib/theme";
 
 function preference() {
@@ -17,8 +18,20 @@ function subscribeSystem(listener: () => void) {
   media.addEventListener("change", listener);
   return () => media.removeEventListener("change", listener);
 }
-const ThemeContext = createContext<{ preference: ThemePreference; setPreference: (value: ThemePreference) => void } | null>(null);
+function subscribePalette(listener: () => void) { window.addEventListener("kalend:palette", listener); return () => window.removeEventListener("kalend:palette", listener); }
+const ThemeContext = createContext<{ palette: Palette; setPalette: (value: Palette) => void; preference: ThemePreference; setPreference: (value: ThemePreference) => void } | null>(null);
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
+  useEffect(() => {
+    const apply = () => { let next: ReturnType<typeof readPalette> = "gold"; try { next = readPalette(window.localStorage); } catch {} document.documentElement.dataset.palette = next; window.dispatchEvent(new Event("kalend:palette")); };
+    apply(); window.addEventListener("storage", apply);
+    return () => window.removeEventListener("storage", apply);
+  }, []);
+  const palette = useSyncExternalStore(subscribePalette, () => paletteValue(document.documentElement.dataset.palette ?? null), () => "gold" as Palette);
+  function setPalette(next: Palette) {
+    try { persistPalette(window.localStorage, next); } catch {}
+    document.documentElement.dataset.palette = next;
+    window.dispatchEvent(new Event("kalend:palette"));
+  }
   const value = useSyncExternalStore(subscribe, preference, () => "dark" as const);
   const systemDark = useSyncExternalStore(subscribeSystem, () => window.matchMedia("(prefers-color-scheme: dark)").matches, () => false);
   function setPreference(next: ThemePreference) {
@@ -27,7 +40,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     document.documentElement.dataset.themePreference = next;
     window.dispatchEvent(new Event("kalend:theme"));
   }
-  return <ThemeContext.Provider value={{ preference: value, setPreference }}><div className="kalend-theme-root" data-theme={value === "system" ? undefined : resolvedTheme(value, systemDark)}>{children}</div></ThemeContext.Provider>;
+  return <ThemeContext.Provider value={{ preference: value, setPreference, palette, setPalette }}><div className="kalend-theme-root" data-theme={value === "system" ? undefined : resolvedTheme(value, systemDark)}>{children}</div></ThemeContext.Provider>;
 }
 export function useTheme() {
   const context = useContext(ThemeContext);

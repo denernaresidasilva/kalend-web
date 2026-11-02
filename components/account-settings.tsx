@@ -8,6 +8,7 @@ import { EmailSettings } from "./email-settings";
 import { PushSettings } from "./push-settings";
 import { NotificationCenter } from "./notification-center";
 import { AccountSecurity } from "./account-security";
+import { PaletteControl } from "./theme/palette-control";
 import { ThemeControl } from "./theme/theme-control";
 import { CommunicationOperations } from "./communication-operations";
 import { logoutAllSessions } from "@/lib/account-session";
@@ -36,7 +37,7 @@ export function AccountSettings({ section }: { section?: SettingsSection }) {
     {(section === "whatsapp" || section === "email") && (canConfigure ? <section key={profile.selectedCompanyId}><p>Configuração da empresa: {membership.company.name}</p>{section === "whatsapp" ? <EvolutionSettings scope="COMPANY" initiallyOpen /> : <EmailSettings scope="COMPANY" />}</section> : <p>Acesso não autorizado. Selecione uma empresa em que você seja proprietário ou administrador.</p>)}
     {section === "push" && <PushSettings />}
     {section === "notificacoes" && <NotificationCenter profile={profile} separatePush />}
-    {section === "aparencia" && <ThemeControl />}
+    {section === "aparencia" && <><ThemeControl /><PaletteControl /></>}
     {section === "seguranca" && <AccountSecurity profile={profile} leaving={busy} onLogout={() => void leave(false)} onLogoutAll={() => void leave(true)} />}
     {error && <p role="alert">{error}</p>}
   </main></CommunicationOperations>;

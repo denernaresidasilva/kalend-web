@@ -122,8 +122,11 @@ test('security audit: no token storage and gateway secrets are write-only', () =
   assert.match(tracking, /CONSENT_KEY = "kalend:marketing-consent:v1"/);
   assert.match(tracking, /ATTRIBUTION_KEY = "kalend:campaign-attribution:v1"/);
   assert.doesNotMatch(tracking, /Bearer|document\.cookie|password|email|phone|token/i);
-  const source = files.filter(file => /\.(tsx?|jsx?)$/.test(file) && !['lib/theme.ts', 'lib/landing-tracking.tsx', 'components/theme/theme-provider.tsx', 'components/trial-notice.tsx'].includes(file)).map(file => fs.readFileSync(file, 'utf8')).join('\n');
+  const source = files.filter(file => /\.(tsx?|jsx?)$/.test(file) && !['lib/theme.ts', 'lib/palette.ts', 'lib/landing-tracking.tsx', 'components/theme/theme-provider.tsx', 'components/trial-notice.tsx'].includes(file)).map(file => fs.readFileSync(file, 'utf8')).join('\n');
   assert.doesNotMatch(source, /localStorage|sessionStorage|Bearer|document\.cookie/);
+  const palettePreference = fs.readFileSync('lib/palette.ts', 'utf8');
+  assert.match(palettePreference, /paletteKey = "kalend:palette"/);
+  assert.doesNotMatch(palettePreference, /Bearer|document\.cookie|password|email|phone|token/i);
   const trialPreference = fs.readFileSync("components/trial-notice.tsx", "utf8");
   assert.doesNotMatch(trialPreference, /Bearer|document\.cookie|localStorage|token/i);
   assert.match(trialPreference, /sessionStorage\.setItem\(storageKey, "seen"\)/);

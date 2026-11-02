@@ -1,0 +1,8 @@
+html[data-palette="ocean"], html[data-palette="ocean"] .kalend-ui { --kalend-primary: #1d4ed8; --kalend-primary-hover: #1e40af; --kalend-primary-soft: #eff6ff; --kalend-on-primary: #ffffff; }
+html[data-palette="ocean"][data-theme="dark"], html[data-palette="ocean"][data-theme="dark"] .kalend-ui { --kalend-primary: #93c5fd; --kalend-primary-hover: #bfdbfe; --kalend-primary-soft: #172554; --kalend-on-primary: #0b1220; }
+html[data-palette="emerald"], html[data-palette="emerald"] .kalend-ui { --kalend-primary: #047857; --kalend-primary-hover: #065f46; --kalend-primary-soft: #ecfdf5; --kalend-on-primary: #ffffff; }
+html[data-palette="emerald"][data-theme="dark"], html[data-palette="emerald"][data-theme="dark"] .kalend-ui { --kalend-primary: #6ee7b7; --kalend-primary-hover: #a7f3d0; --kalend-primary-soft: #073b2b; --kalend-on-primary: #08251a; }
+html[data-palette="rose"], html[data-palette="rose"] .kalend-ui { --kalend-primary: #be185d; --kalend-primary-hover: #9d174d; --kalend-primary-soft: #fdf2f8; --kalend-on-primary: #ffffff; }
+html[data-palette="rose"][data-theme="dark"], html[data-palette="rose"][data-theme="dark"] .kalend-ui { --kalend-primary: #f9a8d4; --kalend-primary-hover: #fbcfe8; --kalend-primary-soft: #4a1531; --kalend-on-primary: #26111c; }
+html[data-palette="violet"], html[data-palette="violet"] .kalend-ui { --kalend-primary: #6d28d9; --kalend-primary-hover: #5b21b6; --kalend-primary-soft: #f5f3ff; --kalend-on-primary: #ffffff; }
+html[data-palette="violet"][data-theme="dark"], html[data-palette="violet"][data-theme="dark"] .kalend-ui { --kalend-primary: #c4b5fd; --kalend-primary-hover: #ddd6fe; --kalend-primary-soft: #302052; --kalend-on-primary: #201133; }

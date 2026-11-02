@@ -196,3 +196,5 @@ body { background: var(--kalend-background); color: var(--kalend-text-primary); 
 .k-invitation-link { display: block; width: 100%; min-width: 0; padding: 12px; margin: 8px 0; border: 1px solid var(--kalend-border); border-radius: 8px; background: var(--kalend-surface); color: var(--kalend-text-primary); }
 
 .k-ops-page details { padding-block: 10px; border-bottom: 1px solid var(--kalend-border); }.k-ops-page summary { cursor: pointer; padding: 8px 0; }.k-ops-page details h2 { margin-top: 24px; }
+
+.k-palette-control { display: grid; gap: 8px; max-width: 320px; margin: 20px 0; }.k-palette-control select { min-height: 44px; padding: 10px; border: 1px solid var(--kalend-border); border-radius: 8px; background: var(--kalend-surface); color: var(--kalend-text-primary); }.k-palette-control span { color: var(--kalend-text-secondary); font-size: .85rem; }
