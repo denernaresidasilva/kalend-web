@@ -207,3 +207,7 @@ body { background: var(--kalend-background); color: var(--kalend-text-primary); 
 
 .k-waitlist-public { margin-top: 1.5rem; padding: 1rem; border: 1px solid var(--kalend-primary); border-radius: 1rem; overflow-wrap: anywhere; }
 .k-waitlist-public fieldset { min-width: 0; }
+.k-waitlist-public .k-ops-form { min-width: 0; width: 100%; grid-template-columns: minmax(0, 1fr); }
+.k-waitlist-public .k-ops-form > * { min-width: 0; max-width: 100%; }
+.k-waitlist-public .k-ops-days label { white-space: normal; min-width: 0; max-width: 100%; }
+.k-waitlist-public .k-ops-form input, .k-waitlist-public .k-ops-form select { box-sizing: border-box; }
