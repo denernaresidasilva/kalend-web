@@ -1,4 +1,5 @@
 "use client";
+import {InventoryPanel} from "./inventory-panel";
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/components/auth-provider";
 import { tenantApi } from "@/lib/api";
@@ -8,7 +9,7 @@ import { money } from "./operations-board";
 type Report = { period: { from: string; to: string; timezone: string }; totals: { giftCardRedeemedCents:number;giftCardRestoredCents:number; receivedCents: number; refundedCents: number; netReceivedCents: number; commissionPaidCents: number }; receipts: Array<{ id: string; saleId: string; createdAt: string; method: string; amountCents: number; reference: string | null }>; refunds: Array<{ receipt?:{method:string};id: string; createdAt: string; amountCents: number; reason: string }>; payouts: Array<{ id: string; createdAt: string; amountCents: number; method: string }>; cashSessions: Array<{ id: string; openedAt: string; closedAt: string | null; expectedCents: number | null; countedCents: number | null; differenceCents: number | null }>; truncated: boolean };
 export function FinancialReport() {
  const { profile } = useAuth(), companyId = profile?.selectedCompanyId ?? "", userId = profile?.user.id ?? "";
- return <ReportContent key={`${companyId}:${userId}`} companyId={companyId} userId={userId} />;
+ return <><ReportContent key={`${companyId}:${userId}`} companyId={companyId} userId={userId}/><InventoryPanel companyId={companyId} userId={userId}/></>;
 }
 function ReportContent({ companyId, userId }: { companyId: string; userId: string }) {
  const [period, setPeriod] = useState<{ from?: string; to?: string }>({}), [report, setReport] = useState<Report | null>(null), [error, setError] = useState("");
