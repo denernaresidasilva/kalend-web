@@ -109,7 +109,7 @@ export function AssistantSettings({
   }
   const settings = data?.settings;
   return (
-    <section className="k-ops-page">
+    <section className="k-ops-page k-ai-settings">
       {error && <Alert tone="danger">{error}</Alert>}
       {data && (
         <>

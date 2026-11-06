@@ -211,3 +211,7 @@ body { background: var(--kalend-background); color: var(--kalend-text-primary); 
 .k-waitlist-public .k-ops-form > * { min-width: 0; max-width: 100%; }
 .k-waitlist-public .k-ops-days label { white-space: normal; min-width: 0; max-width: 100%; }
 .k-waitlist-public .k-ops-form input, .k-waitlist-public .k-ops-form select { box-sizing: border-box; }
+
+:is(.k-ai-settings, .k-confirmation-settings, .k-waitlist-settings) .k-ops-days label { white-space: normal; min-width: 0; max-width: 100%; }
+:is(.k-ai-settings, .k-confirmation-settings, .k-waitlist-settings) .k-ops-form > * { min-width: 0; max-width: 100%; }
+.k-ai-settings textarea { width: 100%; min-height: 96px; box-sizing: border-box; border: 1px solid var(--kalend-border); border-radius: 9px; padding: 9px 11px; background: var(--kalend-surface); color: var(--kalend-text-primary); font: inherit; }

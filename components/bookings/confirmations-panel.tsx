@@ -106,7 +106,7 @@ export function ConfirmationsPanel({
   }
   return (
     <Card>
-      <details>
+      <details className="k-confirmation-settings">
         <summary>Agenda · Confirmações e comparecimento</summary>
         {error && <Alert tone="danger">{error}</Alert>}
         {manager && (
