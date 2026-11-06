@@ -5,6 +5,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@/components/auth-provider";
 import { jsonBody, tenantApi } from "@/lib/api";
 import { Alert } from "@/components/ui/alert";
+import { DepositPolicies } from "./deposit-policies";
+import { ConfirmationsPanel } from "./confirmations-panel";
 import { WaitlistPanel } from "./waitlist-panel";
 import { AutomationsPanel } from "./automations-panel";
 import { FinancialReport } from "./financial-report";
@@ -128,7 +130,9 @@ function TenantOperationsContent({ setup }: { setup: boolean }) {
     <OperationsBoard companyId={companyId} userId={userId} role={role ?? ""} revision={agendaRevision} />
     {(maySetup || role === "PROFESSIONAL") && <CommissionsPanel companyId={companyId} userId={userId} role={role ?? ""} revision={agendaRevision} />}
     {maySetup && <details><summary>Relatório financeiro operacional</summary><FinancialReport /></details>}
+    {(maySetup || role === "RECEPTIONIST") && <ConfirmationsPanel companyId={companyId} userId={userId} manager={maySetup} />}
     {(maySetup || role === "RECEPTIONIST") && <WaitlistPanel companyId={companyId} userId={userId} manager={maySetup} />}
+    {maySetup && <DepositPolicies companyId={companyId} userId={userId}/>}
     {maySetup && <LoyaltyPanel companyId={companyId} userId={userId} manager />}
     {maySetup && <AutomationsPanel companyId={companyId} userId={userId} />}
     <TenantAgenda companyId={companyId} userId={userId} revision={agendaRevision} />

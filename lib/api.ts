@@ -50,7 +50,7 @@ function syncChannel() {
   return channel;
 }
 function redirectToLogin(search = "") {
-  if (typeof window !== "undefined" && !["/", "/planos", "/lp", "/termos", "/privacidade", "/ativar-cliente"].includes(window.location.pathname) && !window.location.pathname.startsWith("/agendar/")) {
+  if (typeof window !== "undefined" && !["/", "/planos", "/lp", "/termos", "/privacidade", "/ativar-cliente", "/confirmar-agendamento"].includes(window.location.pathname) && !window.location.pathname.startsWith("/agendar/")) {
     window.location.replace(`/${search}`);
   }
 }

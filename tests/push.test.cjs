@@ -234,3 +234,10 @@ test('session-ended cleanup used by logout and logout-all closes notifications a
   assert.equal(closed, 2); assert.equal(unsubscribed, 2);
   cleanup(); assert.equal(listeners['kalend:session-ended'], undefined);
 });
+
+test('operational push links allow exact temporary confirmation and waitlist paths while blocking injected queries',async()=>{
+ for(const path of['/confirmar-agendamento?token='+'A'.repeat(43),'/agendar/qa-studio?opportunity=a32393b7-597c-4e0b-a1bf-e0f0e01c21b1']){
+  const w=worker();await w.emit('notificationclick',{notification:{close(){},data:{url:path}}});assert.equal(w.opened[0],'https://dev.kalend.tech'+path);
+  const blocked=worker();await blocked.emit('notificationclick',{notification:{close(){},data:{url:path+'&redirect=https://evil.test'}}});assert.equal(blocked.opened[0],'https://dev.kalend.tech/conta');
+ }
+});

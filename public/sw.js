@@ -4,7 +4,8 @@ function safeUrl(value) {
   try {
     if (typeof value !== 'string' || value.length > 2048 || /[\s\\\u0000-\u001f\u007f]/.test(value) || value.startsWith('//')) throw Error();
     const path = value.startsWith('/') ? value : value.startsWith(self.location.origin + '/') ? value.slice(self.location.origin.length) : '';
-    if (!/^\/(?:[a-zA-Z0-9_-]+\/)*[a-zA-Z0-9_-]*$/.test(path) || /^\/(?:api|auth|_next)(?:\/|$)/i.test(path)) throw Error();
+    const action=/^\/confirmar-agendamento\?token=[A-Za-z0-9_-]{43}$/.test(path)||/^\/agendar\/[a-z0-9-]{1,100}\?opportunity=[a-f0-9-]{36}$/i.test(path);
+    if ((!action&&!/^\/(?:[a-zA-Z0-9_-]+\/)*[a-zA-Z0-9_-]*$/.test(path)) || /^\/(?:api|auth|_next)(?:\/|$)/i.test(path)) throw Error();
     const url = new URL(path, self.location.origin);
     if (url.protocol !== 'https:' || url.origin !== self.location.origin) throw Error();
     return url.href;
