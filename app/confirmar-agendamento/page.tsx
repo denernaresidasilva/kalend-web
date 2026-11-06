@@ -4,6 +4,7 @@ import { API_URL } from "@/lib/api";
 import { Card } from "@/components/ui/card";
 import { Alert } from "@/components/ui/alert";
 type Details = {
+  timezone: string;
   expiresAt: string;
   response: string | null;
   used: boolean;
@@ -98,7 +99,11 @@ export default function ConfirmationPage() {
           {details.items.map((i, index) => (
             <p key={index}>
               <strong>{i.serviceName}</strong> · {i.professional.displayName} ·{" "}
-              {new Date(i.startsAt).toLocaleString("pt-BR")}
+              {new Intl.DateTimeFormat("pt-BR", {
+                timeZone: details.timezone,
+                dateStyle: "short",
+                timeStyle: "short",
+              }).format(new Date(i.startsAt))}
             </p>
           ))}
           {response ? (
@@ -118,7 +123,12 @@ export default function ConfirmationPage() {
             <>
               <p>
                 Prazo para responder:{" "}
-                {new Date(details.expiresAt).toLocaleString("pt-BR")}.
+                {new Intl.DateTimeFormat("pt-BR", {
+                  timeZone: details.timezone,
+                  dateStyle: "short",
+                  timeStyle: "short",
+                }).format(new Date(details.expiresAt))}
+                .
               </p>
               <div className="k-ops-days">
                 <button

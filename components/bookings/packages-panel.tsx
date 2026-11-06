@@ -7,7 +7,14 @@ import { money } from "@/lib/money";
 export type PackageWallet = {
   id: string;
   customer: { id: string; name: string };
-  definition: { name: string; terms: string };
+  definition: {
+    name: string;
+    terms: string;
+    kind?: string;
+    discountBps?: number;
+    loyaltyBonusPoints?: number;
+  };
+  validFrom?: string | null;
   status: string;
   expiresAt: string;
   originalCents: number;
@@ -40,6 +47,10 @@ type Definition = {
   validityDays: number;
   terms: string;
   active: boolean;
+  kind?: string;
+  cycleMonths?: number | null;
+  discountBps?: number;
+  loyaltyBonusPoints?: number;
   product: { id: string; priceCents: number };
   services: Array<{
     serviceId: string;
@@ -59,6 +70,8 @@ type Catalog = {
 const statusLabels: Record<string, string> = {
   ACTIVE: "Ativo",
   EXPIRED: "Expirado",
+  SCHEDULED: "Período futuro já pago",
+  PAUSED: "Benefícios suspensos",
   SUSPENDED: "Suspenso por estorno para revisão",
   CANCELLED: "Cancelado",
 };
@@ -75,7 +88,7 @@ function WalletCard({ wallet: w }: { wallet: PackageWallet }) {
         comanda: {w.reserved} · Consumidas: {w.consumed}
       </p>
       <p>
-        Valor original: {money(w.originalCents)} · financiamento preservado:{" "}
+        Valor da compra: {money(w.originalCents)} · líquido após estornos:{" "}
         {money(w.fundedCents)}.
       </p>
       {!w.usable && (
@@ -88,6 +101,19 @@ function WalletCard({ wallet: w }: { wallet: PackageWallet }) {
         <p>
           Valor consumido que exige revisão após estorno:{" "}
           {money(w.recoveryCents)}. Nenhuma cobrança automática é criada.
+        </p>
+      )}
+      {w.definition.kind === "CLUB" && (
+        <p>
+          Benefícios do clube: {(w.definition.discountBps ?? 0) / 100}% em
+          serviços e {w.definition.loyaltyBonusPoints ?? 0} ponto(s)
+          adicional(is) por atendimento elegível. Renovação manual no PDV.
+        </p>
+      )}
+      {w.validFrom && new Date(w.validFrom) > new Date() && (
+        <p>
+          Período futuro: disponível a partir de{" "}
+          {new Date(w.validFrom).toLocaleString("pt-BR")}.
         </p>
       )}
       <p>{w.definition.terms}</p>
@@ -139,6 +165,8 @@ export function PackagesPanel({
     [items, setItems] = useState([
       { key: 0, serviceId: "", sessions: 1, professionalIds: [] as string[] },
     ]);
+  const [kind, setKind] = useState<"PACKAGE" | "CLUB">("PACKAGE"),
+    [benefitsOnly, setBenefitsOnly] = useState(false);
   const saleKey = useRef<{ hash: string; key: string } | null>(null),
     nextItem = useRef(1);
   const load = useCallback(async () => {
@@ -248,17 +276,100 @@ export function PackagesPanel({
                 void save("definitions", {
                   name: f.get("name"),
                   description: f.get("description"),
+                  kind,
+                  ...(kind === "CLUB"
+                    ? {
+                        cycleMonths: Number(f.get("months")),
+                        discountBps: Math.round(Number(f.get("percent")) * 100),
+                        loyaltyBonusPoints: Number(f.get("bonus")),
+                        renewalMode: "MANUAL_PDV",
+                      }
+                    : {}),
                   priceCents: Math.round(Number(f.get("price")) * 100),
-                  validityDays: Number(f.get("validity")),
+                  validityDays:
+                    kind === "CLUB" ? 30 : Number(f.get("validity")),
                   terms: f.get("terms"),
-                  services: items.map((i) => ({
-                    serviceId: i.serviceId,
-                    sessions: i.sessions,
-                    professionalIds: i.professionalIds,
-                  })),
+                  services:
+                    kind === "CLUB" && benefitsOnly
+                      ? []
+                      : items.map((i) => ({
+                          serviceId: i.serviceId,
+                          sessions: i.sessions,
+                          professionalIds: i.professionalIds,
+                        })),
                 });
               }}
             >
+              <label>
+                Tipo da oferta
+                <select
+                  value={kind}
+                  onChange={(e) =>
+                    setKind(e.target.value as "PACKAGE" | "CLUB")
+                  }
+                >
+                  <option value="PACKAGE">Pacote de sessões</option>
+                  <option value="CLUB">Clube com renovação manual</option>
+                </select>
+              </label>
+              {kind === "CLUB" && (
+                <>
+                  <p>
+                    A renovação é paga no PDV. Não existe cobrança recorrente
+                    externa habilitada. Benefícios antecipados ficam disponíveis
+                    somente no período correspondente.
+                  </p>
+                  <label>
+                    Duração do ciclo (meses)
+                    <input
+                      name="months"
+                      type="number"
+                      min={1}
+                      max={12}
+                      required
+                      defaultValue={1}
+                    />
+                  </label>
+                  <label>
+                    Desconto do clube em serviços (%)
+                    <input
+                      name="percent"
+                      type="number"
+                      min={0}
+                      max={100}
+                      step={0.01}
+                      required
+                      defaultValue={0}
+                    />
+                  </label>
+                  <label>
+                    Pontos adicionais por atendimento elegível
+                    <input
+                      name="bonus"
+                      type="number"
+                      min={0}
+                      max={10000}
+                      required
+                      defaultValue={0}
+                    />
+                  </label>
+                  <div className="k-ops-days">
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={benefitsOnly}
+                        onChange={(e) => setBenefitsOnly(e.target.checked)}
+                      />
+                      Clube sem sessões incluídas, somente descontos ou pontos
+                    </label>
+                  </div>
+                  <p>
+                    Descontos não se somam entre clubes; vale o maior benefício
+                    vigente. Pontos adicionais respeitam a fidelidade e as
+                    condições de atendimento/pagamento.
+                  </p>
+                </>
+              )}
               <label>
                 Nome do pacote
                 <input name="name" required maxLength={120} />
@@ -282,6 +393,7 @@ export function PackagesPanel({
                 Validade após compra (dias)
                 <input
                   name="validity"
+                  disabled={kind === "CLUB"}
                   type="number"
                   min={1}
                   max={3650}
@@ -299,109 +411,112 @@ export function PackagesPanel({
                 registrada no PDV. Definições vendidas são preservadas; para
                 mudar condições, cadastre uma nova versão.
               </p>
-              {items.map((i, index) => (
-                <fieldset key={i.key}>
-                  <legend>Serviço {index + 1} do pacote</legend>
-                  <label>
-                    Serviço do pacote {index + 1}
-                    <select
-                      required
-                      value={i.serviceId}
-                      onChange={(e) =>
-                        setItems(
-                          items.map((v) =>
-                            v.key === i.key
-                              ? {
-                                  ...v,
-                                  serviceId: e.target.value,
-                                  professionalIds: [],
-                                }
-                              : v,
-                          ),
-                        )
-                      }
-                    >
-                      <option value="" disabled>
-                        Selecione
-                      </option>
-                      {catalog.services.map((s) => (
-                        <option key={s.id} value={s.id}>
-                          {s.name}
+              {!(kind === "CLUB" && benefitsOnly) &&
+                items.map((i, index) => (
+                  <fieldset key={i.key}>
+                    <legend>Serviço {index + 1} do pacote</legend>
+                    <label>
+                      Serviço do pacote {index + 1}
+                      <select
+                        required
+                        value={i.serviceId}
+                        onChange={(e) =>
+                          setItems(
+                            items.map((v) =>
+                              v.key === i.key
+                                ? {
+                                    ...v,
+                                    serviceId: e.target.value,
+                                    professionalIds: [],
+                                  }
+                                : v,
+                            ),
+                          )
+                        }
+                      >
+                        <option value="" disabled>
+                          Selecione
                         </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label>
-                    Sessões do serviço {index + 1}
-                    <input
-                      type="number"
-                      min={1}
-                      max={100}
-                      required
-                      value={i.sessions}
-                      onChange={(e) =>
-                        setItems(
-                          items.map((v) =>
-                            v.key === i.key
-                              ? { ...v, sessions: Number(e.target.value) }
-                              : v,
-                          ),
+                        {catalog.services.map((s) => (
+                          <option key={s.id} value={s.id}>
+                            {s.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
+                      Sessões do serviço {index + 1}
+                      <input
+                        type="number"
+                        min={1}
+                        max={100}
+                        required
+                        value={i.sessions}
+                        onChange={(e) =>
+                          setItems(
+                            items.map((v) =>
+                              v.key === i.key
+                                ? { ...v, sessions: Number(e.target.value) }
+                                : v,
+                            ),
+                          )
+                        }
+                      />
+                    </label>
+                    <p>
+                      Sem profissional marcado: qualquer profissional habilitado
+                      neste serviço.
+                    </p>
+                    <div className="k-ops-days">
+                      {catalog.professionals
+                        .filter((p) =>
+                          p.services.some((s) => s.serviceId === i.serviceId),
                         )
-                      }
-                    />
-                  </label>
-                  <p>
-                    Sem profissional marcado: qualquer profissional habilitado
-                    neste serviço.
-                  </p>
-                  <div className="k-ops-days">
-                    {catalog.professionals
-                      .filter((p) =>
-                        p.services.some((s) => s.serviceId === i.serviceId),
-                      )
-                      .map((p) => (
-                        <label key={p.id}>
-                          <input
-                            type="checkbox"
-                            checked={i.professionalIds.includes(p.id)}
-                            onChange={(e) =>
-                              setItems(
-                                items.map((v) =>
-                                  v.key === i.key
-                                    ? {
-                                        ...v,
-                                        professionalIds: e.target.checked
-                                          ? [...v.professionalIds, p.id]
-                                          : v.professionalIds.filter(
-                                              (id) => id !== p.id,
-                                            ),
-                                      }
-                                    : v,
-                                ),
-                              )
-                            }
-                          />
-                          {p.displayName}
-                        </label>
-                      ))}
-                  </div>
-                  {items.length > 1 && (
-                    <button
-                      type="button"
-                      className="k-button-secondary"
-                      onClick={() =>
-                        setItems(items.filter((v) => v.key !== i.key))
-                      }
-                    >
-                      Remover serviço do pacote {index + 1}
-                    </button>
-                  )}
-                </fieldset>
-              ))}
+                        .map((p) => (
+                          <label key={p.id}>
+                            <input
+                              type="checkbox"
+                              checked={i.professionalIds.includes(p.id)}
+                              onChange={(e) =>
+                                setItems(
+                                  items.map((v) =>
+                                    v.key === i.key
+                                      ? {
+                                          ...v,
+                                          professionalIds: e.target.checked
+                                            ? [...v.professionalIds, p.id]
+                                            : v.professionalIds.filter(
+                                                (id) => id !== p.id,
+                                              ),
+                                        }
+                                      : v,
+                                  ),
+                                )
+                              }
+                            />
+                            {p.displayName}
+                          </label>
+                        ))}
+                    </div>
+                    {items.length > 1 && (
+                      <button
+                        type="button"
+                        className="k-button-secondary"
+                        onClick={() =>
+                          setItems(items.filter((v) => v.key !== i.key))
+                        }
+                      >
+                        Remover serviço do pacote {index + 1}
+                      </button>
+                    )}
+                  </fieldset>
+                ))}
               <button
                 type="button"
                 className="k-button-secondary"
-                disabled={items.length >= 20}
+                disabled={
+                  items.length >= 20 || (kind === "CLUB" && benefitsOnly)
+                }
                 onClick={() =>
                   setItems([
                     ...items,
@@ -485,7 +600,11 @@ export function PackagesPanel({
               {d.services
                 .map((s) => `${s.sessions} × ${s.service.name}`)
                 .join(" · ")}{" "}
-              · {d.validityDays} dias · {d.active ? "Ativo" : "Desativado"}
+              ·{" "}
+              {d.kind === "CLUB"
+                ? `${d.cycleMonths} mês(es), renovação manual`
+                : `${d.validityDays} dias`}{" "}
+              · {d.active ? "Ativo" : "Desativado"}
             </p>
             {manager && d.active && (
               <button
