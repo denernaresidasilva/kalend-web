@@ -204,3 +204,6 @@ body { background: var(--kalend-background); color: var(--kalend-text-primary); 
 .k-ops-page textarea { width: 100%; min-height: 140px; padding: 10px; border: 1px solid var(--kalend-border); border-radius: 8px; color: var(--kalend-text-primary); background: var(--kalend-surface); }
 
 .k-loyalty-card { padding: 1.5rem; border: 1px solid var(--kalend-primary); border-radius: 1rem; background: var(--kalend-primary-soft); color: var(--kalend-primary); overflow-wrap: anywhere; }
+
+.k-waitlist-public { margin-top: 1.5rem; padding: 1rem; border: 1px solid var(--kalend-primary); border-radius: 1rem; overflow-wrap: anywhere; }
+.k-waitlist-public fieldset { min-width: 0; }
