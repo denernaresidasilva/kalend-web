@@ -1,4 +1,5 @@
 "use client";
+import { PackagesPanel } from "./packages-panel";
 import { LoyaltyPanel } from "./loyalty-panel";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -127,6 +128,7 @@ function TenantOperationsContent({ setup }: { setup: boolean }) {
     {setup && maySetup && <ServiceManagement companyId={companyId} userId={userId} onChanged={onBookingChange} />}
     {setup && services.length > 0 && <Card><h2>Serviços cadastrados</h2><div className="k-ops-service-list">{services.map((service) => <div key={service.id}><strong>{service.name}</strong><span>{service.durationMinutes} min · {money(service.priceCents)} · {service.active ? "Ativo" : "Inativo"}</span></div>)}</div></Card>}
     {invitation && <Card><h2>Convite para {invitation.name}</h2><p>Confira o contato do cliente antes de compartilhar. O link pode ser usado uma vez e vence em {new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(new Date(invitation.expiresAt))}.</p><label>Link de ativação<input className="k-invitation-link" readOnly value={invitation.url} onFocus={event => event.currentTarget.select()} /></label><button className="k-button-secondary" onClick={() => { void navigator.clipboard.writeText(invitation.url).then(() => setNotice("Link copiado.")).catch(() => setError("Selecione o link e copie manualmente.")); }}>Copiar link</button><button className="k-button-secondary" onClick={() => setInvitation(null)}>Fechar convite</button></Card>}
+    {(maySetup || role === "RECEPTIONIST") && <PackagesPanel companyId={companyId} userId={userId} manager={maySetup} revision={agendaRevision}/>}
     <OperationsBoard companyId={companyId} userId={userId} role={role ?? ""} revision={agendaRevision} />
     {(maySetup || role === "PROFESSIONAL") && <CommissionsPanel companyId={companyId} userId={userId} role={role ?? ""} revision={agendaRevision} />}
     {maySetup && <details><summary>Relatório financeiro operacional</summary><FinancialReport /></details>}
